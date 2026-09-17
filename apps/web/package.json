@@ -1,0 +1,44 @@
+{
+  "name": "@crazy/web",
+  "private": true,
+  "type": "module",
+  "imports": {
+    "#/*": "./src/*"
+  },
+  "scripts": {
+    "dev": "vp dev --port 3000",
+    "build": "vp build",
+    "preview": "vp preview",
+    "generate-routes": "tsr generate",
+    "deploy": "pnpm run build && wrangler deploy",
+    "cf-typegen": "wrangler types",
+    "db:migrate": "wrangler d1 migrations apply crazy --local",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@clerk/tanstack-react-start": "^1.5.15",
+    "@crazy/db": "workspace:*",
+    "@crazy/shared": "workspace:*",
+    "@crazy/ui": "workspace:*",
+    "@tanstack/react-query": "^5.103.1",
+    "@tanstack/react-router": "^1.170.38",
+    "@tanstack/react-router-ssr-query": "^1.167.3",
+    "@tanstack/react-start": "^1.168.56",
+    "lucide-react": "1.47.0",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "catalog:",
+    "@crazy/core": "workspace:*",
+    "@tanstack/router-cli": "^1.132.0",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "^6.1.1",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "wrangler": "catalog:"
+  }
+}

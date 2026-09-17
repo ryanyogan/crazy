@@ -1,0 +1,218 @@
+// Crazy's data model. Runs on Cloudflare D1, which is the only source of truth
+// (ADR 0002). Vocabulary is the glossary in CONTEXT.md.
+//
+// Conventions
+//  - Every row carries userId (the Clerk user id); queries always filter by it.
+//  - SQLite has no enums: string columns hold the vocabularies in @crazy/shared.
+//  - No column defaults to the current time. The moment is always handed in by
+//    the caller, so screens and the Rollover can be tested at a pinned time.
+//  - Only the Coordinator writes (see src/write.ts).
+//  - A day is the user's local date, "2025-09-17", never a moment.
+//  - Ids are handed in by the writer (nothing defaults), so a seed is repeatable.
+
+generator client {
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  runtime         = "cloudflare"
+  // "One Source, one open Todo" is a unique index over open Todos only.
+  previewFeatures = ["partialIndexes"]
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+/// One row per user, created on their first authenticated request.
+model UserSettings {
+  userId       String   @id // Clerk user id
+  timeZone     String   @default("UTC") // IANA name; decides the Rollover's midnight
+  briefTime    String   @default("06:00") // local HH:MM
+  sentBackDays Int      @default(1)
+  archiveDays  Int      @default(90)
+  billing      Boolean  @default(false) // the Billing module
+  createdAt    DateTime
+
+  @@map("user_settings")
+}
+
+/// One user's authorised link to one account at a Provider (ADR 0001): a Clerk
+/// external account plus this bookkeeping row. No token is ever stored.
+model Connection {
+  id                String    @id
+  userId            String
+  provider          String // PROVIDERS in @crazy/shared
+  externalAccountId String // Clerk's id for the external account
+  defaultSide       String // the Side of a Todo that arrives with no Circle
+  status            String // CONNECTION_STATUSES
+  syncCursor        String?
+  lastSyncAt        DateTime?
+  createdAt         DateTime
+  todos             Todo[]
+  calendarEvents    CalendarEvent[]
+  signals           Signal[]
+
+  @@unique([userId, externalAccountId])
+  @@map("connection")
+}
+
+/// A group of people and tools a user moves in. The only place a Side is stored.
+model Circle {
+  id        String    @id
+  userId    String
+  name      String
+  side      String // SIDES
+  createdAt DateTime
+  projects  Project[]
+
+  @@index([userId])
+  @@map("circle")
+}
+
+/// A named body of work. Progress is derived from its Todos, never stored.
+model Project {
+  id           String   @id
+  userId       String
+  circleId     String?
+  circle       Circle?  @relation(fields: [circleId], references: [id])
+  name         String
+  status       String // PROJECT_STATUSES
+  statusNote   String? // shown in place of the status's own label: "Week 9 of 12"
+  milestone    String? // the next milestone, in words
+  milestoneDay String? // and the day it falls on
+  createdAt    DateTime
+  todos        Todo[]
+
+  @@index([userId])
+  @@map("project")
+}
+
+/// One thing a person intends to do. No Project makes it a One-off.
+model Todo {
+  id              String    @id
+  userId          String
+  title           String
+  state           String // TODO_STATES
+  projectId       String?
+  project         Project?  @relation(fields: [projectId], references: [id])
+  estimateMinutes Int?
+  energy          String? // ENERGIES
+  /// Rollovers in a row this Todo has been carried over. Reset when sent back.
+  carryCount      Int       @default(0)
+  /// Its place in the Priority stack, and the one line that explains it.
+  stackPosition   Int?
+  stackReason     String?
+  /// The Provider item this Todo was made from; a typed-in Todo has none.
+  sourceConnectionId String?
+  sourceConnection   Connection? @relation(fields: [sourceConnectionId], references: [id])
+  sourceKind         String? // SOURCE_KINDS
+  sourceItemId       String? // the item's id at the Provider
+  sourceRef          String? // what people call the item: "HAL-212"
+  sourceUrl          String?
+  createdAt       DateTime
+  touchedAt       DateTime // the last time the user touched it
+  sentBackAt      DateTime? // the Rollover that last sent it back
+  doneAt          DateTime?
+  slots           Slot[]
+  signals         Signal[]
+
+  // The Today read model: a user's `today` Todos in stack order.
+  @@index([userId, state, stackPosition])
+  // One Source, one open Todo.
+  @@unique([userId, sourceConnectionId, sourceItemId], where: raw("state IN ('backlog', 'today')"))
+  @@map("todo")
+}
+
+/// An hour of a day that a Todo has been placed on. A Todo that runs two hours
+/// holds two Slots.
+model Slot {
+  id        String   @id
+  userId    String
+  todoId    String
+  todo      Todo     @relation(fields: [todoId], references: [id], onDelete: Cascade)
+  day       String
+  hour      Int // 0–23 on the user's wall clock
+  createdAt DateTime
+
+  @@unique([todoId, day, hour])
+  @@index([userId, day])
+  @@map("slot")
+}
+
+/// A meeting or focus block read from a Provider's calendar. Crazy never edits
+/// one: it occupies hours of the timeline and is not a Slot.
+model CalendarEvent {
+  id           String     @id
+  userId       String
+  connectionId String
+  connection   Connection @relation(fields: [connectionId], references: [id])
+  itemId       String // the event's id at the Provider
+  kind         String // CALENDAR_EVENT_KINDS
+  title        String
+  who          String? // who it is with, as the Provider puts it: "12 people"
+  startsAt     DateTime
+  endsAt       DateTime
+  createdAt    DateTime
+
+  @@unique([userId, connectionId, itemId])
+  // The Today and Week read models: a user's events over a span of days.
+  @@index([userId, startsAt])
+  @@map("calendar_event")
+}
+
+/// How Crazy worded one hour of a day's timeline when it last planned the day.
+/// Generated text, like the Brief. An hour without a row is worded from what
+/// it holds, and how an hour is drawn is always derived, never stored.
+model TimelineHour {
+  id         String   @id
+  userId     String
+  day        String
+  hour       Int // 0–23 on the user's wall clock
+  title      String
+  note       String?
+  sourceKind String? // SOURCE_KINDS: the chip the hour wears
+  createdAt  DateTime
+
+  @@unique([userId, day, hour])
+  @@map("timeline_hour")
+}
+
+/// Something Crazy noticed at a Provider that might deserve a Todo. It never
+/// becomes one on its own: the user adds it, and `todoId` records that they did.
+model Signal {
+  id           String     @id
+  userId       String
+  kind         String // SIGNAL_KINDS
+  person       String // who addressed the user, was promised something, or owes them
+  text         String
+  at           DateTime // when it happened at the Provider
+  /// The Provider item it is. A Todo made from it takes this as its Source.
+  connectionId String
+  connection   Connection @relation(fields: [connectionId], references: [id])
+  sourceKind   String // SOURCE_KINDS
+  sourceItemId String
+  sourceRef    String?
+  sourceUrl    String?
+  /// The Todo the user added it as.
+  todoId       String?
+  todo         Todo?      @relation(fields: [todoId], references: [id], onDelete: SetNull)
+  createdAt    DateTime
+
+  @@unique([userId, connectionId, sourceItemId, kind])
+  // The Today and Projects read models: a user's Signals of a kind, newest first.
+  @@index([userId, kind, at])
+  @@map("signal")
+}
+
+/// What Crazy wrote for a user: the Brief each morning, the Week brief each week.
+model Brief {
+  id        String   @id
+  userId    String
+  kind      String // BRIEF_KINDS
+  day       String // the day it was written for; a Week brief's is its Monday
+  body      String
+  bodyShort String // the same, said in a phone's width
+  createdAt DateTime
+
+  @@unique([userId, kind, day])
+  @@map("brief")
+}

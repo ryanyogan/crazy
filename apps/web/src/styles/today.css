@@ -1,0 +1,409 @@
+/* The Today screen, frame 1a. Measurements are the frame's: the phone frame
+   first, the desktop frame from 900px. */
+
+.today {
+  display: grid;
+  /* One column no wider than the screen, however long the hour strip is. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  align-content: start;
+}
+
+/* On a phone the header and body are not boxes of their own: their children
+   fall into the one column, in the phone frame's order. */
+.today__head,
+.today__body,
+.today__side {
+  display: contents;
+}
+
+.today__dayline {
+  display: none;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-neutral-700);
+}
+
+.today__brief {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--color-neutral-800);
+}
+
+.today__brief--long {
+  display: none;
+}
+
+/* ── The day's timeline ───────────────────────────────────────────────────── */
+
+/* The phone frame draws the strip alone; its heading is still said. */
+.day__head {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.day__title {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-neutral-700);
+}
+
+.day__hint {
+  font-size: 11px;
+  color: var(--color-neutral-700);
+}
+
+/* ── Take on now: the one solid accent object ─────────────────────────────── */
+
+.ton {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+
+.ton__kicker {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.ton__title {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.1;
+  letter-spacing: normal;
+}
+
+.ton__meta {
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.ton__long,
+.ton__actions {
+  display: none;
+}
+
+.ton__actions {
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.ton__actions .btn {
+  padding: 5px 12px;
+}
+
+.ton__start,
+.ton__start:hover {
+  background: var(--color-bg);
+  border-color: var(--color-bg);
+  color: var(--color-accent-800);
+}
+
+.ton__swap {
+  border-color: color-mix(in srgb, var(--color-bg) 50%, transparent);
+  color: var(--color-bg);
+}
+
+/* On the accent fill the accent focus ring would vanish. */
+.ton .btn:focus-visible {
+  outline-color: var(--color-bg);
+}
+
+/* ── Priority stack ───────────────────────────────────────────────────────── */
+
+.stack {
+  padding: 10px 12px;
+}
+
+.stack__title {
+  margin: 0;
+  font-family: var(--font-body);
+  font-weight: 400;
+  line-height: inherit;
+}
+
+.stack__todos {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stack__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-top: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent);
+  font-size: 13px;
+}
+
+.tick {
+  flex: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  border: 1px solid var(--color-neutral-600);
+  border-radius: 0;
+  background: transparent;
+}
+
+.tick:not([aria-disabled]) {
+  cursor: pointer;
+}
+
+/* Ticked: the box filled, inside a margin of the page. */
+.tick:checked {
+  background: var(--color-neutral-700);
+  box-shadow: inset 0 0 0 2px var(--color-bg);
+}
+
+.stack__todo--done .stack__what {
+  color: var(--color-neutral-600);
+  text-decoration: line-through;
+}
+
+.stack__todo--done .stack__meta {
+  color: inherit;
+}
+
+.stack__what {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  line-height: 1.2;
+  color: inherit;
+  text-align: left;
+}
+
+button.stack__what {
+  cursor: pointer;
+}
+
+.stack__meta {
+  display: block;
+  font-size: 11px;
+  color: var(--color-neutral-700);
+}
+
+.stack__why {
+  margin: 0;
+  /* Under the Todo's words, clear of the tick. */
+  padding: 0 0 6px 24px;
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--color-neutral-700);
+}
+
+.stack__empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-neutral-700);
+}
+
+/* The phone frame draws no footer; the short Brief says what was carried over. */
+.stack__foot {
+  display: none;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--color-neutral-700);
+}
+
+/* ── Mentions ─────────────────────────────────────────────────────────────── */
+
+.mentions {
+  padding: 10px 12px;
+}
+
+.mentions__title {
+  margin: 0;
+  font-family: var(--font-body);
+  font-weight: 400;
+  line-height: inherit;
+}
+
+.mentions__list {
+  /* The frame's rows are the card's own children, so its gap falls between them. */
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mentions__row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  align-items: start;
+  padding: 5px 0;
+  border-top: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent);
+  font-size: 12px;
+}
+
+.mentions__what {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  line-height: 1.3;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mentions__age {
+  color: var(--color-neutral-700);
+  white-space: nowrap;
+}
+
+.mentions__more {
+  /* Under the words, clear of the chip. */
+  padding: 0 0 6px 34px;
+}
+
+.mentions__add {
+  padding: 3px 10px;
+  font-size: 12px;
+}
+
+.mentions__empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-neutral-700);
+}
+
+/* ── Add a Todo ───────────────────────────────────────────────────────────── */
+
+.addtodo {
+  display: flex;
+  gap: 8px;
+}
+
+/* ── Desktop ──────────────────────────────────────────────────────────────── */
+
+@media (min-width: 900px) {
+  .today {
+    gap: 18px;
+  }
+
+  .today__head,
+  .today__body {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 28px;
+    align-items: start;
+  }
+
+  .today__side {
+    display: grid;
+    gap: 16px;
+    align-content: start;
+  }
+
+  .today__dayline {
+    display: block;
+  }
+
+  .today__brief {
+    max-width: 640px;
+    font-size: 15px;
+    line-height: 1.5;
+    color: inherit;
+    text-wrap: pretty;
+  }
+
+  .today__brief--long {
+    display: block;
+  }
+
+  .today__brief--short {
+    display: none;
+  }
+
+  .today__day {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    gap: 10px;
+    min-height: 0;
+  }
+
+  .day__head {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    white-space: normal;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .ton {
+    gap: 6px;
+    padding: 14px 16px;
+  }
+
+  .ton__title {
+    font-size: 22px;
+  }
+
+  .ton__long {
+    display: inline;
+  }
+
+  .ton__short {
+    display: none;
+  }
+
+  .ton__actions {
+    display: flex;
+  }
+
+  .stack {
+    padding: 12px 14px;
+  }
+
+  .stack__row {
+    padding: 4px 0;
+  }
+
+  .tick {
+    width: 13px;
+    height: 13px;
+  }
+
+  .stack__why {
+    padding: 0 0 4px 23px;
+  }
+
+  .stack__foot {
+    display: flex;
+  }
+
+  .mentions {
+    padding: 12px 14px;
+  }
+}

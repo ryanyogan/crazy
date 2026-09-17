@@ -1,0 +1,26 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "crazy-web",
+  "main": "@tanstack/react-start/server-entry",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  // The per-user Coordinator lives in the core Worker. Every write, and every
+  // WebSocket upgrade, is handed to it through this binding.
+  "durable_objects": {
+    "bindings": [
+      { "name": "COORDINATOR", "class_name": "Coordinator", "script_name": "crazy-core" },
+    ],
+  },
+  // Read only. The web app never writes to D1 (ADR 0002); migrations are
+  // listed here so `pnpm db:migrate` lands in the state directory `vp dev` uses.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "crazy",
+      // Replace after `wrangler d1 create crazy`. Must match apps/core.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "../../packages/db/migrations",
+    },
+  ],
+}

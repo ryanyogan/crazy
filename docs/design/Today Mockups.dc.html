@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/industry-cc5f5a1e-7e5e-4446-84c1-f4635a15a8d9/styles.css">
+<script src="_ds/industry-cc5f5a1e-7e5e-4446-84c1-f4635a15a8d9/_ds_bundle.js"></script>
+<style>body{margin:0;background:var(--color-bg)}a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}.dv-turn{padding:40px 44px 32px;border-bottom:1px solid var(--color-divider);scroll-margin-top:16px}.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:var(--color-text);color:#fff;text-decoration:none}.dv-tname{font:600 13px/1.2 var(--font-body);color:var(--color-text)}.dv-opts{display:flex;flex-wrap:wrap;gap:36px;align-items:flex-start}.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px}.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:var(--color-text);text-decoration:none}.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11px/1.3 var(--font-body);color:var(--color-neutral-700)}.dv-card{max-width:100%;background:var(--color-bg);border:1px solid var(--color-divider);box-shadow:var(--shadow-md);overflow:hidden}.dv-opt:target .dv-oid{background:var(--color-accent);color:#fff}.dv-next{margin:22px 0 0;font:12px/1.5 var(--font-body);color:var(--color-neutral-700)}.tl{display:grid;grid-template-columns:44px 1fr;gap:0 10px;align-items:stretch}.tl>div{border-top:1px solid color-mix(in srgb,var(--color-text) 8%,transparent)}</style>
+</helmet>
+
+<section class="dv-turn" id="t0" style="padding-bottom:24px">
+<div style="max-width:760px;display:grid;gap:10px;font-size:13px;color:var(--color-neutral-800)">
+<h2 style="margin:0">Today — round one</h2>
+<p style="margin:0"><strong>Assumptions.</strong> Sample user is Mara Okafor, platform engineering lead at Halyard. Four connected tools (Google, Slack, Linear, Notion). Three work projects and two personal ones. It is Wednesday 08:41.</p>
+<p style="margin:0"><strong>System.</strong> Industry wireframe grammar: square, hairline-framed blueprint objects with registration marks; Barlow Condensed headings; one steel accent. The single solid accent object on every screen is the one thing to do next. Source chips (SL, LN, NO, GM, CAL) are tiny condensed tags. Meetings are tinted fills, focus blocks are framed, free hours are dashed.</p>
+<p style="margin:0"><strong>Two home takes.</strong> <a class="dv-oid" href="#1a">1a</a> leads with the brief, then the hour timeline with todos slotted in. <a class="dv-oid" href="#1b">1b</a> leads with the priority stack and groups todos by energy, nested under projects; the brief becomes a side column. Remaining screens (<a class="dv-oid" href="#1c">1c</a>–<a class="dv-oid" href="#1g">1g</a>) are single takes. Technical notes for Claude Code are in <code>CLAUDE-CODE-NOTES.md</code>.</p>
+</div>
+</section>
+
+<section class="dv-turn" id="t4">
+<div class="dv-thd"><a class="dv-tid" href="#t4">4</a><span class="dv-tname">Metrics with time · extends <a class="dv-oid" href="#1f">1f</a> for tracked hours and billing</span></div>
+<div class="dv-opts">
+<div class="dv-opt" id="4a"><div class="dv-olabel"><a class="dv-oid" href="#4a">4a</a>Metrics · Time tab: utilization, billable split, hours by client, when you work, unbilled money, retainer burn, estimate accuracy</div>
+<div class="dv-card" style="width:1180px;height:900px;display:grid;grid-template-columns:168px 1fr">
+  <aside style="border-right:1px solid var(--color-divider);padding:18px 16px;display:flex;flex-direction:column;gap:22px">
+    <div style="font-family:var(--font-heading);font-weight:600;font-size:22px;letter-spacing:.04em">TODAY</div>
+    <nav style="display:grid;gap:10px;font-size:14px;font-family:var(--font-heading);font-weight:600;letter-spacing:.02em">
+      <span style="display:flex;gap:10px"><span style="opacity:.45">01</span>Today</span><span style="display:flex;gap:10px"><span style="opacity:.45">02</span>Week</span><span style="display:flex;gap:10px"><span style="opacity:.45">03</span>Projects</span><span style="display:flex;gap:10px"><span style="opacity:.45">04</span>Time</span><span style="display:flex;gap:10px"><span style="opacity:.45">05</span>Invoices</span><span style="display:flex;gap:10px;color:var(--color-accent)"><span style="opacity:.6">06</span>Metrics</span><span style="display:flex;gap:10px"><span style="opacity:.45">07</span>Integrations</span>
+    </nav>
+  </aside>
+  <main style="padding:22px 28px;display:grid;gap:18px;align-content:start">
+    <div style="display:flex;justify-content:space-between;align-items:baseline"><h1 style="font-size:32px;margin:0">Metrics</h1><div style="display:flex;gap:12px"><span class="seg"><span class="seg-opt">Todos</span><span class="seg-opt" style="background:var(--color-accent);color:var(--color-bg)">Time</span><span class="seg-opt">Money</span></span><span class="seg"><span class="seg-opt">Week</span><span class="seg-opt" style="background:var(--color-accent);color:var(--color-bg)">30 days</span><span class="seg-opt">Quarter</span></span></div></div>
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px">
+      <sc-for list="{{ timeKpis }}" as="k" hint-placeholder-count="6">
+        <div class="card blueprint" style="padding:12px 14px;gap:2px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><div class="card-kicker">{{ k.label }}</div><div style="font-family:var(--font-heading);font-weight:600;font-size:34px;line-height:1;font-variant-numeric:tabular-nums">{{ k.value }}</div><div style="font-size:11px;color:var(--color-neutral-700)">{{ k.delta }}</div></div>
+      </sc-for>
+    </div>
+    <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:20px">
+      <div class="card blueprint" style="padding:14px 16px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="display:flex;justify-content:space-between"><div class="card-kicker">Hours per week by client · last 8 weeks</div><div style="display:flex;gap:10px;font-size:10px;color:var(--color-neutral-700)"><span style="display:flex;gap:4px;align-items:center"><span style="width:8px;height:8px;background:var(--color-accent-700)"></span>Meridian</span><span style="display:flex;gap:4px;align-items:center"><span style="width:8px;height:8px;background:var(--color-accent-400)"></span>Quill</span><span style="display:flex;gap:4px;align-items:center"><span style="width:8px;height:8px;background:var(--color-accent-200)"></span>Bramble</span><span style="display:flex;gap:4px;align-items:center"><span style="width:8px;height:8px;border:1px dashed var(--color-neutral-500)"></span>non-billable</span></div></div>
+        <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:10px;height:170px;align-items:end;margin-top:10px;border-bottom:1px solid var(--color-divider)">
+          <sc-for list="{{ weeksByClient }}" as="w" hint-placeholder-count="8"><div style="display:flex;flex-direction:column;justify-content:end;height:100%;gap:1px"><span style="height:{{ w.nb }};border:1px dashed var(--color-neutral-500)"></span><span style="height:{{ w.bra }};background:var(--color-accent-200)"></span><span style="height:{{ w.qui }};background:var(--color-accent-400)"></span><span style="height:{{ w.mer }};background:var(--color-accent-700)"></span></div></sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:10px;margin-top:4px">
+          <sc-for list="{{ weeksByClient }}" as="w" hint-placeholder-count="8"><div style="text-align:center;font-size:10px;color:var(--color-neutral-700);font-family:var(--font-heading)">{{ w.label }}<span style="display:block;color:var(--color-text);font-size:12px">{{ w.total }}</span></div></sc-for>
+        </div>
+        <div class="card-meta">Target 30 billable h/wk · hit 6 of 8 weeks · best week 34.5h (W35)</div>
+      </div>
+      <div class="card blueprint" style="padding:14px 16px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="card-kicker">When you work · weekday × hour · 30 days</div>
+        <div style="display:grid;grid-template-columns:28px repeat(11,1fr);gap:2px;margin-top:10px;font-size:10px;color:var(--color-neutral-700);font-family:var(--font-heading)">
+          <span></span><sc-for list="{{ heatHours }}" as="h" hint-placeholder-count="11"><span style="text-align:center">{{ h }}</span></sc-for>
+          <sc-for list="{{ heatRows }}" as="r" hint-placeholder-count="5">
+            <span style="align-self:center">{{ r.day }}</span>
+            <sc-for list="{{ r.cells }}" as="c" hint-placeholder-count="11"><span style="height:24px;background:{{ c }};border:1px solid color-mix(in srgb,var(--color-text) 6%,transparent)"></span></sc-for>
+          </sc-for>
+        </div>
+        <div class="card-meta" style="margin-top:8px">Deep-work peak Tue–Thu 09–12. Fridays after 14:00 are mostly admin; I stop suggesting billable work there.</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px;font-size:12px">
+          <div><div style="font-family:var(--font-heading);font-weight:600;font-size:22px;line-height:1">08:52</div><div style="color:var(--color-neutral-700)">median first timer</div></div>
+          <div><div style="font-family:var(--font-heading);font-weight:600;font-size:22px;line-height:1">17:31</div><div style="color:var(--color-neutral-700)">median last stop</div></div>
+          <div><div style="font-family:var(--font-heading);font-weight:600;font-size:22px;line-height:1">4.1</div><div style="color:var(--color-neutral-700)">project switches / day</div></div>
+        </div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">
+      <div class="card blueprint" style="padding:14px 16px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="card-kicker">Unbilled · by client</div>
+        <div style="display:grid;gap:8px;margin-top:8px;font-size:12px">
+          <sc-for list="{{ unbilled }}" as="u" hint-placeholder-count="3"><div style="display:grid;grid-template-columns:1fr auto;gap:2px 10px"><span style="font-weight:500">{{ u.client }}</span><span style="font-family:var(--font-heading);font-variant-numeric:tabular-nums;font-size:14px">{{ u.amount }}</span><span style="grid-column:1/-1;height:8px;border:1px solid var(--color-divider);position:relative"><span style="position:absolute;inset:0;right:auto;width:{{ u.w }};background:{{ u.color }}"></span></span><span style="grid-column:1/-1;color:var(--color-neutral-700)">{{ u.note }}</span></div></sc-for>
+        </div>
+        <div class="card-meta">$13,755 unbilled · oldest entry 17 days · avg time-to-invoice 9 days · avg time-to-paid 22 days</div>
+      </div>
+      <div class="card blueprint" style="padding:14px 16px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="card-kicker">Budget &amp; retainer burn</div>
+        <div style="display:grid;gap:10px;margin-top:8px;font-size:12px">
+          <sc-for list="{{ burn }}" as="b" hint-placeholder-count="3"><div style="display:grid;grid-template-columns:1fr auto;gap:2px 10px"><span style="font-weight:500">{{ b.name }}</span><span style="font-family:var(--font-heading);font-variant-numeric:tabular-nums">{{ b.used }}</span><span style="grid-column:1/-1;height:8px;border:1px solid var(--color-divider);position:relative"><span style="position:absolute;inset:0;right:auto;width:{{ b.w }};background:{{ b.color }}"></span><span style="position:absolute;top:-3px;bottom:-3px;left:{{ b.pace }};width:1px;background:var(--color-text)"></span></span><span style="grid-column:1/-1;color:var(--color-neutral-700)">{{ b.note }}</span></div></sc-for>
+        </div>
+        <div class="card-meta">Black tick = where you should be at this point in the period.</div>
+      </div>
+      <div class="card blueprint" style="padding:14px 16px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="card-kicker">Estimate vs actual · todos with timers</div>
+        <div style="display:grid;gap:6px;margin-top:8px;font-size:12px">
+          <sc-for list="{{ estimates }}" as="e" hint-placeholder-count="4"><div style="display:grid;grid-template-columns:70px 1fr 44px;gap:8px;align-items:center"><span style="color:var(--color-neutral-700)">{{ e.kind }}</span><span style="height:12px;position:relative;border:1px solid var(--color-divider)"><span style="position:absolute;inset:0;right:auto;width:{{ e.est }};background:var(--color-accent-200)"></span><span style="position:absolute;top:2px;bottom:2px;left:0;width:{{ e.act }};background:var(--color-accent-700)"></span></span><span style="font-family:var(--font-heading);text-align:right">{{ e.ratio }}</span></div></sc-for>
+        </div>
+        <div class="card-meta">Light = estimated, dark = actual. Research runs 1.4× over; I pad those estimates now. Longest session 3h 50m, 47 sessions over 90 min this month.</div>
+      </div>
+    </div>
+  </main>
+</div></div>
+</div>
+<p class="dv-next">Try next: "show the Money tab" · "add a per-client drill-down" · "weekly email version of these metrics"</p>
+</section>
+
+<section class="dv-turn" id="t3">
+<div class="dv-thd"><a class="dv-tid" href="#t3">3</a><span class="dv-tname">Cleaner timer controls · replaces the segmented picker in <a class="dv-oid" href="#2a">2a</a></span></div>
+<div class="dv-opts">
+
+<!-- ═══════════ 3a Timer bar states ═══════════ -->
+<div class="dv-opt" id="3a"><div class="dv-olabel"><a class="dv-oid" href="#3a">3a</a>Timer bar · one square Start/Stop, project as a styled dropdown, three states</div>
+<div style="display:grid;gap:22px">
+  <!-- idle -->
+  <div class="dv-card" style="width:1012px;display:grid;gap:6px;padding:12px 20px;grid-template-columns:auto auto 1fr auto;align-items:center;column-gap:16px">
+    <span class="btn btn-primary blueprint" style="width:40px;height:40px;padding:0"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4l14 8-14 8z"></path></svg></span>
+    <span style="font-family:var(--font-heading);font-weight:600;font-size:30px;line-height:1;font-variant-numeric:tabular-nums;color:var(--color-neutral-400)">00:00</span>
+    <span class="input" style="display:flex;align-items:center;gap:10px;max-width:420px;cursor:pointer;background:transparent"><span style="width:3px;height:18px;background:var(--color-accent-700)"></span><span style="flex:1;line-height:1.15"><span style="font-weight:500">Meridian Health</span><span style="color:var(--color-neutral-700)"> · Discovery research</span></span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 9l6 6 6-6"></path></svg></span>
+    <span style="font-size:12px;color:var(--color-neutral-700)">Today 1h 28m · last: Meridian, stopped 08:55</span>
+    <span style="grid-column:1/-1;font-size:11px;color:var(--color-neutral-700)">idle · dropdown preselects the most likely project from your calendar and last entry</span>
+  </div>
+  <!-- running -->
+  <div class="dv-card" style="width:1012px;display:grid;gap:6px;padding:12px 20px;grid-template-columns:auto auto 1fr auto;align-items:center;column-gap:16px;border-color:var(--color-accent-300);background:var(--color-accent-100)">
+    <span class="btn btn-primary blueprint" style="width:40px;height:40px;padding:0"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><span style="width:12px;height:12px;background:var(--color-bg)"></span></span>
+    <span style="font-family:var(--font-heading);font-weight:600;font-size:30px;line-height:1;font-variant-numeric:tabular-nums">01:42<span style="font-size:16px;color:var(--color-accent-700)">:17</span></span>
+    <span class="input" style="display:flex;align-items:center;gap:10px;max-width:420px;cursor:pointer;background:var(--color-bg)"><span style="width:3px;height:18px;background:var(--color-accent-700)"></span><span style="flex:1;line-height:1.15"><span style="font-weight:500">Meridian Health</span><span style="color:var(--color-neutral-700)"> · Discovery research</span></span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 9l6 6 6-6"></path></svg></span>
+    <span style="display:flex;gap:12px;align-items:center;font-size:12px;color:var(--color-neutral-700)"><span>since 09:00 · billable</span><span class="tag tag-accent" style="font-size:10px">Meridian today 2h 05m</span></span>
+    <span style="grid-column:1/-1;display:flex;gap:10px;align-items:center"><span class="input" style="flex:1;max-width:420px;min-height:30px;padding:4px 10px;font-size:13px;background:transparent;color:var(--color-neutral-700)">Add a note for this entry…</span><span style="font-size:11px;color:var(--color-neutral-700)">Changing the dropdown while running splits the entry at now.</span></span>
+  </div>
+  <!-- dropdown open -->
+  <div class="dv-card" style="width:1012px;height:410px;position:relative;padding:12px 20px;display:grid;grid-template-columns:auto auto 1fr auto;align-items:start;column-gap:16px;border-color:var(--color-accent-300);background:var(--color-accent-100);overflow:visible">
+    <span class="btn btn-primary blueprint" style="width:40px;height:40px;padding:0"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><span style="width:12px;height:12px;background:var(--color-bg)"></span></span>
+    <span style="font-family:var(--font-heading);font-weight:600;font-size:30px;line-height:1;font-variant-numeric:tabular-nums;padding-top:6px">01:42<span style="font-size:16px;color:var(--color-accent-700)">:17</span></span>
+    <div style="position:relative;max-width:420px">
+      <span class="input" style="display:flex;align-items:center;gap:10px;cursor:pointer;background:var(--color-bg);border-color:var(--color-accent)"><span style="width:3px;height:18px;background:var(--color-accent-700)"></span><span style="flex:1;line-height:1.15"><span style="font-weight:500">Meridian Health</span><span style="color:var(--color-neutral-700)"> · Discovery research</span></span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 15l-6-6-6 6"></path></svg></span>
+      <div class="blueprint elev-md" style="position:absolute;top:42px;left:0;right:0;background:var(--color-bg);padding:6px 0;display:grid;font-size:13px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <span class="input" style="margin:4px 10px 6px;min-height:30px;padding:4px 10px;font-size:12px;color:var(--color-neutral-700)">Search clients and projects…</span>
+        <sc-for list="{{ pickerGroups }}" as="g" hint-placeholder-count="4">
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 12px 2px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-700)"><span style="width:3px;height:10px;background:{{ g.color }}"></span>{{ g.client }}<span style="margin-left:auto;font-family:var(--font-heading);letter-spacing:0;font-size:11px">{{ g.hours }}</span></div>
+          <sc-for list="{{ g.projects }}" as="p" hint-placeholder-count="2">
+            <div style="display:flex;align-items:center;gap:10px;padding:5px 12px 5px 23px;background:{{ p.bg }}"><span style="flex:1">{{ p.name }}</span><span style="font-size:11px;color:var(--color-neutral-700)">{{ p.meta }}</span></div>
+          </sc-for>
+        </sc-for>
+        <div style="padding:6px 12px 2px;border-top:1px solid var(--color-divider);margin-top:4px;color:var(--color-accent-700)">+ New project</div>
+      </div>
+    </div>
+    <span style="font-size:12px;color:var(--color-neutral-700);padding-top:8px">↑↓ to move · ⏎ to switch · esc</span>
+  </div>
+</div></div>
+
+<!-- ═══════════ 3b Mobile timer + sheet ═══════════ -->
+<div class="dv-opt" id="3b"><div class="dv-olabel"><a class="dv-oid" href="#3b">3b</a>Mobile · same control; the dropdown becomes a bottom sheet</div>
+<div style="display:flex;gap:24px">
+  <div class="dv-card" style="width:390px;height:560px;display:flex;flex-direction:column">
+    <div style="padding:14px 18px 0;display:flex;justify-content:space-between;align-items:center;font-family:var(--font-heading);font-weight:600"><span style="font-size:18px;letter-spacing:.04em">TODAY</span><span style="font-size:12px;color:var(--color-neutral-700)">Wed · 10:42</span></div>
+    <div style="padding:14px 18px;display:grid;gap:12px">
+      <div class="blueprint" style="padding:16px;display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;border-color:var(--color-accent-300);background:var(--color-accent-100)"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <span style="font-family:var(--font-heading);font-weight:600;font-size:48px;line-height:1;font-variant-numeric:tabular-nums">01:42<span style="font-size:20px;color:var(--color-accent-700)">:17</span></span>
+        <span class="btn btn-primary blueprint" style="width:56px;height:56px;padding:0"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><span style="width:16px;height:16px;background:var(--color-bg)"></span></span>
+        <span class="input" style="grid-column:1/-1;display:flex;align-items:center;gap:10px;min-height:44px;background:var(--color-bg)"><span style="width:3px;height:18px;background:var(--color-accent-700)"></span><span style="flex:1;line-height:1.15;font-size:14px"><span style="font-weight:500">Meridian Health</span><span style="color:var(--color-neutral-700)"> · Discovery research</span></span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 9l6 6 6-6"></path></svg></span>
+        <span style="grid-column:1/-1;font-size:12px;color:var(--color-neutral-700)">since 09:00 · billable · Meridian today 2h 05m</span>
+      </div>
+      <div style="font-size:12px;color:var(--color-neutral-700)">Recent</div>
+      <sc-for list="{{ recentProjects }}" as="r" hint-placeholder-count="3">
+        <div style="display:flex;align-items:center;gap:10px;min-height:44px;border-top:1px solid color-mix(in srgb,var(--color-text) 8%,transparent);font-size:14px"><span style="width:3px;height:18px;background:{{ r.color }}"></span><span style="flex:1;line-height:1.15">{{ r.name }}<span style="display:block;font-size:11px;color:var(--color-neutral-700)">{{ r.meta }}</span></span><span style="width:36px;height:36px;border:1px solid var(--color-divider);display:grid;place-items:center"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4l14 8-14 8z"></path></svg></span></div>
+      </sc-for>
+    </div>
+  </div>
+  <div class="dv-card" style="width:390px;height:560px;position:relative;background:var(--color-neutral-300)">
+    <div style="position:absolute;left:0;right:0;bottom:0;background:var(--color-bg);border-top:1px solid var(--color-divider);padding:10px 18px 20px;display:grid;gap:4px;font-size:14px">
+      <span style="width:36px;height:3px;background:var(--color-neutral-400);justify-self:center;margin-bottom:6px"></span>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px"><h5 style="margin:0">Switch project</h5><span style="font-size:12px;color:var(--color-neutral-700)">splits entry at 10:42</span></div>
+      <span class="input" style="min-height:40px;color:var(--color-neutral-700);font-size:13px">Search…</span>
+      <sc-for list="{{ pickerGroups }}" as="g" hint-placeholder-count="4">
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 0 2px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-700)"><span style="width:3px;height:10px;background:{{ g.color }}"></span>{{ g.client }}</div>
+        <sc-for list="{{ g.projects }}" as="p" hint-placeholder-count="2">
+          <div style="display:flex;align-items:center;gap:10px;min-height:44px;padding-left:11px;background:{{ p.bg }}"><span style="flex:1">{{ p.name }}</span><span style="font-size:11px;color:var(--color-neutral-700)">{{ p.meta }}</span></div>
+        </sc-for>
+      </sc-for>
+    </div>
+  </div>
+</div></div>
+
+</div>
+<p class="dv-next">Try next: "put the <a class="dv-oid" href="#3a">3a</a> bar into <a class="dv-oid" href="#2a">2a</a>" · "show the timer with no project chosen yet" · "add a pause state"</p>
+</section>
+
+<section class="dv-turn" id="t2">
+<div class="dv-thd"><a class="dv-tid" href="#t2">2</a><span class="dv-tname">Time tracking &amp; invoicing · sample user switches to Jo, an independent consultant with three clients</span></div>
+<div class="dv-opts">
+
+<!-- ═══════════ 2a Timer inside Today ═══════════ -->
+<div class="dv-opt" id="2a"><div class="dv-olabel"><a class="dv-oid" href="#2a">2a</a>Timer lives in Today · one running timer, start from any todo, project picked inline, hours land on the timeline</div>
+<div style="display:flex;gap:24px;align-items:flex-start">
+<div class="dv-card" style="width:1180px;height:780px;display:grid;grid-template-columns:168px 1fr">
+  <aside style="border-right:1px solid var(--color-divider);padding:18px 16px;display:flex;flex-direction:column;gap:22px">
+    <div style="font-family:var(--font-heading);font-weight:600;font-size:22px;letter-spacing:.04em">TODAY</div>
+    <nav style="display:grid;gap:10px;font-size:14px;font-family:var(--font-heading);font-weight:600;letter-spacing:.02em">
+      <span style="display:flex;gap:10px;color:var(--color-accent)"><span style="opacity:.6">01</span>Today</span><span style="display:flex;gap:10px"><span style="opacity:.45">02</span>Week</span><span style="display:flex;gap:10px"><span style="opacity:.45">03</span>Projects</span><span style="display:flex;gap:10px"><span style="opacity:.45">04</span>Time</span><span style="display:flex;gap:10px"><span style="opacity:.45">05</span>Invoices</span><span style="display:flex;gap:10px"><span style="opacity:.45">06</span>Metrics</span><span style="display:flex;gap:10px"><span style="opacity:.45">07</span>Integrations</span>
+    </nav>
+    <div style="margin-top:auto;display:grid;gap:8px;font-size:11px;color:var(--color-neutral-700)"><div style="display:flex;align-items:center;gap:6px"><span style="width:6px;height:6px;background:var(--color-accent);border-radius:50%"></span>Live</div><div style="display:flex;align-items:center;gap:8px"><span style="width:24px;height:24px;border:1px solid var(--color-divider);display:grid;place-items:center;font-family:var(--font-heading);font-weight:600">JO</span><span style="color:var(--color-text)">Jo Okafor</span></div></div>
+  </aside>
+  <main style="display:grid;grid-template-rows:auto 1fr;min-height:0">
+    <!-- running timer bar -->
+    <div style="display:flex;align-items:center;gap:18px;padding:12px 28px;border-bottom:1px solid var(--color-accent-300);background:var(--color-accent-100)">
+      <span class="blueprint" style="width:38px;height:38px;background:var(--color-accent);display:grid;place-items:center"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><span style="width:12px;height:12px;background:var(--color-bg)"></span></span>
+      <span style="font-family:var(--font-heading);font-weight:600;font-size:34px;line-height:1;font-variant-numeric:tabular-nums">01:42<span style="font-size:18px;color:var(--color-accent-700)">:17</span></span>
+      <span style="display:grid;line-height:1.25"><span style="font-size:14px;font-weight:500">Research synthesis · discovery interviews</span><span style="font-size:12px;color:var(--color-neutral-700)">since 09:00 · billable</span></span>
+      <span class="seg" style="background:var(--color-bg)"><span class="seg-opt" style="background:var(--color-accent);color:var(--color-bg)">Meridian Health</span><span class="seg-opt">Quill &amp; Co</span><span class="seg-opt">Bramble</span><span class="seg-opt" style="color:var(--color-neutral-700)">Internal</span></span>
+      <span style="margin-left:auto;font-size:12px;color:var(--color-neutral-700)">Today 3h 10m · Meridian 2h 05m</span>
+      <span class="btn btn-secondary" style="background:var(--color-bg)">Stop</span>
+    </div>
+    <div style="padding:20px 28px;display:grid;grid-template-columns:1fr 340px;gap:28px;min-height:0">
+      <section style="display:grid;grid-template-rows:auto 1fr;gap:10px;min-height:0">
+        <div><div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-700)">Wednesday · 17 Sep · 10:42</div><h1 style="font-size:32px;margin:4px 0 6px">Good morning, Jo.</h1><p style="font-size:14px;line-height:1.5;max-width:640px;margin:0;text-wrap:pretty">You're 1h 42m into Meridian's synthesis; the timer hasn't moved projects since 09:00, so I'll ask before your 11:30 with Quill. Bramble's retainer hits 20h at about 15:00 today. September invoices go out Friday and Meridian's is ready to review.</p></div>
+        <div class="tl" style="align-content:start">
+          <sc-for list="{{ tHours }}" as="h" hint-placeholder-count="9">
+            <div style="font-family:var(--font-heading);font-size:12px;color:var(--color-neutral-700);padding-top:4px">{{ h.h }}</div>
+            <div style="padding:4px 0;min-height:40px">
+              <div style="display:flex;align-items:center;gap:10px;padding:5px 10px;border:{{ h.border }};background:{{ h.bg }};min-height:32px">
+                <span style="width:4px;align-self:stretch;background:{{ h.clientColor }}"></span>
+                <span style="font-size:13px;font-weight:500;flex:1">{{ h.title }}</span>
+                <span style="font-size:11px;color:var(--color-neutral-700)">{{ h.sub }}</span>
+                <span class="tag tag-neutral" style="font-family:var(--font-heading);font-weight:600;font-size:10px;padding:1px 6px">{{ h.client }}</span>
+                <span style="font-family:var(--font-heading);font-size:12px;font-variant-numeric:tabular-nums;min-width:38px;text-align:right">{{ h.logged }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+      <aside style="display:grid;gap:16px;align-content:start">
+        <div class="card blueprint" style="padding:12px 14px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div class="card-kicker">Todos · press ▸ to start a timer on one</div>
+          <sc-for list="{{ tStack }}" as="t" hint-placeholder-count="5">
+            <div style="display:flex;align-items:center;gap:10px;font-size:13px;padding:5px 0;border-top:1px solid color-mix(in srgb,var(--color-text) 8%,transparent)">
+              <span style="width:13px;height:13px;border:1px solid var(--color-neutral-600);flex:none"></span>
+              <span style="flex:1;line-height:1.2">{{ t.title }}<span style="display:block;font-size:11px;color:var(--color-neutral-700)">{{ t.client }} · {{ t.est }}</span></span>
+              <span style="width:22px;height:22px;border:1px solid var(--color-divider);display:grid;place-items:center;font-size:10px;color:var(--color-accent-700)">▸</span>
+            </div>
+          </sc-for>
+        </div>
+        <div class="card blueprint" style="padding:12px 14px;gap:8px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div class="card-kicker">This week by client</div>
+          <sc-for list="{{ clients }}" as="c" hint-placeholder-count="3">
+            <div style="display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-size:12px"><span style="font-weight:500">{{ c.name }}</span><span style="font-family:var(--font-heading);font-variant-numeric:tabular-nums">{{ c.hours }}</span><span style="grid-column:1/-1;height:6px;border:1px solid var(--color-divider);position:relative"><span style="position:absolute;inset:0;right:auto;width:{{ c.pct }};background:{{ c.color }}"></span></span><span style="grid-column:1/-1;color:var(--color-neutral-700)">{{ c.note }}</span></div>
+          </sc-for>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+<!-- 2a mobile -->
+<div class="dv-card" style="width:390px;height:780px;display:flex;flex-direction:column">
+  <div style="padding:14px 18px 0;display:flex;justify-content:space-between;align-items:center;font-family:var(--font-heading);font-weight:600"><span style="font-size:18px;letter-spacing:.04em">TODAY</span><span style="font-size:12px;color:var(--color-neutral-700)">Wed · 10:42</span></div>
+  <div style="padding:12px 18px 0;flex:1;display:grid;gap:14px;align-content:start;overflow:hidden">
+    <div class="blueprint" style="background:var(--color-accent);color:var(--color-bg);padding:16px 16px 14px;display:grid;gap:8px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <div style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;opacity:.85">Running · Meridian Health</div>
+      <div style="font-family:var(--font-heading);font-weight:600;font-size:52px;line-height:1;font-variant-numeric:tabular-nums">01:42<span style="font-size:22px;opacity:.8">:17</span></div>
+      <div style="font-size:13px;opacity:.95">Research synthesis · since 09:00</div>
+      <div style="display:flex;gap:8px;margin-top:4px"><span class="btn" style="background:var(--color-bg);color:var(--color-accent-800);border-color:var(--color-bg);flex:1;min-height:44px">Stop</span><span class="btn" style="color:var(--color-bg);border-color:rgba(255,255,255,.5);flex:1;min-height:44px">Switch project</span></div>
+    </div>
+    <div style="display:flex;gap:6px;overflow:hidden"><span class="tag tag-accent" style="min-height:32px">Meridian Health</span><span class="tag tag-outline" style="min-height:32px">Quill &amp; Co</span><span class="tag tag-outline" style="min-height:32px">Bramble</span><span class="tag tag-neutral" style="min-height:32px">Internal</span></div>
+    <div><h6 style="margin:0 0 4px;color:var(--color-neutral-700)">Today · 3h 10m</h6>
+      <sc-for list="{{ tHours }}" as="h" hint-placeholder-count="5">
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px;padding:8px 0;border-top:1px solid color-mix(in srgb,var(--color-text) 8%,transparent)"><span style="font-family:var(--font-heading);font-size:12px;color:var(--color-neutral-700);width:22px">{{ h.h }}</span><span style="width:3px;align-self:stretch;background:{{ h.clientColor }}"></span><span style="flex:1;line-height:1.2;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">{{ h.title }}</span><span style="font-family:var(--font-heading);font-size:12px;font-variant-numeric:tabular-nums">{{ h.logged }}</span></div>
+      </sc-for>
+    </div>
+  </div>
+  <div style="border-top:1px solid var(--color-divider);display:grid;grid-template-columns:repeat(4,1fr);padding:10px 0 16px;font-family:var(--font-heading);font-weight:600;font-size:12px;text-align:center;letter-spacing:.04em"><span style="color:var(--color-accent)">Today</span><span>Time</span><span>Invoices</span><span>More</span></div>
+</div>
+</div></div>
+
+<!-- ═══════════ 2b Time & Invoices ═══════════ -->
+<div class="dv-opt" id="2b"><div class="dv-olabel"><a class="dv-oid" href="#2b">2b</a>Time &amp; Invoices page · editable timesheet, AI-drafted invoice per billable client, sync to accounting tools</div>
+<div class="dv-card" style="width:1180px;height:820px;display:grid;grid-template-columns:168px 1fr">
+  <aside style="border-right:1px solid var(--color-divider);padding:18px 16px;display:flex;flex-direction:column;gap:22px">
+    <div style="font-family:var(--font-heading);font-weight:600;font-size:22px;letter-spacing:.04em">TODAY</div>
+    <nav style="display:grid;gap:10px;font-size:14px;font-family:var(--font-heading);font-weight:600;letter-spacing:.02em">
+      <span style="display:flex;gap:10px"><span style="opacity:.45">01</span>Today</span><span style="display:flex;gap:10px"><span style="opacity:.45">02</span>Week</span><span style="display:flex;gap:10px"><span style="opacity:.45">03</span>Projects</span><span style="display:flex;gap:10px;color:var(--color-accent)"><span style="opacity:.6">04</span>Time</span><span style="display:flex;gap:10px;color:var(--color-accent)"><span style="opacity:.6">05</span>Invoices</span><span style="display:flex;gap:10px"><span style="opacity:.45">06</span>Metrics</span><span style="display:flex;gap:10px"><span style="opacity:.45">07</span>Integrations</span>
+    </nav>
+    <div style="margin-top:auto;font-size:11px;color:var(--color-neutral-700);display:grid;gap:4px"><span>Synced to</span><span class="tag tag-neutral" style="font-size:10px;justify-self:start">QuickBooks · 09:00</span><span class="tag tag-neutral" style="font-size:10px;justify-self:start">Harvest · 09:00</span></div>
+  </aside>
+  <main style="padding:22px 28px;display:grid;grid-template-columns:1fr 400px;gap:28px;align-content:start;min-height:0">
+    <section style="display:grid;gap:14px;align-content:start">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><h1 style="font-size:32px;margin:0">Time · week 38</h1><span class="seg"><span class="seg-opt">Day</span><span class="seg-opt" style="background:var(--color-accent);color:var(--color-bg)">Week</span><span class="seg-opt">Month</span></span></div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px">
+        <sc-for list="{{ tWeek }}" as="d" hint-placeholder-count="5">
+          <div class="card blueprint" style="padding:10px 12px;gap:6px;background:{{ d.bg }}"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-family:var(--font-heading);font-weight:600;font-size:16px">{{ d.name }}</span><span style="font-family:var(--font-heading);font-size:14px;font-variant-numeric:tabular-nums">{{ d.total }}</span></div>
+            <div style="display:flex;height:8px;gap:1px"><span style="width:{{ d.a }};background:var(--color-accent-700)"></span><span style="width:{{ d.b }};background:var(--color-accent-400)"></span><span style="width:{{ d.c }};background:var(--color-accent-200)"></span><span style="flex:1;border:1px dashed var(--color-neutral-400)"></span></div>
+            <div style="font-size:11px;color:var(--color-neutral-700)">{{ d.note }}</div>
+          </div>
+        </sc-for>
+      </div>
+      <table class="table"><thead><tr><th>When</th><th>Client · project</th><th>What</th><th style="text-align:right">Hours</th><th></th></tr></thead><tbody>
+        <sc-for list="{{ entries }}" as="e" hint-placeholder-count="7">
+          <tr><td style="font-family:var(--font-heading);white-space:nowrap;font-size:13px">{{ e.when }}</td>
+          <td><div style="display:flex;align-items:center;gap:8px"><span style="width:3px;height:22px;background:{{ e.color }}"></span><span style="line-height:1.2;font-size:13px"><strong>{{ e.client }}</strong><span style="display:block;font-size:11px;color:var(--color-neutral-700)">{{ e.project }}</span></span></div></td>
+          <td style="font-size:13px">{{ e.what }} <span style="color:var(--color-neutral-600);font-size:11px">{{ e.flag }}</span></td>
+          <td style="text-align:right;font-family:var(--font-heading);font-variant-numeric:tabular-nums;font-size:14px">{{ e.hours }}</td>
+          <td style="text-align:right"><span class="btn btn-ghost" style="font-size:12px;padding:2px 6px">Edit</span></td></tr>
+        </sc-for>
+      </tbody></table>
+      <div style="display:flex;gap:10px;align-items:center;font-size:12px;color:var(--color-neutral-700)"><span class="tag tag-accent">2 entries need a project</span><span>Tue 14:00–14:40 and Wed 08:10–08:30 were tracked to Internal. I think both were Quill; tap to confirm.</span></div>
+      <div style="display:flex;gap:8px"><input class="input" style="max-width:360px" placeholder="Add time: “2h Meridian synthesis yesterday afternoon”"><span class="btn btn-secondary">Add</span></div>
+    </section>
+    <aside style="display:grid;gap:16px;align-content:start">
+      <div class="card blueprint" style="padding:12px 14px;gap:8px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="card-kicker">Invoices · September · out Friday</div>
+        <sc-for list="{{ invoices }}" as="i" hint-placeholder-count="3">
+          <div style="display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:8px 0;border-top:1px solid color-mix(in srgb,var(--color-text) 8%,transparent)">
+            <span style="font-family:var(--font-heading);font-weight:600;font-size:16px">{{ i.client }}</span><span class="tag {{ i.tagClass }}" style="font-size:10px;align-self:center">{{ i.status }}</span>
+            <span style="font-size:12px;color:var(--color-neutral-700)">{{ i.detail }}</span><span style="font-family:var(--font-heading);font-size:16px;font-variant-numeric:tabular-nums;text-align:right">{{ i.amount }}</span>
+            <span style="grid-column:1/-1;font-size:12px;line-height:1.35;color:var(--color-neutral-800)">{{ i.ai }}</span>
+            <span style="grid-column:1/-1;display:flex;gap:6px;margin-top:2px"><span class="btn {{ i.btnClass }}" style="font-size:12px;padding:4px 10px">{{ i.action }}</span><span class="btn btn-ghost" style="font-size:12px;padding:4px 6px">Preview PDF</span></span>
+          </div>
+        </sc-for>
+      </div>
+      <div class="card blueprint" style="padding:12px 14px;gap:6px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="card-kicker">Invoice draft · Meridian Health · INV-0042</div>
+        <div style="font-size:12px;display:grid;gap:3px">
+          <div style="display:grid;grid-template-columns:1fr auto auto;gap:10px;color:var(--color-neutral-700);font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding-bottom:4px;border-bottom:1px solid var(--color-divider)"><span>Line</span><span>Hrs</span><span>Amount</span></div>
+          <sc-for list="{{ invLines }}" as="l" hint-placeholder-count="3"><div style="display:grid;grid-template-columns:1fr 34px 64px;gap:10px;font-variant-numeric:tabular-nums"><span>{{ l.line }}</span><span style="text-align:right">{{ l.hrs }}</span><span style="text-align:right">{{ l.amt }}</span></div></sc-for>
+          <div style="display:grid;grid-template-columns:1fr auto;border-top:1px solid var(--color-divider);padding-top:4px;font-family:var(--font-heading);font-weight:600;font-size:15px"><span>Total · net 30 · due 19 Oct</span><span>$5,880.00</span></div>
+        </div>
+        <div style="font-size:12px;color:var(--color-neutral-700);line-height:1.4">Grouped by project, rounded to 15 min per your Meridian contract, rate $210/h. Edit any line; I'll re-total.</div>
+      </div>
+    </aside>
+  </main>
+</div></div>
+
+<!-- ═══════════ 2c Billing integrations ═══════════ -->
+<div class="dv-opt" id="2c"><div class="dv-olabel"><a class="dv-oid" href="#2c">2c</a>Integrations · billing &amp; accounting connectors added, per-client invoice settings</div>
+<div class="dv-card" style="width:1180px;height:620px;display:grid;grid-template-columns:168px 1fr">
+  <aside style="border-right:1px solid var(--color-divider);padding:18px 16px;display:flex;flex-direction:column;gap:22px">
+    <div style="font-family:var(--font-heading);font-weight:600;font-size:22px;letter-spacing:.04em">TODAY</div>
+    <nav style="display:grid;gap:10px;font-size:14px;font-family:var(--font-heading);font-weight:600;letter-spacing:.02em">
+      <span style="display:flex;gap:10px"><span style="opacity:.45">01</span>Today</span><span style="display:flex;gap:10px"><span style="opacity:.45">02</span>Week</span><span style="display:flex;gap:10px"><span style="opacity:.45">03</span>Projects</span><span style="display:flex;gap:10px"><span style="opacity:.45">04</span>Time</span><span style="display:flex;gap:10px"><span style="opacity:.45">05</span>Invoices</span><span style="display:flex;gap:10px"><span style="opacity:.45">06</span>Metrics</span><span style="display:flex;gap:10px;color:var(--color-accent)"><span style="opacity:.6">07</span>Integrations</span>
+    </nav>
+  </aside>
+  <main style="padding:22px 28px;display:grid;grid-template-columns:1fr 360px;gap:28px;align-content:start">
+    <section style="display:grid;gap:14px;align-content:start">
+      <div><h1 style="font-size:32px;margin:0">Billing &amp; accounting</h1><p style="font-size:13px;color:var(--color-neutral-700);margin:2px 0 0">Time entries sync out; paid status syncs back.</p></div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+        <sc-for list="{{ billing }}" as="i" hint-placeholder-count="6">
+          <div class="card blueprint" style="padding:12px 14px;gap:4px;border-style:{{ i.borderStyle }}"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div style="display:flex;justify-content:space-between;align-items:center"><span class="tag tag-neutral" style="font-family:var(--font-heading);font-weight:600;font-size:11px">{{ i.src }}</span><span class="tag {{ i.tagClass }}" style="font-size:10px">{{ i.status }}</span></div>
+            <div class="card-title">{{ i.name }}</div><div class="card-body">{{ i.scopes }}</div><div class="card-meta">{{ i.meta }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+    <aside class="card blueprint" style="padding:12px 14px;gap:10px;align-self:start"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <div class="card-kicker">Invoice settings per client</div>
+      <sc-for list="{{ clientSettings }}" as="c" hint-placeholder-count="3">
+        <div style="display:grid;gap:3px;padding:8px 0;border-top:1px solid color-mix(in srgb,var(--color-text) 8%,transparent);font-size:12px">
+          <div style="display:flex;justify-content:space-between"><span style="font-family:var(--font-heading);font-weight:600;font-size:15px">{{ c.name }}</span><span class="tag tag-neutral" style="font-size:10px">{{ c.cadence }}</span></div>
+          <span style="color:var(--color-neutral-700)">{{ c.terms }}</span>
+        </div>
+      </sc-for>
+      <label style="display:flex;justify-content:space-between;align-items:center;font-size:13px;padding-top:6px;border-top:1px solid var(--color-divider)">Auto-draft invoices on cadence<span style="width:30px;height:16px;background:var(--color-accent);position:relative"><span style="position:absolute;right:2px;top:2px;width:12px;height:12px;background:var(--color-bg)"></span></span></label>
+      <label style="display:flex;justify-content:space-between;align-items:center;font-size:13px">Send without review<span style="width:30px;height:16px;border:1px solid var(--color-divider);position:relative"><span style="position:absolute;left:2px;top:2px;width:10px;height:10px;background:var(--color-neutral-500)"></span></span></label>
+    </aside>
+  </main>
+</div></div>
+
+</div>
+<p class="dv-next">Try next: "merge the timer bar from <a class="dv-oid" href="#2a">2a</a> into <a class="dv-oid" href="#1a">1a</a>" · "show the invoice PDF" · "mobile version of <a class="dv-oid" href="#2b">2b</a>" · "show the 'which project was that?' prompt after a long timer"</p>
+</section>
+
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Home: two takes, then the rest of the app</span></div>
+<div class="dv-opts">
+
+<!-- ═══════════ 1a Brief first ═══════════ -->
+<div class="dv-opt" id="1a"><div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Home · brief first, hour timeline with todos slotted in</div>
+<div style="display:flex;gap:24px;align-items:flex-start">
+<div class="dv-card" style="width:1180px;height:870px;display:grid;grid-template-columns:168px 1fr">
+  <aside style="border-right:1px solid var(--color-divider);padding:18px 16px;display:flex;flex-direction:column;gap:22px">
+    <div style="font-family:var(--font-heading);font-weight:600;font-size:22px;letter-spacing:.04em">TODAY</div>
+    <nav style="display:grid;gap:10px;font-size:14px;font-family:var(--font-heading);font-weight:600;letter-spacing:.02em">
+      <span style="display:flex;gap:10px;color:var(--color-accent)"><span style="opacity:.6">01</span>Today</span>
+      <span style="display:flex;gap:10px"><span style="opacity:.45">02</span>Week</span>
+      <span style="display:flex;gap:10px"><span style="opacity:.45">03</span>Projects</span>
+      <span style="display:flex;gap:10px"><span style="opacity:.45">04</span>Circles</span>
+      <span style="display:flex;gap:10px"><span style="opacity:.45">05</span>Metrics</span>
+      <span style="display:flex;gap:10px"><span style="opacity:.45">06</span>Integrations</span>
+    </nav>
+    <div style="margin-top:auto;display:grid;gap:8px;font-size:11px;color:var(--color-neutral-700)">
+      <div style="display:flex;align-items:center;gap:6px"><span style="width:6px;height:6px;background:var(--color-accent);border-radius:50%"></span>Live · woke 08:59</div>
+      <div style="display:flex;align-items:center;gap:8px"><span style="width:24px;height:24px;border:1px solid var(--color-divider);display:grid;place-items:center;font-family:var(--font-heading);font-weight:600">MO</span><span style="color:var(--color-text)">Mara Okafor</span></div>
+    </div>
+  </aside>
+  <main style="padding:22px 28px;display:grid;grid-template-rows:auto 1fr;gap:18px;min-height:0">
+    <header style="display:grid;grid-template-columns:1fr 340px;gap:28px;align-items:start">
+      <div>
+        <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-700)">Wednesday · 17 Sep · 08:41 · status refreshed on the hour</div>
+        <h1 style="font-size:40px;margin:4px 0 8px">Good morning, Mara.</h1>
+        <p style="font-size:15px;line-height:1.5;max-width:640px;margin:0;text-wrap:pretty">You've got a lighter morning than usual: two meetings, both after 11. I'd take the Cloudflare session spike first while you're fresh; Priya pinged you about it twice in #platform yesterday. Three items carried over from Tuesday. I moved the August expense report back to the backlog since nobody touched it for a day.</p>
+      </div>
+      <div class="blueprint" style="background:var(--color-accent);color:var(--color-bg);padding:14px 16px;display:grid;gap:6px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;opacity:.85">Take on now · 09:00–11:00</div>
+        <div style="font-family:var(--font-heading);font-weight:600;font-size:22px;line-height:1.1">Finish Cloudflare session-token spike</div>
+        <div style="font-size:12px;opacity:.9">Auth migration · HAL-212 · ~2h deep focus · unblocks Priya and Friday's milestone</div>
+        <div style="display:flex;gap:8px;margin-top:6px"><span class="btn" style="background:var(--color-bg);color:var(--color-accent-800);border-color:var(--color-bg);padding:5px 12px">Start</span><span class="btn" style="color:var(--color-bg);border-color:rgba(255,255,255,.5);padding:5px 12px">Swap</span></div>
+      </div>
+    </header>
+    <div style="display:grid;grid-template-columns:1fr 340px;gap:28px;min-height:0">
+      <section style="display:grid;grid-template-rows:auto 1fr;gap:10px;min-height:0">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><h6 style="margin:0;color:var(--color-neutral-700)">Your day · 7 todos · 3 meetings</h6><span style="font-size:11px;color:var(--color-neutral-700)">Drag a todo onto an hour to slot it</span></div>
+        <div class="tl" style="align-content:start">
+          <sc-for list="{{ hours }}" as="h" hint-placeholder-count="10">
+            <div style="font-family:var(--font-heading);font-size:12px;color:var(--color-neutral-700);padding-top:4px">{{ h.h }}</div>
+            <div style="padding:4px 0 4px;min-height:40px">
+              <div style="display:flex;align-items:center;gap:10px;padding:5px 10px;border:{{ h.border }};background:{{ h.bg }};min-height:32px">
+                <span style="font-size:13px;font-weight:500;flex:1">{{ h.title }}</span>
+                <span style="font-size:11px;color:var(--color-neutral-700)">{{ h.sub }}</span>
+                <span class="tag tag-neutral" style="font-family:var(--font-heading);font-weight:600;font-size:10px;padding:1px 6px">{{ h.src }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+      <aside style="display:grid;gap:16px;align-content:start">
+        <div class="card blueprint" style="padding:12px 14px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div class="card-kicker">Priority stack</div>
+          <sc-for list="{{ stack }}" as="t" hint-placeholder-count="6">
+            <div style="display:flex;align-items:center;gap:10px;font-size:13px;padding:4px 0;border-top:1px solid color-mix(in srgb,var(--color-text) 8%,transparent)">
+              <span style="width:13px;height:13px;border:1px solid var(--color-neutral-600);flex:none"></span>
+              <span style="flex:1;line-height:1.2">{{ t.title }}<span style="display:block;font-size:11px;color:var(--color-neutral-700)">{{ t.project }} · {{ t.est }}</span></span>
+              <span class="tag tag-neutral" style="font-family:var(--font-heading);font-weight:600;font-size:10px;padding:1px 6px">{{ t.src }}</span>
+            </div>
+          </sc-for>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:6px;font-size:12px;color:var(--color-neutral-700)"><span class="tag tag-accent">3 carried over</span><span>1 moved to backlog</span></div>
+        </div>
+        <div class="card blueprint" style="padding:12px 14px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div class="card-kicker">Mentions &amp; follow-ups</div>
+          <sc-for list="{{ mentions }}" as="m" hint-placeholder-count="4">
+            <div style="display:grid;grid-template-columns:auto 1fr auto;gap:8px;font-size:12px;padding:5px 0;border-top:1px solid color-mix(in srgb,var(--color-text) 8%,transparent);align-items:start">
+              <span class="tag tag-neutral" style="font-family:var(--font-heading);font-weight:600;font-size:10px;padding:1px 6px">{{ m.src }}</span>
+              <span style="line-height:1.3"><strong>{{ m.who }}</strong> {{ m.text }}</span>
+              <span style="color:var(--color-neutral-700);white-space:nowrap">{{ m.age }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:8px"><input class="input" placeholder="Add a todo for today… (⌘K)"><span class="btn btn-secondary">Add</span></div>
+      </aside>
+    </div>
+  </main>
+</div>
+<!-- 1a mobile -->
+<div class="dv-card" style="width:390px;height:870px;display:flex;flex-direction:column">
+  <div style="padding:14px 18px 0;display:flex;justify-content:space-between;align-items:center;font-family:var(--font-heading);font-weight:600"><span style="font-size:18px;letter-spacing:.04em">TODAY</span><span style="font-size:12px;color:var(--color-neutral-700);display:flex;gap:6px;align-items:center"><span style="width:6px;height:6px;background:var(--color-accent);border-radius:50%"></span>08:41</span></div>
+  <div style="padding:10px 18px 0;overflow:hidden;flex:1;display:grid;gap:14px;align-content:start">
+    <div><h2 style="font-size:28px;margin:0 0 4px">Good morning, Mara.</h2><p style="font-size:13px;line-height:1.45;margin:0;color:var(--color-neutral-800)">Light morning, two meetings after 11. Take the session spike first; Priya's waiting on it. Three items carried over.</p></div>
+    <div class="blueprint" style="background:var(--color-accent);color:var(--color-bg);padding:12px 14px;display:grid;gap:4px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <div style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;opacity:.85">Take on now · 09–11</div>
+      <div style="font-family:var(--font-heading);font-weight:600;font-size:20px;line-height:1.1">Finish Cloudflare session-token spike</div>
+      <div style="font-size:12px;opacity:.9">HAL-212 · ~2h · deep focus</div>
+    </div>
+    <div style="display:flex;gap:6px;overflow:hidden">
+      <sc-for list="{{ hours }}" as="h" hint-placeholder-count="10">
+        <div style="flex:none;width:58px;border:{{ h.border }};background:{{ h.bg }};padding:6px 6px;font-size:10px;line-height:1.2"><div style="font-family:var(--font-heading);font-size:12px;color:var(--color-neutral-700)">{{ h.h }}</div><div style="overflow:hidden;white-space:nowrap;text-overflow:ellipsis">{{ h.title }}</div></div>
+      </sc-for>
+    </div>
+    <div class="card blueprint" style="padding:10px 12px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <div class="card-kicker">Priority stack</div>
+      <sc-for list="{{ stack }}" as="t" hint-placeholder-count="6">
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px;padding:6px 0;border-top:1px solid color-mix(in srgb,var(--color-text) 8%,transparent)">
+          <span style="width:14px;height:14px;border:1px solid var(--color-neutral-600);flex:none"></span>
+          <span style="flex:1;line-height:1.2">{{ t.title }}<span style="display:block;font-size:11px;color:var(--color-neutral-700)">{{ t.project }} · {{ t.est }}</span></span>
+          <span class="tag tag-neutral" style="font-family:var(--font-heading);font-weight:600;font-size:10px;padding:1px 6px">{{ t.src }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+  <div style="border-top:1px solid var(--color-divider);display:grid;grid-template-columns:repeat(4,1fr);padding:10px 0 16px;font-family:var(--font-heading);font-weight:600;font-size:12px;text-align:center;letter-spacing:.04em"><span style="color:var(--color-accent)">Today</span><span>Week</span><span>Projects</span><span>More</span></div>
+</div>
+</div></div>
+
+<!-- ═══════════ 1b Plan first ═══════════ -->
+<div class="dv-opt" id="1b"><div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Home · priority stack first, todos grouped by energy and nested under projects, brief as a side column</div>
+<div style="display:flex;gap:24px;align-items:flex-start">
+<div class="dv-card" style="width:1180px;height:780px;display:grid;grid-template-rows:auto 1fr">
+  <header style="display:flex;align-items:center;gap:28px;padding:14px 28px;border-bottom:1px solid var(--color-divider)">
+    <span style="font-family:var(--font-heading);font-weight:600;font-size:22px;letter-spacing:.04em">TODAY</span>
+    <nav style="display:flex;gap:22px;font-size:14px;font-family:var(--font-heading);font-weight:600;letter-spacing:.02em"><span style="color:var(--color-accent);border-bottom:2px solid var(--color-accent);padding-bottom:2px">Today</span><span>Week</span><span>Projects</span><span>Circles</span><span>Metrics</span><span>Integrations</span></nav>
+    <span style="margin-left:auto;font-size:12px;color:var(--color-neutral-700);display:flex;gap:16px;align-items:center"><span>Wed 17 Sep · 08:41</span><span style="display:flex;gap:6px;align-items:center"><span style="width:6px;height:6px;background:var(--color-accent);border-radius:50%"></span>Live</span><span style="width:26px;height:26px;border:1px solid var(--color-divider);display:grid;place-items:center;font-family:var(--font-heading);font-weight:600;font-size:12px">MO</span></span>
+  </header>
+  <div style="display:grid;grid-template-columns:72px 1fr 300px;min-height:0">
+    <!-- hour rail -->
+    <div style="border-right:1px solid var(--color-divider);padding:16px 0;display:grid;grid-auto-rows:1fr;font-family:var(--font-heading);font-size:11px;color:var(--color-neutral-700)">
+      <sc-for list="{{ hours }}" as="h" hint-placeholder-count="10">
+        <div style="display:grid;grid-template-columns:30px 1fr;gap:4px;align-items:center;padding-left:10px"><span>{{ h.h }}</span><span style="height:70%;border:{{ h.border }};background:{{ h.bg }};margin-right:10px"></span></div>
+      </sc-for>
+    </div>
+    <main style="padding:20px 26px;display:grid;gap:18px;align-content:start;min-height:0">
+      <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:14px">
+        <div class="blueprint" style="background:var(--color-accent);color:var(--color-bg);padding:14px 16px;display:grid;gap:6px;align-content:start"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;opacity:.85">Take on now</div>
+          <div style="font-family:var(--font-heading);font-weight:600;font-size:24px;line-height:1.05">Finish Cloudflare session-token spike</div>
+          <div style="font-size:12px;opacity:.9">Auth migration · HAL-212 · ~2h · fits 09–11</div>
+        </div>
+        <div class="card blueprint" style="padding:14px 16px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div class="card-kicker">Next</div><div class="card-title">Reply to Priya on edge rate limits</div><div class="card-meta">Slack #platform · 15m · after standup</div>
+        </div>
+        <div class="card blueprint" style="padding:14px 16px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div class="card-kicker">Then</div><div class="card-title">Review Sam's onboarding PR</div><div class="card-meta">Linear HAL-198 · 45m · carried 1 day</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:22px">
+        <sc-for list="{{ energy }}" as="g" hint-placeholder-count="3">
+          <section style="display:grid;gap:6px;align-content:start">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--color-divider);padding-bottom:6px"><h5 style="margin:0">{{ g.name }}</h5><span style="font-size:11px;color:var(--color-neutral-700)">{{ g.when }}</span></div>
+            <sc-for list="{{ g.items }}" as="t" hint-placeholder-count="3">
+              <div style="display:grid;grid-template-columns:auto 1fr;gap:8px;padding:6px 0;border-bottom:1px solid color-mix(in srgb,var(--color-text) 8%,transparent);font-size:13px">
+                <span style="width:13px;height:13px;border:1px solid var(--color-neutral-600);margin-top:3px"></span>
+                <span style="line-height:1.25">{{ t.title }}<span style="display:flex;gap:6px;align-items:center;margin-top:3px;font-size:11px;color:var(--color-neutral-700)"><span style="color:var(--color-accent-700)">↳ {{ t.project }}</span><span>{{ t.est }}</span><span class="tag tag-neutral" style="font-family:var(--font-heading);font-weight:600;font-size:10px;padding:0 5px">{{ t.src }}</span></span></span>
+              </div>
+            </sc-for>
+          </section>
+        </sc-for>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center"><input class="input" style="max-width:420px" placeholder="Add a todo… type # to attach a project"><span class="btn btn-secondary">Add</span><span style="font-size:12px;color:var(--color-neutral-700);margin-left:auto">Backlog 34 · 6 archive in 12 days</span></div>
+    </main>
+    <aside style="border-left:1px solid var(--color-divider);padding:20px 22px;display:grid;gap:18px;align-content:start;font-size:13px;overflow:hidden">
+      <div><h6 style="margin:0 0 6px;color:var(--color-neutral-700)">From your assistant</h6><p style="margin:0;line-height:1.5;text-wrap:pretty">Lighter morning than usual. I'd spend it on the spike; it unblocks Priya and Friday's auth milestone. The Q4 doc is what worries me: Devon reviews it Monday and section 2 is still just a heading.</p></div>
+      <div><h6 style="margin:0 0 6px;color:var(--color-neutral-700)">Good to know</h6><ul style="margin:0;padding-left:16px;line-height:1.5;display:grid;gap:4px"><li>Cloudflare incident from last night is resolved.</li><li>Sam is out Friday; get the PR back before Thursday.</li><li>Movers deposit is due Friday (Gmail).</li></ul></div>
+      <div><h6 style="margin:0 0 6px;color:var(--color-neutral-700)">Other circles</h6>
+        <sc-for list="{{ circlesShort }}" as="c" hint-placeholder-count="3"><div style="display:grid;grid-template-columns:auto 1fr;gap:8px;padding:5px 0;border-top:1px solid color-mix(in srgb,var(--color-text) 8%,transparent)"><span class="tag tag-accent" style="font-size:10px">{{ c.name }}</span><span style="line-height:1.3">{{ c.text }}</span></div></sc-for>
+      </div>
+      <div><h6 style="margin:0 0 6px;color:var(--color-neutral-700)">Mentions</h6>
+        <sc-for list="{{ mentions }}" as="m" hint-placeholder-count="4"><div style="display:grid;grid-template-columns:auto 1fr;gap:8px;padding:5px 0;border-top:1px solid color-mix(in srgb,var(--color-text) 8%,transparent);font-size:12px"><span class="tag tag-neutral" style="font-family:var(--font-heading);font-weight:600;font-size:10px;padding:1px 6px">{{ m.src }}</span><span style="line-height:1.3"><strong>{{ m.who }}</strong> {{ m.text }} <span style="color:var(--color-neutral-700)">· {{ m.age }}</span></span></div></sc-for>
+      </div>
+    </aside>
+  </div>
+</div>
+<!-- 1b mobile -->
+<div class="dv-card" style="width:390px;height:780px;display:flex;flex-direction:column">
+  <div style="padding:14px 18px 0;display:flex;justify-content:space-between;align-items:center;font-family:var(--font-heading);font-weight:600"><span style="font-size:18px;letter-spacing:.04em">TODAY</span><span style="font-size:12px;color:var(--color-neutral-700)">Wed 17 Sep</span></div>
+  <div style="padding:12px 18px 0;flex:1;overflow:hidden;display:grid;gap:14px;align-content:start">
+    <div class="blueprint" style="background:var(--color-accent);color:var(--color-bg);padding:12px 14px;display:grid;gap:4px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+      <div style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;opacity:.85">Take on now</div>
+      <div style="font-family:var(--font-heading);font-weight:600;font-size:20px;line-height:1.1">Finish Cloudflare session-token spike</div>
+      <div style="font-size:12px;opacity:.9">↳ Auth migration · ~2h · fits 09–11</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="card blueprint" style="padding:10px 12px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><div class="card-kicker">Next</div><div style="font-family:var(--font-heading);font-weight:600;font-size:15px;line-height:1.15">Reply to Priya on rate limits</div><div class="card-meta">SL · 15m</div></div>
+      <div class="card blueprint" style="padding:10px 12px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><div class="card-kicker">Then</div><div style="font-family:var(--font-heading);font-weight:600;font-size:15px;line-height:1.15">Review Sam's onboarding PR</div><div class="card-meta">LN · 45m · carried</div></div>
+    </div>
+    <div style="font-size:13px;line-height:1.45;color:var(--color-neutral-800);border-left:2px solid var(--color-accent);padding-left:10px">Q4 doc is the risk this week: Devon reviews Monday and section 2 is still a heading. I've held 15:00 for it.</div>
+    <div style="display:grid;gap:4px">
+      <sc-for list="{{ energy }}" as="g" hint-placeholder-count="3">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;padding:8px 0 4px"><h5 style="margin:0">{{ g.name }}</h5><span style="font-size:11px;color:var(--color-neutral-700)">{{ g.when }}</span></div>
+        <sc-for list="{{ g.items }}" as="t" hint-placeholder-count="2">
+          <div style="display:flex;align-items:center;gap:10px;font-size:13px;padding:6px 0;border-top:1px solid color-mix(in srgb,var(--color-text) 8%,transparent)"><span style="width:14px;height:14px;border:1px solid var(--color-neutral-600);flex:none"></span><span style="flex:1;line-height:1.2">{{ t.title }}<span style="display:block;font-size:11px;color:var(--color-accent-700)">↳ {{ t.project }}</span></span><span class="tag tag-neutral" style="font-family:var(--font-heading);font-weight:600;font-size:10px;padding:1px 6px">{{ t.src }}</span></div>
+        </sc-for>
+      </sc-for>
+    </div>
+  </div>
+  <div style="border-top:1px solid var(--color-divider);display:grid;grid-template-columns:repeat(4,1fr);padding:10px 0 16px;font-family:var(--font-heading);font-weight:600;font-size:12px;text-align:center;letter-spacing:.04em"><span style="color:var(--color-accent)">Today</span><span>Week</span><span>Projects</span><span>More</span></div>
+</div>
+</div></div>
+
+<!-- ═══════════ 1c Week ═══════════ -->
+<div class="dv-opt" id="1c"><div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Week · state of the union and where you tie in</div>
+<div class="dv-card" style="width:1180px;height:720px;display:grid;grid-template-columns:168px 1fr">
+  <aside style="border-right:1px solid var(--color-divider);padding:18px 16px;display:flex;flex-direction:column;gap:22px">
+    <div style="font-family:var(--font-heading);font-weight:600;font-size:22px;letter-spacing:.04em">TODAY</div>
+    <nav style="display:grid;gap:10px;font-size:14px;font-family:var(--font-heading);font-weight:600;letter-spacing:.02em">
+      <span style="display:flex;gap:10px"><span style="opacity:.45">01</span>Today</span><span style="display:flex;gap:10px;color:var(--color-accent)"><span style="opacity:.6">02</span>Week</span><span style="display:flex;gap:10px"><span style="opacity:.45">03</span>Projects</span><span style="display:flex;gap:10px"><span style="opacity:.45">04</span>Circles</span><span style="display:flex;gap:10px"><span style="opacity:.45">05</span>Metrics</span><span style="display:flex;gap:10px"><span style="opacity:.45">06</span>Integrations</span>
+    </nav>
+  </aside>
+  <main style="padding:22px 28px;display:grid;gap:20px;align-content:start;min-height:0">
+    <div style="display:grid;grid-template-columns:1fr 380px;gap:28px;align-items:start">
+      <div><div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-700)">Week 38 · 15–21 Sep · day 3 of 5</div><h1 style="font-size:36px;margin:4px 0 8px">State of the union</h1>
+      <p style="font-size:15px;line-height:1.5;margin:0;text-wrap:pretty">You're on track for the auth migration milestone on Friday if the spike lands today. Onboarding is at risk: the design review this afternoon decides whether Sam's PR ships before he's out Friday. The Q4 doc is behind; I've held Thursday morning for it so it's ready for Devon on Monday. Personal side is quiet apart from the movers deposit.</p></div>
+      <div class="card blueprint" style="padding:12px 14px;gap:4px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="card-kicker">Week in numbers</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;font-family:var(--font-heading)">
+          <div><div style="font-size:30px;font-weight:600;line-height:1">11<span style="font-size:14px;color:var(--color-neutral-700)">/27</span></div><div style="font-size:11px;color:var(--color-neutral-700);font-family:var(--font-body)">todos done</div></div>
+          <div><div style="font-size:30px;font-weight:600;line-height:1">6.5<span style="font-size:14px;color:var(--color-neutral-700)">h</span></div><div style="font-size:11px;color:var(--color-neutral-700);font-family:var(--font-body)">focus so far</div></div>
+          <div><div style="font-size:30px;font-weight:600;line-height:1">4</div><div style="font-size:11px;color:var(--color-neutral-700);font-family:var(--font-body)">carried over</div></div>
+        </div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:12px">
+      <sc-for list="{{ week }}" as="d" hint-placeholder-count="7">
+        <div style="border:{{ d.border }};padding:10px 10px;display:grid;gap:8px;align-content:start;min-height:230px;background:{{ d.bg }}">
+          <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-family:var(--font-heading);font-weight:600;font-size:16px">{{ d.name }}</span><span style="font-size:11px;color:var(--color-neutral-700)">{{ d.date }}</span></div>
+          <div style="display:flex;gap:2px;height:36px;align-items:flex-end"><span style="flex:1;background:var(--color-accent-700);height:{{ d.done }}"></span><span style="flex:1;background:var(--color-accent-300);height:{{ d.plan }}"></span><span style="flex:1;background:var(--color-neutral-300);height:{{ d.meet }}"></span></div>
+          <div style="font-size:11px;color:var(--color-neutral-700)">{{ d.summary }}</div>
+          <sc-for list="{{ d.items }}" as="i" hint-placeholder-count="2"><div style="font-size:12px;line-height:1.25;border-top:1px solid color-mix(in srgb,var(--color-text) 8%,transparent);padding-top:5px">{{ i }}</div></sc-for>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:flex;gap:18px;font-size:11px;color:var(--color-neutral-700)"><span style="display:flex;gap:6px;align-items:center"><span style="width:10px;height:10px;background:var(--color-accent-700)"></span>done</span><span style="display:flex;gap:6px;align-items:center"><span style="width:10px;height:10px;background:var(--color-accent-300)"></span>planned</span><span style="display:flex;gap:6px;align-items:center"><span style="width:10px;height:10px;background:var(--color-neutral-300)"></span>meetings</span></div>
+    <div><h6 style="margin:0 0 8px;color:var(--color-neutral-700)">Where you tie in</h6>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+        <sc-for list="{{ tieIns }}" as="t" hint-placeholder-count="4"><div class="card blueprint" style="padding:10px 12px;gap:3px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><div class="card-kicker">{{ t.project }}</div><div style="font-size:13px;line-height:1.3">{{ t.text }}</div><div class="card-meta">{{ t.when }}</div></div></sc-for>
+      </div>
+    </div>
+  </main>
+</div></div>
+
+<!-- ═══════════ 1d Projects & follow-ups ═══════════ -->
+<div class="dv-opt" id="1d"><div class="dv-olabel"><a class="dv-oid" href="#1d">1d</a>Projects &amp; follow-ups · long work with status, things you said you'd do, things you're waiting on</div>
+<div class="dv-card" style="width:1180px;height:720px;display:grid;grid-template-columns:168px 1fr">
+  <aside style="border-right:1px solid var(--color-divider);padding:18px 16px;display:flex;flex-direction:column;gap:22px">
+    <div style="font-family:var(--font-heading);font-weight:600;font-size:22px;letter-spacing:.04em">TODAY</div>
+    <nav style="display:grid;gap:10px;font-size:14px;font-family:var(--font-heading);font-weight:600;letter-spacing:.02em">
+      <span style="display:flex;gap:10px"><span style="opacity:.45">01</span>Today</span><span style="display:flex;gap:10px"><span style="opacity:.45">02</span>Week</span><span style="display:flex;gap:10px;color:var(--color-accent)"><span style="opacity:.6">03</span>Projects</span><span style="display:flex;gap:10px"><span style="opacity:.45">04</span>Circles</span><span style="display:flex;gap:10px"><span style="opacity:.45">05</span>Metrics</span><span style="display:flex;gap:10px"><span style="opacity:.45">06</span>Integrations</span>
+    </nav>
+  </aside>
+  <main style="padding:22px 28px;display:grid;grid-template-columns:1fr 360px;gap:28px;align-content:start;min-height:0">
+    <section style="display:grid;gap:12px;align-content:start">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><h1 style="font-size:32px;margin:0">Projects</h1><span class="seg"><span class="seg-opt" style="background:var(--color-accent);color:var(--color-bg)">All</span><span class="seg-opt">Work</span><span class="seg-opt">Personal</span></span></div>
+      <table class="table"><thead><tr><th>Project</th><th>Status</th><th style="width:180px">Progress</th><th>Next milestone</th><th>Today</th></tr></thead><tbody>
+        <sc-for list="{{ projects }}" as="p" hint-placeholder-count="5">
+          <tr><td><div style="font-family:var(--font-heading);font-weight:600;font-size:16px">{{ p.name }}</div><div style="font-size:11px;color:var(--color-neutral-700)">{{ p.circle }} · {{ p.open }} open</div></td>
+          <td><span class="tag {{ p.tagClass }}">{{ p.status }}</span></td>
+          <td><div style="display:flex;align-items:center;gap:8px"><span style="flex:1;height:6px;border:1px solid var(--color-divider);position:relative"><span style="position:absolute;inset:0;right:auto;background:var(--color-accent);width:{{ p.pct }}"></span></span><span style="font-size:12px;font-family:var(--font-heading)">{{ p.pct }}</span></div></td>
+          <td style="font-size:13px">{{ p.milestone }}</td><td style="font-size:13px;color:var(--color-neutral-700)">{{ p.today }}</td></tr>
+        </sc-for>
+      </tbody></table>
+      <div class="card blueprint" style="padding:12px 14px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="card-kicker">Auth migration · expanded</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;font-size:13px">
+          <div><div style="font-size:11px;color:var(--color-neutral-700);margin-bottom:4px">Today's children</div><div style="display:grid;gap:4px"><div style="display:flex;gap:8px;align-items:center"><span style="width:13px;height:13px;border:1px solid var(--color-neutral-600)"></span>Finish session-token spike <span class="tag tag-neutral" style="font-size:10px;padding:0 5px">LN</span></div><div style="display:flex;gap:8px;align-items:center"><span style="width:13px;height:13px;border:1px solid var(--color-neutral-600)"></span>Reply to Priya on rate limits <span class="tag tag-neutral" style="font-size:10px;padding:0 5px">SL</span></div><div style="display:flex;gap:8px;align-items:center;color:var(--color-neutral-700)"><span style="width:13px;height:13px;background:var(--color-accent);border:1px solid var(--color-accent)"></span><s>Rotate KV token secret</s></div></div></div>
+          <div><div style="font-size:11px;color:var(--color-neutral-700);margin-bottom:4px">Backlog · 9</div><div style="display:grid;gap:4px;color:var(--color-neutral-800)"><div>Write migration runbook <span style="color:var(--color-neutral-600)">· 4d</span></div><div>Load-test edge sessions <span style="color:var(--color-neutral-600)">· 6d</span></div><div>Deprecate legacy cookie path <span style="color:var(--color-neutral-600)">· 12d</span></div></div></div>
+        </div>
+      </div>
+    </section>
+    <aside style="display:grid;gap:16px;align-content:start">
+      <div class="card blueprint" style="padding:12px 14px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="card-kicker">You said you'd…</div>
+        <sc-for list="{{ promised }}" as="f" hint-placeholder-count="3"><div style="display:grid;grid-template-columns:auto 1fr auto;gap:8px;font-size:12px;padding:6px 0;border-top:1px solid color-mix(in srgb,var(--color-text) 8%,transparent);align-items:start"><span class="tag tag-neutral" style="font-family:var(--font-heading);font-weight:600;font-size:10px;padding:1px 6px">{{ f.src }}</span><span style="line-height:1.3">{{ f.text }}<span style="display:block;color:var(--color-neutral-700)">to {{ f.who }}</span></span><span style="color:var(--color-accent-700);white-space:nowrap">{{ f.age }}</span></div></sc-for>
+        <span class="btn btn-ghost" style="justify-self:start;font-size:12px">Turn all into todos</span>
+      </div>
+      <div class="card blueprint" style="padding:12px 14px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="card-kicker">Waiting on</div>
+        <sc-for list="{{ waiting }}" as="f" hint-placeholder-count="3"><div style="display:grid;grid-template-columns:auto 1fr auto;gap:8px;font-size:12px;padding:6px 0;border-top:1px solid color-mix(in srgb,var(--color-text) 8%,transparent);align-items:start"><span class="tag tag-neutral" style="font-family:var(--font-heading);font-weight:600;font-size:10px;padding:1px 6px">{{ f.src }}</span><span style="line-height:1.3"><strong>{{ f.who }}</strong> · {{ f.text }}</span><span style="color:var(--color-neutral-700);white-space:nowrap">{{ f.age }}</span></div></sc-for>
+      </div>
+      <div style="font-size:12px;color:var(--color-neutral-700);line-height:1.5">Lifecycle: today → untouched a day → backlog → untouched 90 days → archive. 6 backlog items archive in 12 days.</div>
+    </aside>
+  </main>
+</div></div>
+
+<!-- ═══════════ 1e Circles ═══════════ -->
+<div class="dv-opt" id="1e"><div class="dv-olabel"><a class="dv-oid" href="#1e">1e</a>Circles · the groups you move in, and where they overlap</div>
+<div class="dv-card" style="width:1180px;height:680px;display:grid;grid-template-columns:168px 1fr">
+  <aside style="border-right:1px solid var(--color-divider);padding:18px 16px;display:flex;flex-direction:column;gap:22px">
+    <div style="font-family:var(--font-heading);font-weight:600;font-size:22px;letter-spacing:.04em">TODAY</div>
+    <nav style="display:grid;gap:10px;font-size:14px;font-family:var(--font-heading);font-weight:600;letter-spacing:.02em">
+      <span style="display:flex;gap:10px"><span style="opacity:.45">01</span>Today</span><span style="display:flex;gap:10px"><span style="opacity:.45">02</span>Week</span><span style="display:flex;gap:10px"><span style="opacity:.45">03</span>Projects</span><span style="display:flex;gap:10px;color:var(--color-accent)"><span style="opacity:.6">04</span>Circles</span><span style="display:flex;gap:10px"><span style="opacity:.45">05</span>Metrics</span><span style="display:flex;gap:10px"><span style="opacity:.45">06</span>Integrations</span>
+    </nav>
+  </aside>
+  <main style="padding:22px 28px;display:grid;grid-template-columns:520px 1fr;gap:32px;align-content:start">
+    <div><h1 style="font-size:32px;margin:0 0 4px">Circles</h1><p style="font-size:13px;color:var(--color-neutral-700);margin:0 0 12px">Four groups this week. Overlaps are where a single todo serves two circles; those get scored higher.</p>
+      <div class="blueprint" style="height:440px;position:relative"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <svg viewBox="0 0 520 440" width="520" height="440" style="display:block" font-family="Barlow Condensed" font-weight="600">
+          <g fill="none" stroke="var(--color-accent)" stroke-width="1">
+            <circle cx="200" cy="180" r="130"></circle><circle cx="320" cy="180" r="110"></circle><circle cx="250" cy="290" r="105"></circle><circle cx="420" cy="330" r="70" stroke-dasharray="4 4"></circle>
+          </g>
+          <g fill="var(--color-accent)" opacity=".18"><circle cx="200" cy="180" r="130"></circle><circle cx="320" cy="180" r="110"></circle><circle cx="250" cy="290" r="105"></circle></g>
+          <g fill="var(--color-text)" font-size="16"><text x="120" y="120">Platform team</text><text x="345" y="95">Design</text><text x="200" y="385">Leadership</text><text x="392" y="405" font-size="14">Personal</text></g>
+          <g fill="var(--color-accent-900)" font-family="Barlow" font-size="11"><text x="260" y="170" text-anchor="middle">Onboarding v2</text><text x="260" y="184" text-anchor="middle">Sam · Priya · Lena</text><text x="215" y="262" text-anchor="middle">Auth migration</text><text x="215" y="276" text-anchor="middle">Q4 doc · Devon</text><text x="300" y="270" text-anchor="middle">Design review</text><text x="300" y="284" text-anchor="middle">14:00 today</text></g>
+          <g fill="var(--color-accent-800)" font-size="12"><text x="60" y="190">12 people</text><text x="60" y="206" font-family="Barlow" font-size="11" fill="var(--color-neutral-700)">Slack · Linear</text><text x="390" y="200">5 people</text><text x="390" y="216" font-family="Barlow" font-size="11" fill="var(--color-neutral-700)">Notion · Slack</text><text x="150" y="335">3 people</text><text x="150" y="351" font-family="Barlow" font-size="11" fill="var(--color-neutral-700)">Notion · Gmail</text><text x="400" y="340" font-family="Barlow" font-size="11" fill="var(--color-neutral-700)">Gmail · Cal</text></g>
+        </svg>
+      </div>
+    </div>
+    <div style="display:grid;gap:14px;align-content:start">
+      <h6 style="margin:0;color:var(--color-neutral-700)">Overlaps this week</h6>
+      <sc-for list="{{ overlaps }}" as="o" hint-placeholder-count="4">
+        <div class="card blueprint" style="padding:12px 14px;gap:4px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ o.circles }}" as="c" hint-placeholder-count="2"><span class="tag tag-accent" style="font-size:10px">{{ c }}</span></sc-for></div>
+          <div class="card-title">{{ o.title }}</div><div class="card-body">{{ o.text }}</div><div class="card-meta">{{ o.people }} · {{ o.when }}</div>
+        </div>
+      </sc-for>
+      <div style="font-size:12px;color:var(--color-neutral-700);line-height:1.5">Circles are inferred from who you talk to and which tools the work lives in. Rename or merge them; Today learns.</div>
+    </div>
+  </main>
+</div></div>
+
+<!-- ═══════════ 1f Metrics ═══════════ -->
+<div class="dv-opt" id="1f"><div class="dv-olabel"><a class="dv-oid" href="#1f">1f</a>Metrics · how you actually work</div>
+<div class="dv-card" style="width:1180px;height:720px;display:grid;grid-template-columns:168px 1fr">
+  <aside style="border-right:1px solid var(--color-divider);padding:18px 16px;display:flex;flex-direction:column;gap:22px">
+    <div style="font-family:var(--font-heading);font-weight:600;font-size:22px;letter-spacing:.04em">TODAY</div>
+    <nav style="display:grid;gap:10px;font-size:14px;font-family:var(--font-heading);font-weight:600;letter-spacing:.02em">
+      <span style="display:flex;gap:10px"><span style="opacity:.45">01</span>Today</span><span style="display:flex;gap:10px"><span style="opacity:.45">02</span>Week</span><span style="display:flex;gap:10px"><span style="opacity:.45">03</span>Projects</span><span style="display:flex;gap:10px"><span style="opacity:.45">04</span>Circles</span><span style="display:flex;gap:10px;color:var(--color-accent)"><span style="opacity:.6">05</span>Metrics</span><span style="display:flex;gap:10px"><span style="opacity:.45">06</span>Integrations</span>
+    </nav>
+  </aside>
+  <main style="padding:22px 28px;display:grid;gap:20px;align-content:start">
+    <div style="display:flex;justify-content:space-between;align-items:baseline"><h1 style="font-size:32px;margin:0">Metrics</h1><span class="seg"><span class="seg-opt">Week</span><span class="seg-opt" style="background:var(--color-accent);color:var(--color-bg)">30 days</span><span class="seg-opt">Quarter</span></span></div>
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px">
+      <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="6">
+        <div class="card blueprint" style="padding:12px 14px;gap:2px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><div class="card-kicker">{{ k.label }}</div><div style="font-family:var(--font-heading);font-weight:600;font-size:34px;line-height:1">{{ k.value }}</div><div style="font-size:11px;color:var(--color-neutral-700)">{{ k.delta }}</div></div>
+      </sc-for>
+    </div>
+    <div style="display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:20px">
+      <div class="card blueprint" style="padding:14px 16px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="card-kicker">Focus hours by hour of day · when you actually finish things</div>
+        <div style="display:grid;grid-template-columns:repeat(10,1fr);gap:4px;height:150px;align-items:end;margin-top:8px">
+          <sc-for list="{{ hourly }}" as="b" hint-placeholder-count="10"><div style="display:grid;gap:4px;align-content:end;height:100%"><span style="background:{{ b.color }};height:{{ b.h }};align-self:end"></span><span style="font-size:10px;text-align:center;color:var(--color-neutral-700);font-family:var(--font-heading)">{{ b.h_label }}</span></div></sc-for>
+        </div>
+        <div class="card-meta">Peak 10:00. I schedule deep-focus items into 09–11 because of this.</div>
+      </div>
+      <div class="card blueprint" style="padding:14px 16px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="card-kicker">Backlog aging · 34 items</div>
+        <div style="display:grid;gap:6px;margin-top:8px;font-size:12px">
+          <sc-for list="{{ aging }}" as="a" hint-placeholder-count="4"><div style="display:grid;grid-template-columns:56px 1fr 28px;gap:8px;align-items:center"><span style="color:var(--color-neutral-700)">{{ a.label }}</span><span style="height:14px;border:1px solid var(--color-divider);position:relative"><span style="position:absolute;inset:0;right:auto;width:{{ a.w }};background:{{ a.color }}"></span></span><span style="font-family:var(--font-heading);text-align:right">{{ a.n }}</span></div></sc-for>
+        </div>
+        <div class="card-meta">6 items cross 90 days on 29 Sep and archive.</div>
+      </div>
+      <div class="card blueprint" style="padding:14px 16px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="card-kicker">Where your todos come from</div>
+        <div style="display:grid;gap:6px;margin-top:8px;font-size:12px">
+          <sc-for list="{{ sources }}" as="s" hint-placeholder-count="5"><div style="display:grid;grid-template-columns:56px 1fr 34px;gap:8px;align-items:center"><span class="tag tag-neutral" style="font-family:var(--font-heading);font-weight:600;font-size:10px;padding:1px 6px;justify-self:start">{{ s.src }}</span><span style="height:14px;border:1px solid var(--color-divider);position:relative"><span style="position:absolute;inset:0;right:auto;width:{{ s.w }};background:var(--color-accent-500)"></span></span><span style="font-family:var(--font-heading);text-align:right">{{ s.n }}</span></div></sc-for>
+        </div>
+        <div class="card-meta">Mentions answered within 24h: 91%.</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(30,1fr);gap:3px;height:34px">
+      <sc-for list="{{ streak }}" as="d" hint-placeholder-count="30"><span style="background:{{ d }};border:1px solid var(--color-divider)"></span></sc-for>
+    </div>
+    <div style="font-size:11px;color:var(--color-neutral-700);margin-top:-10px">Last 30 days · darker = more of the day's plan completed · 11-day streak of clearing the "take on now" item</div>
+  </main>
+</div></div>
+
+<!-- ═══════════ 1g Integrations ═══════════ -->
+<div class="dv-opt" id="1g"><div class="dv-olabel"><a class="dv-oid" href="#1g">1g</a>Integrations · account (Clerk), connected tools (Cloudflare), realtime</div>
+<div class="dv-card" style="width:1180px;height:680px;display:grid;grid-template-columns:168px 1fr">
+  <aside style="border-right:1px solid var(--color-divider);padding:18px 16px;display:flex;flex-direction:column;gap:22px">
+    <div style="font-family:var(--font-heading);font-weight:600;font-size:22px;letter-spacing:.04em">TODAY</div>
+    <nav style="display:grid;gap:10px;font-size:14px;font-family:var(--font-heading);font-weight:600;letter-spacing:.02em">
+      <span style="display:flex;gap:10px"><span style="opacity:.45">01</span>Today</span><span style="display:flex;gap:10px"><span style="opacity:.45">02</span>Week</span><span style="display:flex;gap:10px"><span style="opacity:.45">03</span>Projects</span><span style="display:flex;gap:10px"><span style="opacity:.45">04</span>Circles</span><span style="display:flex;gap:10px"><span style="opacity:.45">05</span>Metrics</span><span style="display:flex;gap:10px;color:var(--color-accent)"><span style="opacity:.6">06</span>Integrations</span>
+    </nav>
+  </aside>
+  <main style="padding:22px 28px;display:grid;grid-template-columns:1fr 340px;gap:28px;align-content:start">
+    <section style="display:grid;gap:14px;align-content:start">
+      <h1 style="font-size:32px;margin:0">Integrations</h1>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+        <sc-for list="{{ integrations }}" as="i" hint-placeholder-count="7">
+          <div class="card blueprint" style="padding:12px 14px;gap:4px;border-style:{{ i.borderStyle }}"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div style="display:flex;justify-content:space-between;align-items:center"><span class="tag tag-neutral" style="font-family:var(--font-heading);font-weight:600;font-size:11px">{{ i.src }}</span><span class="tag {{ i.tagClass }}" style="font-size:10px">{{ i.status }}</span></div>
+            <div class="card-title">{{ i.name }}</div><div class="card-body">{{ i.scopes }}</div><div class="card-meta">{{ i.meta }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+    <aside style="display:grid;gap:16px;align-content:start">
+      <div class="card blueprint" style="padding:12px 14px;gap:6px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="card-kicker">Account</div>
+        <div style="display:flex;gap:10px;align-items:center"><span style="width:34px;height:34px;border:1px solid var(--color-divider);display:grid;place-items:center;font-family:var(--font-heading);font-weight:600">MO</span><div style="font-size:13px;line-height:1.3">Mara Okafor<div style="color:var(--color-neutral-700);font-size:12px">mara@halyard.io · signed in with Google</div></div></div>
+        <div style="font-size:12px;color:var(--color-neutral-700)">Two-factor on · 2 sessions · managed by Clerk</div>
+        <span class="btn btn-secondary" style="justify-self:start;font-size:12px;padding:4px 10px">Manage account</span>
+      </div>
+      <div class="card blueprint" style="padding:12px 14px;gap:6px"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="card-kicker">Realtime</div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px"><span style="width:8px;height:8px;background:var(--color-accent);border-radius:50%"></span>Connected · sleeping</div>
+        <div style="font-size:12px;color:var(--color-neutral-700);line-height:1.5">Your socket wakes when a connected tool changes something that matters to you, pushes the patch, then sleeps. Woke 4 times today; last at 08:59 (Priya, #platform).</div>
+        <div style="display:grid;gap:6px;font-size:13px;margin-top:4px">
+          <label style="display:flex;justify-content:space-between;align-items:center">Hourly status line<span style="width:30px;height:16px;background:var(--color-accent);position:relative"><span style="position:absolute;right:2px;top:2px;width:12px;height:12px;background:var(--color-bg)"></span></span></label>
+          <label style="display:flex;justify-content:space-between;align-items:center">Morning brief at<span class="input" style="width:70px;min-height:26px;padding:2px 8px;font-size:12px">06:00</span></label>
+          <label style="display:flex;justify-content:space-between;align-items:center">Move untouched to backlog after<span class="input" style="width:70px;min-height:26px;padding:2px 8px;font-size:12px">1 day</span></label>
+          <label style="display:flex;justify-content:space-between;align-items:center">Archive after<span class="input" style="width:70px;min-height:26px;padding:2px 8px;font-size:12px">90 days</span></label>
+        </div>
+      </div>
+    </aside>
+  </main>
+</div></div>
+
+</div>
+<p class="dv-next">Try next: "go with <a class="dv-oid" href="#1a">1a</a> but use the energy grouping from <a class="dv-oid" href="#1b">1b</a>" · "mobile versions of <a class="dv-oid" href="#1c">1c</a>–<a class="dv-oid" href="#1g">1g</a>" · "show the hourly status update and the end-of-day carry-over moment" · "dark variant"</p>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const F = { border: '1px dashed var(--color-neutral-400)', bg: 'transparent' };
+    const D = { border: '1px solid var(--color-accent)', bg: 'transparent' };
+    const M = { border: '1px solid var(--color-accent-200)', bg: 'var(--color-accent-100)' };
+    const Q = { border: '1px solid var(--color-divider)', bg: 'transparent' };
+    const hours = [
+      { h: '08', title: 'Brief · inbox skim', sub: 'free', src: 'GM', ...F },
+      { h: '09', title: 'Finish Cloudflare session-token spike', sub: 'deep focus · HAL-212', src: 'LN', ...D },
+      { h: '10', title: '↳ spike continues', sub: 'deep focus', src: 'LN', ...D },
+      { h: '11', title: 'Platform standup', sub: '30m · 12 people', src: 'CAL', ...M },
+      { h: '12', title: 'Reply to Priya · book dentist', sub: 'quick wins · 20m', src: 'SL', ...Q },
+      { h: '13', title: "Review Sam's onboarding PR", sub: 'carried 1 day · 45m', src: 'LN', ...D },
+      { h: '14', title: 'Onboarding design review', sub: '1h · Design + Platform', src: 'CAL', ...M },
+      { h: '15', title: 'Draft Q4 priorities · section 2', sub: 'carried · 1h', src: 'NO', ...D },
+      { h: '16', title: 'Prep notes · 1:1 with Devon 16:30', sub: '20m + 30m', src: 'CAL', ...M },
+      { h: '17', title: 'Send movers deposit · follow-ups', sub: 'wrap-up', src: 'GM', ...Q },
+    ];
+    const stack = [
+      { title: 'Finish Cloudflare session-token spike', project: 'Auth migration', est: '2h', src: 'LN' },
+      { title: 'Reply to Priya on edge rate limits', project: 'Auth migration', est: '15m', src: 'SL' },
+      { title: "Review Sam's onboarding PR", project: 'Onboarding redesign', est: '45m', src: 'LN' },
+      { title: 'Draft Q4 priorities, section 2', project: 'Q4 planning', est: '1h', src: 'NO' },
+      { title: 'Prep 1:1 notes for Devon', project: 'One-off', est: '20m', src: 'CAL' },
+      { title: 'Send movers deposit', project: 'Apartment move', est: '5m', src: 'GM' },
+      { title: 'Book dentist', project: 'One-off', est: '5m', src: '—' },
+    ];
+    const mentions = [
+      { src: 'SL', who: 'Priya', text: 'in #platform: can you confirm the edge worker rate limit?', age: '17h' },
+      { src: 'NO', who: 'Devon', text: 'commented on your section of Q4 Priorities', age: '1d' },
+      { src: 'LN', who: 'Sam', text: 'requested your review on HAL-198', age: '1d' },
+      { src: 'GM', who: 'Northside Movers', text: 'deposit due Friday', age: '2d' },
+    ];
+    const energy = [
+      { name: 'Deep focus', when: '09–11 · 13 · 15', items: [stack[0], stack[2], stack[3]] },
+      { name: 'Quick wins', when: 'between meetings', items: [stack[1], stack[6], stack[5]] },
+      { name: 'People & admin', when: 'afternoon', items: [stack[4], { title: 'Share migration runbook with Design', project: 'Auth migration', est: '10m', src: 'NO' }] },
+    ];
+    const circlesShort = [
+      { name: 'Design', text: 'Shipping onboarding v2 Thursday; your review today gates it.' },
+      { name: 'Leadership', text: 'Devon reads Q4 docs Monday morning.' },
+      { name: 'Personal', text: 'Half marathon in 18 days. Long run Saturday.' },
+    ];
+    const wk = (name, date, done, plan, meet, summary, items, today) => ({ name, date, done: done + '%', plan: plan + '%', meet: meet + '%', summary, items, border: today ? '1px solid var(--color-accent)' : '1px solid var(--color-divider)', bg: today ? 'var(--color-accent-100)' : 'transparent' });
+    const week = [
+      wk('Mon', '15', 90, 0, 40, '6 done · 3.5h focus', ['Kickoff auth milestone', 'Q4 doc outline']),
+      wk('Tue', '16', 70, 0, 60, '5 of 7 · 2 carried', ['Rotate KV secret', "Sam's PR (carried)"]),
+      wk('Wed', '17', 0, 100, 60, 'today · 7 planned', ['Session spike', 'Design review 14:00', '1:1 Devon']),
+      wk('Thu', '18', 0, 60, 30, '4 planned · Q4 held', ['Q4 doc: sections 2–3', 'Runbook to Design']),
+      wk('Fri', '19', 0, 45, 50, 'milestone · Sam out', ['Auth migration milestone', 'Movers deposit']),
+      wk('Sat', '20', 0, 15, 0, 'personal', ['Long run · 16 km']),
+      wk('Sun', '21', 0, 10, 0, 'personal', ['Pack kitchen']),
+    ];
+    const tieIns = [
+      { project: 'Auth migration', text: 'You own the spike and the runbook; Priya is blocked on both.', when: 'Milestone Fri' },
+      { project: 'Onboarding redesign', text: 'You are the last reviewer before Design ships v2.', when: 'Review today 14:00' },
+      { project: 'Q4 planning', text: 'Section 2 is yours; Devon reads the doc Monday.', when: 'Thu morning held' },
+      { project: 'Apartment move', text: 'Deposit, then keys with the landlord.', when: 'Fri · 1 Oct' },
+    ];
+    const projects = [
+      { name: 'Auth migration', circle: 'Platform', open: 12, status: 'On track', tagClass: 'tag-accent', pct: '68%', milestone: 'Edge sessions live · Fri 19 Sep', today: '2 items' },
+      { name: 'Onboarding redesign', circle: 'Platform + Design', open: 5, status: 'At risk', tagClass: 'tag-outline', pct: '40%', milestone: 'v2 ships · Thu 18 Sep', today: '1 item' },
+      { name: 'Q4 planning', circle: 'Leadership', open: 4, status: 'Behind', tagClass: 'tag-neutral', pct: '25%', milestone: 'Doc review · Mon 22 Sep', today: '1 item' },
+      { name: 'Apartment move', circle: 'Personal', open: 7, status: 'On track', tagClass: 'tag-accent', pct: '55%', milestone: 'Move day · 1 Oct', today: '1 item' },
+      { name: 'Half marathon', circle: 'Personal', open: 3, status: 'Week 9 of 12', tagClass: 'tag-accent', pct: '75%', milestone: 'Race · 5 Oct', today: '—' },
+    ];
+    const promised = [
+      { src: 'SL', text: 'Send the rate-limit numbers', who: 'Priya', age: '2d' },
+      { src: 'NO', text: 'Share the migration runbook', who: 'Design', age: '6d' },
+      { src: 'GM', text: 'Reply about key handover', who: 'landlord', age: '3d' },
+    ];
+    const waiting = [
+      { src: 'LN', who: 'Sam', text: 'updated PR after your comments', age: 'since Tue' },
+      { src: 'NO', who: 'Devon', text: 'feedback on Q4 section 1', age: '1d' },
+      { src: 'GM', who: 'Movers', text: 'confirm 1 Oct slot', age: '2d' },
+    ];
+    const overlaps = [
+      { circles: ['Platform team', 'Design'], title: 'Onboarding v2 design review', text: 'Your PR review and the design decision land on the same day. Do the review first so the meeting can be about what ships.', people: 'Sam · Lena · Priya', when: 'Today 13:00 → 14:00' },
+      { circles: ['Platform team', 'Leadership'], title: 'Auth migration in the Q4 doc', text: 'Section 2 is the migration story. Finishing the spike today gives you real numbers for it tomorrow.', people: 'Devon', when: 'Thu → Mon' },
+      { circles: ['Leadership', 'Design'], title: 'Onboarding metrics for Q4', text: 'Lena has the activation numbers Devon will ask about.', people: 'Lena · Devon', when: 'Ask by Thu' },
+      { circles: ['Personal', 'Platform team'], title: 'Move day is a Wednesday', text: '1 Oct collides with the platform release train. Flag it in standup.', people: 'You', when: '1 Oct' },
+    ];
+    const kpis = [
+      { label: 'Completion', value: '82%', delta: '+6 vs last 30d' },
+      { label: 'Carry-over', value: '18%', delta: '−4 vs last 30d' },
+      { label: 'Focus hours', value: '14.5', delta: 'this week · 21 avg' },
+      { label: 'Median item age', value: '1.3d', delta: 'backlog 9.8d' },
+      { label: 'Take-on streak', value: '11', delta: 'days' },
+      { label: 'Response debt', value: '3', delta: 'mentions > 24h' },
+    ];
+    const hourly = [22, 68, 100, 35, 40, 74, 30, 62, 28, 18].map((v, i) => ({ h: v + '%', h_label: String(8 + i).padStart(2, '0'), color: v === 100 ? 'var(--color-accent)' : 'var(--color-accent-300)' }));
+    const aging = [
+      { label: '< 7d', n: 14, w: '100%', color: 'var(--color-accent-500)' },
+      { label: '7–30d', n: 9, w: '64%', color: 'var(--color-accent-400)' },
+      { label: '30–60d', n: 5, w: '36%', color: 'var(--color-accent-300)' },
+      { label: '60–90d', n: 6, w: '43%', color: 'var(--color-neutral-400)' },
+    ];
+    const sources = [
+      { src: 'LN', n: 41, w: '100%' }, { src: 'SL', n: 27, w: '66%' }, { src: 'NO', n: 12, w: '29%' }, { src: 'GM', n: 9, w: '22%' }, { src: 'You', n: 33, w: '80%' },
+    ];
+    const streakVals = [3, 4, 2, 4, 4, 1, 0, 3, 4, 4, 3, 2, 0, 0, 4, 4, 3, 4, 2, 4, 4, 4, 3, 4, 4, 4, 4, 3, 4, 2];
+    const streak = streakVals.map(v => ['transparent', 'var(--color-accent-200)', 'var(--color-accent-300)', 'var(--color-accent-500)', 'var(--color-accent-700)'][v]);
+    const integrations = [
+      { src: 'GM', name: 'Google', scopes: 'Calendar · Gmail · Drive', status: 'Connected', tagClass: 'tag-accent', meta: 'synced 2m ago', borderStyle: 'solid' },
+      { src: 'SL', name: 'Slack', scopes: 'halyard.slack.com · mentions, saved, DMs', status: 'Connected', tagClass: 'tag-accent', meta: 'events live · woke 08:59', borderStyle: 'solid' },
+      { src: 'LN', name: 'Linear', scopes: 'Assigned issues, reviews, cycles', status: 'Connected', tagClass: 'tag-accent', meta: 'webhook · 41 todos this month', borderStyle: 'solid' },
+      { src: 'NO', name: 'Notion', scopes: '@mentions, comments, pages you own', status: 'Re-auth', tagClass: 'tag-outline', meta: 'token expired 06:12 · polling paused', borderStyle: 'solid' },
+      { src: 'GH', name: 'GitHub', scopes: 'Review requests, failing checks', status: 'Available', tagClass: 'tag-neutral', meta: 'Connect', borderStyle: 'dashed' },
+      { src: 'TD', name: 'Todoist', scopes: 'Import personal lists', status: 'Available', tagClass: 'tag-neutral', meta: 'Connect', borderStyle: 'dashed' },
+      { src: 'HK', name: 'Apple Health', scopes: 'Sleep and workouts for energy profile', status: 'Available', tagClass: 'tag-neutral', meta: 'iOS only', borderStyle: 'dashed' },
+    ];
+    // — turn 2: time tracking (Jo, consultant) —
+    const C = { mer: 'var(--color-accent-700)', qui: 'var(--color-accent-400)', bra: 'var(--color-accent-200)', int: 'var(--color-neutral-400)' };
+    const T = { border: '1px solid var(--color-accent)', bg: 'transparent' };
+    const tHours = [
+      { h: '08', title: 'Inbox · proposal tweak', sub: 'tracked to Internal · project?', client: 'INT', logged: '0:20', clientColor: C.int, ...Q },
+      { h: '09', title: 'Research synthesis · discovery interviews', sub: 'running', client: 'MER', logged: '1:42', clientColor: C.mer, ...T },
+      { h: '10', title: '↳ synthesis continues', sub: 'running', client: 'MER', logged: '', clientColor: C.mer, ...T },
+      { h: '11', title: 'Quill weekly · 11:30', sub: '30m · billable', client: 'QUI', logged: '', clientColor: C.qui, ...M },
+      { h: '12', title: 'Lunch', sub: 'timer paused', client: '—', logged: '', clientColor: 'transparent', ...F },
+      { h: '13', title: 'Bramble · onboarding flow v3', sub: 'suggested · retainer hits 20h ~15:00', client: 'BRA', logged: '', clientColor: C.bra, ...F },
+      { h: '14', title: '↳ Bramble continues', sub: 'suggested', client: 'BRA', logged: '', clientColor: C.bra, ...F },
+      { h: '15', title: 'Review Meridian invoice draft', sub: '15m · not billable', client: 'INT', logged: '', clientColor: C.int, ...F },
+      { h: '16', title: 'Quill · synthesis writeup', sub: 'suggested · 1h', client: 'QUI', logged: '', clientColor: C.qui, ...F },
+    ];
+    const tStack = [
+      { title: 'Research synthesis · discovery interviews', client: 'Meridian Health', est: 'running' },
+      { title: 'Onboarding flow v3 wireframes', client: 'Bramble', est: '2h' },
+      { title: 'Synthesis writeup for Thursday', client: 'Quill & Co', est: '1h' },
+      { title: 'Review Meridian invoice draft', client: 'Internal', est: '15m' },
+      { title: 'Confirm two untagged entries', client: 'Internal', est: '2m' },
+    ];
+    const clients = [
+      { name: 'Meridian Health', hours: '14h 05m', pct: '70%', color: C.mer, note: 'Project fee · 28h of 40h budget' },
+      { name: 'Quill & Co', hours: '6h 30m', pct: '33%', color: C.qui, note: 'Hourly · $190/h' },
+      { name: 'Bramble', hours: '17h 50m', pct: '89%', color: C.bra, note: 'Retainer · 20h/mo, 2h 10m left' },
+    ];
+    const tWeek = [
+      { name: 'Mon', total: '7:45', a: '55%', b: '20%', c: '15%', note: '3 clients', bg: 'transparent' },
+      { name: 'Tue', total: '6:20', a: '30%', b: '15%', c: '35%', note: '1 untagged', bg: 'transparent' },
+      { name: 'Wed', total: '3:10', a: '35%', b: '0%', c: '0%', note: 'today · running', bg: 'var(--color-accent-100)' },
+      { name: 'Thu', total: '—', a: '0%', b: '0%', c: '0%', note: 'Quill review 10:00', bg: 'transparent' },
+      { name: 'Fri', total: '—', a: '0%', b: '0%', c: '0%', note: 'invoices out', bg: 'transparent' },
+    ];
+    const entries = [
+      { when: 'Wed 09:00–', client: 'Meridian Health', project: 'Discovery research', what: 'Research synthesis · interviews 4–7', flag: 'running', hours: '1.70', color: C.mer },
+      { when: 'Wed 08:10', client: 'Internal', project: '—', what: 'Inbox, proposal tweak', flag: 'project? likely Quill', hours: '0.33', color: C.int },
+      { when: 'Tue 15:00', client: 'Bramble', project: 'Onboarding v3', what: 'Wireframes, states 1–6', flag: '', hours: '2.50', color: C.bra },
+      { when: 'Tue 14:00', client: 'Internal', project: '—', what: 'Call · no notes', flag: 'project? likely Quill', hours: '0.67', color: C.int },
+      { when: 'Tue 09:00', client: 'Meridian Health', project: 'Discovery research', what: 'Interviews 2–3, notes', flag: '', hours: '3.00', color: C.mer },
+      { when: 'Mon 13:30', client: 'Quill & Co', project: 'Checkout redesign', what: 'Stakeholder review + follow-ups', flag: '', hours: '1.75', color: C.qui },
+      { when: 'Mon 09:00', client: 'Meridian Health', project: 'Discovery research', what: 'Interview 1, synthesis setup', flag: '', hours: '4.25', color: C.mer },
+    ];
+    const invoices = [
+      { client: 'Meridian Health', status: 'Ready to review', tagClass: 'tag-accent', detail: 'INV-0042 · 1–30 Sep · 28.0h', amount: '$5,880', ai: 'I grouped 31 entries into 3 lines by project and applied 15-min rounding from the contract.', action: 'Review & send', btnClass: 'btn-primary' },
+      { client: 'Quill & Co', status: 'Drafting Fri', tagClass: 'tag-neutral', detail: 'Hourly · 22.5h so far', amount: '$4,275', ai: 'Two untagged entries (1h) would add $190 if they were Quill.', action: 'Confirm entries', btnClass: 'btn-secondary' },
+      { client: 'Bramble', status: 'Retainer', tagClass: 'tag-outline', detail: 'Fixed · 20h/mo · 17.8h used', amount: '$3,600', ai: 'Auto-sends 1 Oct via QuickBooks. Overage of ~2h likely; I will flag it before sending.', action: 'View', btnClass: 'btn-secondary' },
+    ];
+    const invLines = [
+      { line: 'Discovery research · interviews & synthesis', hrs: '19.5', amt: '$4,095' },
+      { line: 'Stakeholder workshops', hrs: '6.0', amt: '$1,260' },
+      { line: 'Project management & reporting', hrs: '2.5', amt: '$525' },
+    ];
+    const billing = [
+      { src: 'QB', name: 'QuickBooks Online', scopes: 'Create invoices, customers, mark paid', status: 'Connected', tagClass: 'tag-accent', meta: 'Meridian · Bramble', borderStyle: 'solid' },
+      { src: 'HV', name: 'Harvest', scopes: 'Two-way time entries (legacy clients)', status: 'Connected', tagClass: 'tag-accent', meta: 'Quill & Co', borderStyle: 'solid' },
+      { src: 'ST', name: 'Stripe', scopes: 'Payment links on invoices, paid webhooks', status: 'Connected', tagClass: 'tag-accent', meta: 'card + ACH', borderStyle: 'solid' },
+      { src: 'XE', name: 'Xero', scopes: 'Invoices, contacts, paid status', status: 'Available', tagClass: 'tag-neutral', meta: 'Connect', borderStyle: 'dashed' },
+      { src: 'FB', name: 'FreshBooks', scopes: 'Invoices, time import', status: 'Available', tagClass: 'tag-neutral', meta: 'Connect', borderStyle: 'dashed' },
+      { src: 'TG', name: 'Toggl Track', scopes: 'Import history', status: 'Available', tagClass: 'tag-neutral', meta: 'Connect', borderStyle: 'dashed' },
+    ];
+    const clientSettings = [
+      { name: 'Meridian Health', cadence: 'Monthly', terms: 'Project fee · $210/h · 15-min rounding · net 30 · QuickBooks' },
+      { name: 'Quill & Co', cadence: 'Bi-weekly', terms: 'Hourly · $190/h · 6-min rounding · net 15 · Harvest + Stripe link' },
+      { name: 'Bramble', cadence: 'Retainer · 1st', terms: '20h/mo · $3,600 · overage $200/h · QuickBooks' },
+    ];
+    const pickerGroups = [
+      { client: 'Meridian Health', color: C.mer, hours: '14h 05m', projects: [{ name: 'Discovery research', meta: 'running', bg: 'var(--color-accent-100)' }, { name: 'Stakeholder workshops', meta: 'Mon', bg: 'transparent' }] },
+      { client: 'Quill & Co', color: C.qui, hours: '6h 30m', projects: [{ name: 'Checkout redesign', meta: '11:30 meeting', bg: 'transparent' }] },
+      { client: 'Bramble', color: C.bra, hours: '17h 50m', projects: [{ name: 'Onboarding v3', meta: '2h 10m left on retainer', bg: 'transparent' }] },
+      { client: 'Internal', color: C.int, hours: '0h 20m', projects: [{ name: 'Admin · not billable', meta: '', bg: 'transparent' }] },
+    ];
+    const recentProjects = [
+      { name: 'Bramble · Onboarding v3', meta: 'yesterday 15:00 · 2h 30m', color: C.bra },
+      { name: 'Quill & Co · Checkout redesign', meta: 'Mon 13:30 · 1h 45m', color: C.qui },
+      { name: 'Internal · Admin', meta: 'today 08:10 · 20m', color: C.int },
+    ];
+    const timeKpis = [
+      { label: 'Tracked', value: '131h', delta: '30 days · 6.2h per workday' },
+      { label: 'Billable', value: '78%', delta: '102h · target 75%' },
+      { label: 'Utilization', value: '85%', delta: 'of 30h/wk target' },
+      { label: 'Effective rate', value: '$196', delta: 'per tracked hour, all work' },
+      { label: 'Untagged time', value: '2.3h', delta: '4 entries need a project' },
+      { label: 'Avg session', value: '1h 24m', delta: 'median 52m · +9m vs Aug' },
+    ];
+    const weeksByClient = [
+      { label: 'W31', total: '31h', mer: '30%', qui: '22%', bra: '25%', nb: '12%' },
+      { label: 'W32', total: '28h', mer: '28%', qui: '18%', bra: '24%', nb: '10%' },
+      { label: 'W33', total: '33h', mer: '40%', qui: '15%', bra: '22%', nb: '14%' },
+      { label: 'W34', total: '24h', mer: '22%', qui: '20%', bra: '15%', nb: '10%' },
+      { label: 'W35', total: '35h', mer: '45%', qui: '20%', bra: '25%', nb: '8%' },
+      { label: 'W36', total: '30h', mer: '38%', qui: '14%', bra: '26%', nb: '9%' },
+      { label: 'W37', total: '32h', mer: '42%', qui: '16%', bra: '22%', nb: '11%' },
+      { label: 'W38', total: '17h', mer: '30%', qui: '8%', bra: '14%', nb: '4%' },
+    ];
+    const heatHours = ['8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18'];
+    const ramp = ['transparent', 'var(--color-accent-100)', 'var(--color-accent-200)', 'var(--color-accent-400)', 'var(--color-accent-700)'];
+    const heat = [[1, 3, 4, 3, 1, 2, 3, 3, 2, 1, 0], [2, 4, 4, 4, 1, 3, 3, 3, 2, 1, 0], [2, 4, 4, 4, 2, 3, 4, 3, 2, 1, 1], [2, 4, 4, 3, 1, 3, 3, 2, 2, 1, 0], [1, 3, 3, 2, 1, 2, 1, 1, 1, 0, 0]];
+    const heatRows = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((day, i) => ({ day, cells: heat[i].map(v => ramp[v]) }));
+    const unbilled = [
+      { client: 'Meridian Health', amount: '$5,880', w: '100%', color: C.mer, note: '28h · invoice ready · oldest 17d' },
+      { client: 'Quill & Co', amount: '$4,275', w: '73%', color: C.qui, note: '22.5h · drafts Friday' },
+      { client: 'Bramble', amount: '$3,600', w: '61%', color: C.bra, note: 'retainer · bills 1 Oct' },
+    ];
+    const burn = [
+      { name: 'Meridian · 40h project fee', used: '28h / 40h', w: '70%', pace: '62%', color: C.mer, note: '8% ahead of pace · 12h left, 2 weeks' },
+      { name: 'Bramble · 20h Sep retainer', used: '17.8h / 20h', w: '89%', pace: '57%', color: C.bra, note: 'burning fast · 2h 10m left, 13 days · overage likely' },
+      { name: 'Quill · no cap', used: '22.5h', w: '45%', pace: '45%', color: C.qui, note: 'hourly · 6-min rounding' },
+    ];
+    const estimates = [
+      { kind: 'Research', est: '60%', act: '84%', ratio: '1.4×' },
+      { kind: 'Design', est: '70%', act: '66%', ratio: '0.95×' },
+      { kind: 'Meetings', est: '40%', act: '48%', ratio: '1.2×' },
+      { kind: 'Admin', est: '30%', act: '22%', ratio: '0.7×' },
+    ];
+    return { timeKpis, weeksByClient, heatHours, heatRows, unbilled, burn, estimates, pickerGroups, recentProjects, tHours, tStack, clients, tWeek, entries, invoices, invLines, billing, clientSettings, hours, stack, mentions, energy, circlesShort, week, tieIns, projects, promised, waiting, overlaps, kpis, hourly, aging, sources, streak, integrations };
+  }
+}
+</script>
+</body>
+</html>
+

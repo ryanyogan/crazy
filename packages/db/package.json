@@ -1,0 +1,29 @@
+{
+  "name": "@crazy/db",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./write": "./src/write.ts"
+  },
+  "scripts": {
+    "generate": "prisma generate",
+    "postinstall": "prisma generate",
+    "migration:init": "prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script",
+    "migration:diff": "prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@crazy/shared": "workspace:*",
+    "@prisma/adapter-d1": "7.10.0",
+    "@prisma/client": "7.10.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "0.22.0",
+    "@types/node": "catalog:",
+    "prisma": "7.10.0",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

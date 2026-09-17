@@ -1,0 +1,373 @@
+@import './today.css';
+
+/* The Shell and what every screen shares. Plain CSS on the Industry tokens
+   (@crazy/ui/styles/industry.css). Mobile first; desktop from 900px. One DOM
+   serves both. Measurements are the frames' (docs/design), 1a for the rail and
+   the phone frame beside it for the top bar and tab bar. */
+
+html,
+body {
+  min-height: 100%;
+}
+
+/* ── Notices: what went wrong, above whatever screen is showing ───────────── */
+
+.notices {
+  display: grid;
+  gap: 6px;
+}
+
+.notices:not(:empty) {
+  padding: 10px 18px 0;
+}
+
+.notice {
+  display: flex;
+  gap: 10px;
+  align-items: start;
+  padding: 8px 10px;
+  border: 1px solid var(--color-text);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.notice > span {
+  flex: 1;
+}
+
+.notice__dismiss {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+@media (min-width: 900px) {
+  .notices:not(:empty) {
+    padding: 22px 28px 0;
+  }
+}
+
+/* ── Shell: phone ─────────────────────────────────────────────────────────── */
+
+.shell {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.shell__rail {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px 0;
+}
+
+.shell__wordmark {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 18px;
+  line-height: 1.55;
+  letter-spacing: 0.04em;
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+/* On a phone the destinations are the tab bar's job and the user is on More. */
+.shell__nav,
+.shell__foot .badge {
+  display: none;
+}
+
+.shell__foot {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 12px;
+  color: var(--color-neutral-700);
+}
+
+.shell__main {
+  flex: 1;
+  min-width: 0;
+  /* Clear the fixed tab bar. */
+  padding-bottom: calc(58px + env(safe-area-inset-bottom));
+}
+
+.tabbar {
+  position: fixed;
+  inset: auto 0 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--color-divider);
+  background: var(--color-bg);
+  padding-bottom: env(safe-area-inset-bottom);
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 12px;
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+
+.tabbar__tab {
+  padding: 10px 0 16px;
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.tabbar__tab:hover {
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+}
+
+.tabbar__tab:active {
+  background: color-mix(in srgb, var(--color-text) 14%, transparent);
+}
+
+.tabbar__tab:focus-visible {
+  outline-offset: -2px;
+}
+
+.tabbar__tab.is-active {
+  color: var(--color-accent);
+}
+
+/* ── Live indicator ───────────────────────────────────────────────────────── */
+
+.live {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.live__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+
+.live[data-state='off'] .live__dot {
+  background: transparent;
+  border: 1px solid var(--color-neutral-600);
+}
+
+/* ── User badge ───────────────────────────────────────────────────────────── */
+
+.badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+
+button.badge {
+  cursor: pointer;
+}
+
+button.badge:hover .badge__initials {
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+}
+
+button.badge:active .badge__initials {
+  background: color-mix(in srgb, var(--color-text) 14%, transparent);
+}
+
+.badge__initials {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--color-divider);
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+}
+
+.badge__name {
+  color: var(--color-text);
+}
+
+/* ── Screens ──────────────────────────────────────────────────────────────── */
+
+.screen {
+  padding: 10px 18px 0;
+}
+
+.screen__title {
+  font-size: 28px;
+  margin: 0 0 4px;
+}
+
+/* ── More (phone) ─────────────────────────────────────────────────────────── */
+
+.more {
+  display: grid;
+  margin-top: var(--space-4);
+  border-top: 1px solid var(--color-divider);
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 16px;
+  letter-spacing: 0.02em;
+}
+
+.more__dest {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--color-divider);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.more__dest:hover {
+  color: var(--color-accent);
+}
+
+.more__dest:active {
+  color: var(--color-accent-700);
+}
+
+.more__who {
+  margin-top: var(--space-6);
+  font-size: 13px;
+  color: var(--color-neutral-700);
+}
+
+/* ── Sign-in (derived: no frame is drawn) ─────────────────────────────────── */
+
+.signin {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-6) 18px;
+}
+
+.signin__form {
+  width: min(360px, 100%);
+}
+
+.signin__headline {
+  font-size: 32px;
+  margin: var(--space-4) 0 var(--space-2);
+}
+
+.signin__form .btn-block {
+  margin-top: var(--space-3);
+}
+
+.signin__or {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--color-neutral-700);
+}
+
+.signin__error {
+  margin: var(--space-3) 0 0;
+  font-size: 13px;
+  color: var(--color-accent-800);
+}
+
+/* ── Desktop ──────────────────────────────────────────────────────────────── */
+
+@media (min-width: 900px) {
+  .shell {
+    display: grid;
+    grid-template-columns: 168px 1fr;
+    /* The frames are 1180px wide, rail included. */
+    max-width: 1180px;
+    margin-inline: auto;
+  }
+
+  .shell__rail {
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    gap: 22px;
+    padding: 18px 16px;
+    border-right: 1px solid var(--color-divider);
+  }
+
+  .shell__wordmark {
+    font-size: 22px;
+  }
+
+  .shell__nav {
+    display: grid;
+    gap: 10px;
+    font-family: var(--font-heading);
+    font-weight: var(--font-heading-weight);
+    font-size: 14px;
+    letter-spacing: 0.02em;
+  }
+
+  .shell__dest {
+    display: flex;
+    gap: 10px;
+    color: var(--color-text);
+    text-decoration: none;
+  }
+
+  .shell__num {
+    opacity: 0.45;
+  }
+
+  .shell__dest:hover {
+    color: var(--color-accent);
+  }
+
+  .shell__dest:active {
+    color: var(--color-accent-700);
+  }
+
+  .shell__dest.is-active {
+    color: var(--color-accent);
+  }
+
+  .shell__dest.is-active .shell__num {
+    opacity: 0.6;
+  }
+
+  .shell__foot {
+    margin-top: auto;
+    display: grid;
+    gap: 8px;
+    font-family: var(--font-body);
+    font-weight: 400;
+    font-size: 11px;
+  }
+
+  .shell__foot .badge {
+    display: flex;
+  }
+
+  .shell__main {
+    padding-bottom: 0;
+  }
+
+  .tabbar {
+    display: none;
+  }
+
+  .screen {
+    padding: 22px 28px;
+  }
+
+  .screen__title {
+    font-size: 40px;
+    margin: 4px 0 8px;
+  }
+}

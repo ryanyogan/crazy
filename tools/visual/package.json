@@ -1,0 +1,17 @@
+{
+  "name": "@crazy/visual",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/cli.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/pngjs": "^6.0.5",
+    "pixelmatch": "^7.1.0",
+    "playwright": "^1.55.0",
+    "pngjs": "^7.0.0",
+    "typescript": "catalog:"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  // Test only: gives the read-model tests a local D1 and the module rules a
+  // Worker has (the Prisma client imports its query compiler as WebAssembly).
+  "name": "crazy-db-test",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "crazy",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+    },
+  ],
+}

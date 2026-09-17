@@ -1,0 +1,155 @@
+/* What the React primitives in this package need beyond Industry itself.
+   Every value is an Industry token or a measurement from the frames. */
+
+/* The frames draw every chip at this size: condensed, 10px, tight. */
+.source-chip {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 10px;
+  padding: 1px 6px;
+}
+
+/* ── Timeline ─────────────────────────────────────────────────────────────────
+   A phone draws the hours as a strip of cells; from 900px they are rows under
+   their hour. The same elements serve both, so how an hour is drawn is a pair
+   of variables: the cell wears them on a phone, the row's box on a desktop. */
+
+.tl {
+  /* Holds what its rows say to assistive technology, so the strip clips it too. */
+  position: relative;
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tl-row {
+  flex: none;
+  width: 58px;
+  padding: 6px;
+  border: var(--tl-border);
+  background: var(--tl-fill);
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.tl-row--meeting {
+  --tl-border: 1px solid var(--color-accent-200);
+  --tl-fill: var(--color-accent-100);
+}
+
+.tl-row--focus {
+  --tl-border: 1px solid var(--color-accent);
+  --tl-fill: transparent;
+}
+
+.tl-row--slotted {
+  --tl-border: 1px solid var(--color-divider);
+  --tl-fill: transparent;
+}
+
+.tl-row--free {
+  --tl-border: 1px dashed var(--color-neutral-400);
+  --tl-fill: transparent;
+}
+
+.tl-row__label {
+  font-family: var(--font-heading);
+  font-size: 12px;
+  color: var(--color-neutral-700);
+}
+
+.tl-row__body,
+.tl-row__box {
+  display: contents;
+}
+
+.tl-row__title {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tl-row__note,
+.tl-row .source-chip {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .tl {
+    display: grid;
+    grid-template-columns: 44px 1fr;
+    gap: 0 10px;
+    align-items: stretch;
+    align-content: start;
+    overflow: visible;
+  }
+
+  .tl-row {
+    display: contents;
+    font-size: inherit;
+    line-height: inherit;
+  }
+
+  .tl-row__label,
+  .tl-row__body {
+    border-top: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent);
+  }
+
+  .tl-row__label {
+    padding-top: 4px;
+  }
+
+  .tl-row__body {
+    display: block;
+    min-height: 40px;
+    padding: 4px 0;
+  }
+
+  .tl-row__box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 32px;
+    padding: 5px 10px;
+    border: var(--tl-border);
+    background: var(--tl-fill);
+  }
+
+  .tl-row__title {
+    flex: 1;
+    overflow: visible;
+    white-space: normal;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .tl-row__note {
+    display: inline;
+    font-size: 11px;
+    color: var(--color-neutral-700);
+  }
+
+  .tl-row .source-chip {
+    display: inline-flex;
+  }
+}
+
+/* Drawn, not wired (NotWired): looks as drawn, says no to the pointer. */
+[data-not-wired] {
+  cursor: not-allowed;
+}
+
+/* Said to assistive technology, not drawn. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
