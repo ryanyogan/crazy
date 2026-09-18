@@ -8,7 +8,10 @@ import {
   command,
   covers,
   decide,
+  hourChoice,
+  namesAnotherDay,
 } from './command'
+import type { DayEvent, HourWording } from './timeline'
 import { type Signal, type Today, viewToday } from './today'
 import type { Source, TodayTodo } from './todo'
 
@@ -390,6 +393,310 @@ it('leaves a cached read model that holds no Mentions alone when a patch is abou
   expect(apply(state, [{ type: 'signal.set', id: 'priya', set: { todoId: 'new' } }])).toBe(state)
 })
 
+// ── Give a Todo a Slot ────────────────────────────────────────────────────────
+
+const slot = (todoId: string, hour: number): Command => ({ type: 'todo.slot', todoId, hour })
+const clearSlot = (todoId: string): Command => ({ type: 'todo.clearSlot', todoId })
+
+const event = (kind: DayEvent['kind'], title: string, from: number, until: number): DayEvent => ({
+  id: title,
+  kind,
+  title,
+  who: null,
+  from,
+  until,
+})
+
+/** Frame 1a's calendar: the standup has half of 11:00, the design review all of 14:00. */
+const CALENDAR: DayEvent[] = [
+  event('focus', 'Focus', 9 * 60, 11 * 60),
+  event('meeting', 'Platform standup', 11 * 60, 11 * 60 + 30),
+  event('meeting', 'Onboarding design review', 14 * 60, 15 * 60),
+]
+
+/** Crazy's words for an hour, written for the Todos that held it at the time. */
+const worded = (hour: number, title: string, writtenFor: string[] = []): HourWording => ({
+  hour,
+  title,
+  note: null,
+  source: null,
+  writtenFor,
+})
+
+/** The day with its calendar and the hours Crazy worded this morning. */
+function planned(todos: TodayTodo[], hours: HourWording[] = []): Today {
+  return { ...day(todos), events: CALENDAR, hours }
+}
+
+const hourOf = (state: Today, hour: number) =>
+  view(state).timeline.find((each) => each.hour === hour)
+
+it('gives a Todo a Slot on a free hour, touches it, and words the hour by what it now holds', () => {
+  const state = planned(
+    [todo('dentist', { title: 'Book dentist', stackPosition: 7 })],
+    [worded(8, 'Brief · inbox skim')],
+  )
+
+  const { decision, after } = run(state, slot('dentist', 8))
+
+  expect(decision).toEqual({
+    ok: true,
+    ops: [
+      { type: 'slot.set', todoId: 'dentist', day: '2025-09-17', hours: [8], at: now.toISOString() },
+      { type: 'todo.set', id: 'dentist', set: { touchedAt: now.toISOString() } },
+    ],
+  })
+  expect(after.todos[0]).toMatchObject({ slotHours: [8], touchedAt: now.toISOString() })
+  // Crazy worded 08:00 for an hour with nothing on it. It holds a Todo now, so
+  // the words step aside — they are not thrown away.
+  expect(hourOf(after, 8)).toMatchObject({ kind: 'slotted', title: 'Book dentist' })
+  expect(after.hours).toEqual(state.hours)
+})
+
+it('moves a Todo to another hour, leaving the one it held free', () => {
+  const state = planned(
+    [todo('deposit', { title: 'Send movers deposit', slotHours: [17] })],
+    [worded(17, 'Send movers deposit · follow-ups', ['deposit'])],
+  )
+
+  const { decision, after } = run(state, slot('deposit', 12))
+
+  expect(decision.ok && decision.ops).toEqual([
+    { type: 'slot.set', todoId: 'deposit', day: '2025-09-17', hours: [12], at: now.toISOString() },
+    { type: 'todo.set', id: 'deposit', set: { touchedAt: now.toISOString() } },
+  ])
+  expect(hourOf(after, 12)).toMatchObject({ kind: 'slotted', title: 'Send movers deposit' })
+  expect(hourOf(after, 17)).toMatchObject({ kind: 'free', title: 'Free' })
+})
+
+it("puts Crazy's wording back when a Todo is moved away and then back again", () => {
+  const words = 'Send movers deposit · follow-ups'
+  const state = planned(
+    [todo('deposit', { title: 'Send movers deposit', slotHours: [17] })],
+    [worded(17, words, ['deposit'])],
+  )
+
+  const moved = run(state, slot('deposit', 8)).after
+  expect(hourOf(moved, 17)).toMatchObject({ title: 'Free' })
+
+  const back = run(moved, slot('deposit', 17)).after
+  expect(hourOf(back, 17)).toMatchObject({ kind: 'slotted', title: words })
+})
+
+it('keeps a Todo as many hours long as it was when it is moved', () => {
+  const state = planned([todo('spike', { title: 'Spike', slotHours: [9, 10] })])
+
+  const { after } = run(state, slot('spike', 12))
+
+  expect(after.todos[0]?.slotHours).toEqual([12, 13])
+  expect(hourOf(after, 12)?.title).toBe('Spike')
+  expect(hourOf(after, 13)?.title).toBe('↳ Spike')
+  // The focus block it left is named again, now that nothing is in it.
+  expect(hourOf(after, 9)).toMatchObject({ kind: 'focus', title: 'Focus' })
+})
+
+it('takes a Todo off the day, and the Take on now loses the hours it fitted', () => {
+  const state = planned(
+    [todo('spike', { stackPosition: 1, slotHours: [9, 10] })],
+    [worded(9, 'Finish Cloudflare session-token spike', ['spike'])],
+  )
+  expect(view(state).takeOnNow?.hours).toEqual({ from: 9, until: 11 })
+
+  const { decision, after } = run(state, clearSlot('spike'))
+
+  expect(decision).toEqual({
+    ok: true,
+    ops: [
+      { type: 'slot.set', todoId: 'spike', day: '2025-09-17', hours: [], at: now.toISOString() },
+      { type: 'todo.set', id: 'spike', set: { touchedAt: now.toISOString() } },
+    ],
+  })
+  expect(after.todos[0]?.slotHours).toEqual([])
+  expect(view(after).takeOnNow).toMatchObject({ todo: { id: 'spike' }, hours: null })
+  expect(hourOf(after, 9)).toMatchObject({ kind: 'focus', title: 'Focus' })
+})
+
+it('frees the hour of a Todo that is completed or snoozed, worded as any free hour is', () => {
+  const words = 'Send movers deposit · follow-ups'
+  const state = planned(
+    [todo('deposit', { title: 'Send movers deposit', slotHours: [17] })],
+    [worded(17, words, ['deposit'])],
+  )
+  expect(hourOf(state, 17)).toMatchObject({ kind: 'slotted', title: words })
+
+  // One hour, freed three ways, reads the same way each time.
+  const freed = { kind: 'free', title: 'Free' }
+  expect(hourOf(run(state, complete('deposit')).after, 17)).toMatchObject(freed)
+  expect(hourOf(run(state, clearSlot('deposit')).after, 17)).toMatchObject(freed)
+  const snoozed = run(state, snooze('deposit', 30)).after
+  expect(hourOf(snoozed, 17)).toMatchObject(freed)
+
+  // And when the snooze ends, the Todo is back on its hour in Crazy's words.
+  const later = new Date(now.getTime() + 31 * 60_000)
+  expect(
+    viewToday(snoozed, later, timeZone).timeline.find((each) => each.hour === 17),
+  ).toMatchObject({ kind: 'slotted', title: words })
+})
+
+it('refuses an hour a meeting fills, and takes one it only half fills', () => {
+  const state = planned([todo('dentist')])
+
+  expect(run(state, slot('dentist', 14)).decision).toEqual({
+    ok: false,
+    reason: '14:00 is a meeting, and Crazy never moves a meeting.',
+  })
+  // The standup ends at 11:30, so the rest of the hour is the user's, as frame
+  // 1a's own 16:00 is: the 1:1 at 16:30 shares it with "Prep 1:1 notes".
+  expect(run(state, slot('dentist', 11)).decision).toMatchObject({ ok: true })
+})
+
+it('refuses an hour that two meetings fill between them', () => {
+  const backToBack: Today = {
+    ...planned([todo('dentist')]),
+    events: [
+      event('meeting', 'Platform standup', 8 * 60, 8 * 60 + 30),
+      event('meeting', 'Handover', 8 * 60 + 30, 9 * 60),
+    ],
+  }
+
+  expect(run(backToBack, slot('dentist', 8)).decision).toEqual({
+    ok: false,
+    reason: '08:00 is a meeting, and Crazy never moves a meeting.',
+  })
+})
+
+it('refuses to move a Todo onto hours a meeting would take the second of', () => {
+  const state = planned([todo('spike', { slotHours: [9, 10] })])
+
+  expect(run(state, slot('spike', 13)).decision).toEqual({
+    ok: false,
+    reason: '14:00 is a meeting, and Crazy never moves a meeting.',
+  })
+  expect(run(state, slot('spike', 12)).decision).toMatchObject({ ok: true })
+})
+
+it('refuses to give a Slot to a Todo that is not in the Priority stack', () => {
+  const reason = 'Only a Todo in the Priority stack can be given a Slot.'
+  expect(
+    run(planned([todo('someday', { state: 'backlog' })]), slot('someday', 8)).decision,
+  ).toEqual({ ok: false, reason })
+  expect(run(planned([todo('finished', { state: 'done' })]), slot('finished', 8)).decision).toEqual(
+    {
+      ok: false,
+      reason,
+    },
+  )
+  expect(run(planned([]), slot('gone', 8)).decision).toEqual({
+    ok: false,
+    reason: 'That Todo no longer exists.',
+  })
+})
+
+it('refuses to plan an hour for a snoozed Todo, which has left the day', () => {
+  const until = new Date(now.getTime() + 30 * 60_000).toISOString()
+  const state = planned([todo('spike', { snoozedUntil: until })])
+
+  expect(run(state, slot('spike', 8)).decision).toEqual({
+    ok: false,
+    reason: 'A snoozed Todo is out of the day until its snooze ends.',
+  })
+  // Taking it off the day is still allowed: the user is saying they are not doing it then.
+  expect(
+    run(planned([todo('spike', { snoozedUntil: until, slotHours: [9] })]), clearSlot('spike'))
+      .decision,
+  ).toMatchObject({ ok: true })
+})
+
+it('touches nothing when a Todo that has left the day is taken off its hour', () => {
+  // A completed Todo keeps its Slots, and asking to clear them must not stamp
+  // it as touched: that would change what the Rollover does with it.
+  for (const state of ['done', 'backlog', 'archived'] as const) {
+    expect(
+      run(planned([todo('gone', { state, slotHours: [17] })]), clearSlot('gone')).decision,
+    ).toEqual({ ok: true, ops: [] })
+  }
+})
+
+it('names an hour in a list to pick from, and says in a word or two why it is refused', () => {
+  const dentist = todo('dentist')
+  const spike = todo('spike', { slotHours: [9, 10] })
+  const ask = (each: TodayTodo, hour: number) => hourChoice(each, hour, CALENDAR, now)
+
+  expect(ask(dentist, 8)).toBe('08:00')
+  expect(ask(dentist, 11)).toBe('11:00')
+  expect(ask(dentist, 14)).toBe('14:00 — a meeting')
+  // A two-hour Todo is refused by the hour after the one offered, and says which.
+  expect(ask(spike, 13)).toBe('13:00 — a meeting at 14:00')
+  expect(ask(spike, 23)).toBe('23:00 — past the end of the day')
+})
+
+it('refuses a Slot that would run past the end of the day', () => {
+  const state = planned([todo('spike', { slotHours: [9, 10] })])
+  expect(run(state, slot('spike', 23)).decision).toEqual({
+    ok: false,
+    reason: 'The day ends before that Todo would.',
+  })
+  expect(command.safeParse(slot('spike', 24)).success).toBe(false)
+  expect(command.safeParse(slot('spike', -1)).success).toBe(false)
+  expect(command.safeParse(slot('spike', 8.5)).success).toBe(false)
+})
+
+it('changes nothing when a Todo is dropped on the hour it already holds', () => {
+  const state = planned(
+    [todo('deposit', { slotHours: [17] })],
+    [worded(17, 'Send movers deposit', ['deposit'])],
+  )
+  const { decision, after } = run(state, slot('deposit', 17))
+
+  expect(decision).toEqual({ ok: true, ops: [] })
+  expect(after).toBe(state)
+  // And a Todo with no Slot that is taken off the day is left as it is.
+  expect(run(planned([todo('dentist')]), clearSlot('dentist')).decision).toEqual({
+    ok: true,
+    ops: [],
+  })
+})
+
+it('leaves a Todo holding the same hours however many times the patch is applied', () => {
+  const state = planned(
+    [todo('deposit', { slotHours: [17] })],
+    [worded(17, 'Movers deposit', ['deposit'])],
+  )
+  const decision = decide(state, slot('deposit', 12), now)
+  if (!decision.ok) throw new Error('expected the command to be accepted')
+
+  const once = apply(state, decision.ops)
+  expect(apply(once, decision.ops)).toEqual(once)
+  // The Slots laid a second time do not even make a new state for the screen to read.
+  expect(
+    apply(
+      once,
+      decision.ops.filter((each) => each.type === 'slot.set'),
+    ),
+  ).toBe(once)
+  expect(once.todos[0]?.slotHours).toEqual([12])
+  // Every word Crazy wrote is still there; 17:00 simply no longer holds the Todo.
+  expect(once.hours).toEqual(state.hours)
+})
+
+it('leaves a cached day other than the one a Slot was given on alone, and says so', () => {
+  const state = planned(
+    [todo('deposit', { slotHours: [17] })],
+    [worded(17, 'Movers deposit', ['deposit'])],
+  )
+  const tomorrow: Op[] = [
+    { type: 'slot.set', todoId: 'deposit', day: '2025-09-18', hours: [9], at: now.toISOString() },
+  ]
+
+  expect(apply(state, tomorrow)).toBe(state)
+  // A tab left open across midnight is showing yesterday. That it cannot apply
+  // the operation is how it learns so, and reads everything again.
+  expect(namesAnotherDay(state, tomorrow)).toBe(true)
+  expect(namesAnotherDay(state, guessFor(state, slot('deposit', 12)))).toBe(false)
+  // A cached state that does not say which day it holds asks nothing of a Slot.
+  expect(namesAnotherDay({}, tomorrow)).toBe(false)
+})
+
 // ── When the optimistic screen can be kept ────────────────────────────────────
 
 /** What the browser guessed against its cache, for a command the Coordinator then decided. */
@@ -420,13 +727,53 @@ it("a Mention whose Source already has a Todo the browser never cached: the Coor
   expect(covers([guess[1]!], coordinator)).toBe(true)
 })
 
+it('a Slot another tab had already given is read again rather than left as guessed', () => {
+  // The browser's cache has the deposit at 17:00, so it guesses a move; D1 has
+  // it at 08:00 already, where another tab dropped it, so the Coordinator finds
+  // nothing to do. The browser must not be left holding its own guess.
+  const guess = guessFor(planned([todo('deposit', { slotHours: [17] })]), slot('deposit', 8))
+  const coordinator = decide(
+    planned([todo('deposit', { slotHours: [8] })]),
+    slot('deposit', 8),
+    now,
+  )
+
+  expect(coordinator).toEqual({ ok: true, ops: [] })
+  expect(covers(guess, coordinator.ok ? coordinator.ops : [])).toBe(false)
+})
+
+it('a Slot moved to another hour than the browser guessed needs no second read', () => {
+  // Both name the same rows — the Todo's Slots for the day, and the Todo — so
+  // laying the Coordinator's word over the guess is enough to be right.
+  const guess = guessFor(planned([todo('deposit', { slotHours: [17] })]), slot('deposit', 8))
+  const coordinator = guessFor(planned([todo('deposit', { slotHours: [16] })]), slot('deposit', 8))
+
+  expect(covers(guess, coordinator)).toBe(true)
+})
+
+it('a Todo and its Slots are different rows', () => {
+  const guess: Op[] = [
+    { type: 'slot.set', todoId: 'spike', day: '2025-09-17', hours: [8], at: now.toISOString() },
+  ]
+  const coordinator: Op[] = [
+    { type: 'todo.set', id: 'spike', set: { touchedAt: now.toISOString() } },
+  ]
+
+  expect(covers(guess, coordinator)).toBe(false)
+})
+
 it('the optimistic screen stands when the Coordinator touched every row the browser guessed', () => {
-  const stack = day([todo('spike', { stackPosition: 1 })], [mention('priya')])
+  const stack: Today = {
+    ...planned([todo('spike', { stackPosition: 1, slotHours: [9, 10] })]),
+    signals: [mention('priya')],
+  }
   for (const input of [
     add('new', 'Book dentist'),
     snooze('spike', 30),
     complete('spike'),
     addSignal('priya', 'new'),
+    slot('spike', 12),
+    clearSlot('spike'),
   ]) {
     const guess = guessFor(stack, input)
     expect(covers(guess, guess)).toBe(true)

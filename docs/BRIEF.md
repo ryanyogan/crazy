@@ -52,10 +52,10 @@ Updated as tickets land.
 | Schema for Connection, Circle, Project, Todo, Slot, Brief, calendar event, Signal and the timeline's wording                                      | Real; "one Source, one open Todo" is a partial unique index                                       |
 | The Ryan persona seed (`seedPersona` in `@crazy/db/write`): every new user starts from it; `POST /dev/seed` resets                                | Real; nothing is stamped later than the moment seeded over; Promises, Waiting on, history to come |
 | Today screen: greeting, date, Brief, Take on now, Priority stack with footer, read from D1 by `readToday`                                         | Real on seeded rows; Start and Swap are drawn only                                                |
-| The command seam (`decide` and `apply` in `@crazy/shared`), `useCommand`, the Coordinator's single write path                                     | Real, for four commands: complete, add and snooze a Todo; add a Mention as a Todo                 |
+| The command seam (`decide` and `apply` in `@crazy/shared`), `useCommand`, the Coordinator's single write path                                     | Real, for six commands: complete, add, snooze a Todo, give it a Slot or take it off; a Mention    |
 | The Brief's text, the stack's order and each Todo's reason                                                                                        | Seeded, stored where generated text will live                                                     |
-| Today screen: hour timeline, Mentions, the place to add a Todo                                                                                    | Real on seeded rows; adding is wired, dragging is drawn only (08)                                 |
-| How each hour of the timeline is worded                                                                                                           | Seeded (`timeline_hour`); derived for an hour with no wording                                     |
+| Today screen: hour timeline, Mentions, the place to add a Todo                                                                                    | Real on seeded rows; adding, dragging a Todo onto an hour and the hour picker are wired           |
+| How each hour of the timeline is worded                                                                                                           | Seeded (`timeline_hour`), while the hour still holds the Todos it was written for; else derived   |
 | A Todo's match to a Circle (`circle_match`), and an Overlap's wording (`overlap_note`)                                                            | Seeded; nothing writes either yet. An Overlap is never a row — it is a Todo matched to 2+ Circles |
 | Circles screen: the figure of the Circles with their Sides, and this week's Overlaps, read from D1 by `readCircles`                               | Real on seeded rows; how many people a Circle holds and its Overlaps' wording are seeded          |
 | Everything else in the spec                                                                                                                       | Not started                                                                                       |
@@ -78,6 +78,13 @@ frames exist:
   30 min", "1 hour" and "24 hours"; snoozed Todos sit under the stack behind "N snoozed", each with
   the day and time it returns. On a phone that list falls inside the frame's Priority stack
   rectangle, so the harness is never run over a snoozed Todo; the seed has none.
+- **Giving a Todo an hour without dragging.** Frame 1a draws only the hint "Drag a todo onto an
+  hour to slot it", which a thumb cannot follow. The same opened stack row holds an hour picker
+  labelled "Slot" — every hour of the timeline, and "No Slot" — which is the phone's way to give a
+  Todo a Slot and the keyboard's. An hour the day cannot take is offered, refused and says why in
+  a word or two ("14:00 — a meeting"); the timeline takes the drop on every hour and says the same
+  in a notice. The hour under a drag that can hold the Todo is tinted with the accent while the
+  drag lasts. No frame draws any of it.
 - **A Todo completed today** stays under the Priority stack, ticked and struck through. No frame
   draws a done Todo.
 - **A notice** when a change is refused or does not reach the Coordinator: a hairline box above the
@@ -160,6 +167,11 @@ a new user, because until Providers are pulled there is nothing else to show. In
 `curl -X POST localhost:3000/dev/seed` resets the signed-in user to the Ryan persona as of now (send
 a `crazy-now` cookie to choose the moment); a production build answers 404. A day after seeding,
 the Brief and the Slots belong to yesterday and the screen says less; reseed.
+
+Crazy's wording of an hour (`timeline_hour`) records the Todos it was written for. It is used while
+the hour still holds exactly those Todos, and otherwise the hour is worded from what it holds now —
+so a re-planned hour never reads as the plan it was, and an hour put back the way Crazy had it
+reads the way Crazy wrote it. No user command deletes generated text.
 
 ## The design source
 

@@ -225,6 +225,24 @@ button.stack__what {
   color: var(--color-neutral-700);
 }
 
+/* The hour a Todo holds, picked without dragging: a phone's way to slot a Todo,
+   and a keyboard's. Labelled where it can be seen, like the Snooze buttons
+   beside it. No frame draws it (docs/BRIEF.md, "Derived layouts"). */
+.stack__slot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.stack__why > p + .stack__slot {
+  margin-top: var(--space-2);
+}
+
+.stack__hour {
+  width: auto;
+  font-size: inherit;
+}
+
 /* A fieldset for the group's name, without the box the browser draws for one. */
 .stack__snooze {
   display: flex;
@@ -236,7 +254,7 @@ button.stack__what {
   min-inline-size: 0;
 }
 
-.stack__why > p + .stack__snooze {
+.stack__slot + .stack__snooze {
   margin-top: var(--space-2);
 }
 
@@ -448,8 +466,13 @@ button.stack__what {
   }
 
   /* A pointer, not a thumb: back to the density of the rows around them. */
-  .stack__snooze .btn {
+  .stack__snooze .btn,
+  .stack__hour {
     min-height: 0;
+  }
+
+  .stack__hour {
+    padding: var(--space-1) var(--space-2);
   }
 
   .stack__snoozed summary {

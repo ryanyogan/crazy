@@ -215,18 +215,136 @@ it('has a Todo whose snooze has ended back in the Priority stack', async () => {
   expect(takeOnNow?.todo.title).toBe(spike.title)
 })
 
-it("frees the hour a snoozed Todo held a Slot on, keeping Crazy's wording for it", async () => {
+it('reads the hour of a snoozed Todo as free, and gives it back its words when the snooze ends', async () => {
   const user = 'user_slot_snoozer'
-  await snoozeUntil(user, 'Send movers deposit', at('2025-09-17T18:00'))
+  const until = at('2025-09-17T18:00')
+  await snoozeUntil(user, 'Send movers deposit', until)
+
+  // The stack the timeline is drawn from leaves out a snoozed Todo, so 17:00
+  // holds nothing: it is dashed, and worded as the free hour it now is rather
+  // than by the plan Crazy wrote for the Todo that is asleep.
+  const asleep = await today(now, user)
+  expect(asleep.timeline.find((hour) => hour.hour === 17)).toMatchObject({
+    kind: 'free',
+    title: 'Free',
+    source: null,
+  })
+
+  // Nothing was thrown away: the Todo returns to the hour Crazy planned for it.
+  const awake = await today(new Date(until.getTime() + 60_000), user)
+  expect(awake.timeline.find((hour) => hour.hour === 17)).toMatchObject({
+    kind: 'slotted',
+    title: 'Send movers deposit · follow-ups',
+  })
+})
+
+/** The day, as the user's wall clock names it: what a Slot falls on. */
+const day = '2025-09-17'
+
+/** Gives a Todo the hours named, as the Coordinator does when a Slot is set. */
+async function slotAt(user: string, todoId: string, hours: number[]) {
+  await persistOps(createDb(env.DB), user, [
+    { type: 'slot.set', todoId, day, hours, at: now.toISOString() },
+    { type: 'todo.set', id: todoId, set: { touchedAt: now.toISOString() } },
+  ])
+}
+
+it('moves a Todo to another hour, and words both hours from what they now hold', async () => {
+  const user = 'user_planner'
+  await seedPersona(createDb(env.DB), { persona: 'ryan', userId: user, now, timeZone })
+  const deposit = (await today(now, user)).stack.find(
+    (each) => each.title === 'Send movers deposit',
+  )!
+  expect(deposit.slotHours).toEqual([17])
+
+  // The deposit dragged from 17:00 to 08:00.
+  await slotAt(user, deposit.id, [8])
+
+  const { stack, timeline } = await today(now, user)
+  expect(stack.find((each) => each.id === deposit.id)?.slotHours).toEqual([8])
+  // Crazy worded 08:00 for an hour with nothing on it and 17:00 for the deposit;
+  // neither describes its hour now, so both hours are worded by what they hold.
+  expect(timeline.find((hour) => hour.hour === 8)).toMatchObject({
+    kind: 'slotted',
+    title: 'Send movers deposit',
+  })
+  expect(timeline.find((hour) => hour.hour === 17)).toMatchObject({ kind: 'free', title: 'Free' })
+  // Another user's day is untouched: their 17:00 still says what Crazy wrote.
+  expect((await today()).timeline.find((hour) => hour.hour === 17)?.title).toBe(
+    'Send movers deposit · follow-ups',
+  )
+})
+
+it("puts Crazy's words back when a Todo is moved away and then back again", async () => {
+  const user = 'user_returner'
+  await seedPersona(createDb(env.DB), { persona: 'ryan', userId: user, now, timeZone })
+  const deposit = (await today(now, user)).stack.find(
+    (each) => each.title === 'Send movers deposit',
+  )!
+
+  await slotAt(user, deposit.id, [8])
+  await slotAt(user, deposit.id, [17])
 
   const { timeline } = await today(now, user)
+  expect(timeline.find((hour) => hour.hour === 17)).toMatchObject({
+    kind: 'slotted',
+    title: 'Send movers deposit · follow-ups',
+    source: 'gmail_message',
+  })
+  expect(timeline.find((hour) => hour.hour === 8)?.title).toBe('Brief · inbox skim')
+})
 
-  // The stack the timeline is drawn from leaves out snoozed Todos, so 17:00
-  // holds nothing and is dashed. The hour keeps the words Crazy wrote for it
-  // this morning, which still name the Todo that is asleep.
+it('moves a two-hour Todo with both of its hours', async () => {
+  const user = 'user_two_hours'
+  await seedPersona(createDb(env.DB), { persona: 'ryan', userId: user, now, timeZone })
+  const spike = (await today(now, user)).stack[0]!
+  expect(spike.slotHours).toEqual([9, 10])
+
+  await slotAt(user, spike.id, [11, 12])
+
+  const { stack, timeline } = await today(now, user)
+  expect(stack[0]?.slotHours).toEqual([11, 12])
+  expect(timeline.find((hour) => hour.hour === 11)?.title).toContain(spike.title)
+  expect(timeline.find((hour) => hour.hour === 12)?.title).toContain(`↳ ${spike.title}`)
+  // The focus block it left is named again, now that nothing is in it.
+  expect(timeline.find((hour) => hour.hour === 9)).toMatchObject({ kind: 'focus', title: 'Focus' })
+})
+
+it('takes a Todo off the day, leaving it in the stack with no hour of its own', async () => {
+  const user = 'user_unplanner'
+  await seedPersona(createDb(env.DB), { persona: 'ryan', userId: user, now, timeZone })
+  const spike = (await today(now, user)).stack[0]!
+
+  await slotAt(user, spike.id, [])
+
+  const { stack, timeline, takeOnNow } = await today(now, user)
+  expect(stack[0]).toMatchObject({ id: spike.id, slotHours: [] })
+  // It is still the one to take on now; it just no longer fits any hour.
+  expect(takeOnNow).toMatchObject({ todo: { id: spike.id }, hours: null })
+  expect(timeline.find((hour) => hour.hour === 9)).toMatchObject({ kind: 'focus', title: 'Focus' })
+})
+
+it('leaves the Slots of a Todo completed today where they were, and frees its hour', async () => {
+  const user = 'user_slot_finisher'
+  const db = createDb(env.DB)
+  await seedPersona(db, { persona: 'ryan', userId: user, now, timeZone })
+  const deposit = (await today(now, user)).stack.find(
+    (each) => each.title === 'Send movers deposit',
+  )!
+
+  await persistOps(db, user, [
+    { type: 'todo.set', id: deposit.id, set: { state: 'done', doneAt: now.toISOString() } },
+  ])
+
+  const { done, timeline } = await today(now, user)
+  // The Slot stays: the day still knows where the work was planned. The timeline
+  // is drawn from the stack, so 17:00 reads as the free hour it now is — the
+  // same as when the Todo is snoozed or taken off it by hand.
+  expect(done.map((each) => [each.title, each.slotHours])).toEqual([[deposit.title, [17]]])
   expect(timeline.find((hour) => hour.hour === 17)).toMatchObject({
     kind: 'free',
-    title: 'Send movers deposit · follow-ups',
+    title: 'Free',
+    source: null,
   })
 })
 

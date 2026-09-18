@@ -589,6 +589,13 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
     title: hour.title,
     note: hour.note,
     sourceKind: hour.source,
+    // Crazy worded the day it had planned, so each hour's words were written
+    // for the Todos it holds. Re-plan the hour and the words step aside.
+    writtenFor: JSON.stringify(
+      STACK.filter((todo) => todo.slots.includes(hour.hour))
+        .map((todo) => id('todo', todo.key))
+        .sort(),
+    ),
     // Worded when the status was last refreshed, on the hour.
     createdAt: past(0, '08:00'),
   }))

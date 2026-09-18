@@ -222,6 +222,12 @@ model TimelineHour {
   title      String
   note       String?
   sourceKind String? // SOURCE_KINDS: the chip the hour wears
+  /// The Todos that held a Slot on this hour when these words were written, as
+  /// a sorted JSON array of Todo ids; "[]" for an hour worded with none on it.
+  /// The words hold only while the hour still holds exactly those Todos: once
+  /// the user re-plans it, the hour is worded from what it holds now. Nothing
+  /// deletes the row, so taking the Todo off again brings Crazy's words back.
+  writtenFor String   @default("[]")
   createdAt  DateTime
 
   @@unique([userId, day, hour])

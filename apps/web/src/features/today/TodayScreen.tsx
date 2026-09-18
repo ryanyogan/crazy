@@ -1,5 +1,6 @@
-import { dayLine, firstName, greeting, viewToday, wallClock } from '@crazy/shared'
+import { type TodayTodo, dayLine, firstName, greeting, viewToday, wallClock } from '@crazy/shared'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useState } from 'react'
 import { shellQuery, todayQuery } from '#/lib/queries'
 import { AddTodo } from './AddTodo'
 import { DayTimeline } from './DayTimeline'
@@ -21,6 +22,8 @@ export function TodayScreen() {
   const { hour } = wallClock(now, today.timeZone)
   const view = viewToday(today, now, today.timeZone)
   useSnoozeExpiry(view.snoozed[0]?.snoozedUntil ?? null, today.now)
+  // Which Todo the pointer has picked up: the stack says, the timeline asks.
+  const [dragging, setDragging] = useState<TodayTodo | null>(null)
 
   return (
     <div className="screen today">
@@ -41,7 +44,14 @@ export function TodayScreen() {
       </header>
 
       <div className="today__body">
-        <DayTimeline timeline={view.timeline} todos={view.stack.length} meetings={view.meetings} />
+        <DayTimeline
+          timeline={view.timeline}
+          todos={view.stack.length}
+          meetings={view.meetings}
+          events={today.events}
+          dragging={dragging}
+          now={now}
+        />
         <aside className="today__side">
           <PriorityStack
             stack={view.stack}
@@ -50,6 +60,10 @@ export function TodayScreen() {
             sentBack={today.sentBack}
             snoozed={view.snoozed}
             timeZone={today.timeZone}
+            hours={view.timeline.map((hour) => hour.hour)}
+            events={today.events}
+            now={now}
+            onDrag={setDragging}
           />
           <Mentions
             mentions={today.signals.filter((signal) => signal.kind === 'mention')}

@@ -82,7 +82,9 @@ export class Coordinator extends CoordinatorHost<Env> {
     const parsed = command.parse(input)
     return this.inTurn(async () => {
       const db = createDb(this.env.DB)
-      const decision = decide(await loadCommandState(db, this.name, parsed), parsed, this.clock())
+      // One moment for the whole command: what is loaded and what is decided are of it.
+      const now = this.clock()
+      const decision = decide(await loadCommandState(db, this.name, parsed, now), parsed, now)
       if (!decision.ok) return decision
       await persistOps(db, this.name, decision.ops)
       const patch = this.patches.append(decision.ops)

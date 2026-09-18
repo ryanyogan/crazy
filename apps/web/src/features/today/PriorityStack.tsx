@@ -1,11 +1,14 @@
 import {
   SNOOZE_CHOICES,
   SOURCE_KINDS,
+  type DayEvent,
   type SnoozedTodo,
   type TodayTodo,
   carriedLabel,
   dayAndTime,
   formatEstimate,
+  hourChoice,
+  slotRefusal,
 } from '@crazy/shared'
 import { Blueprint, Button, NotWired, SourceChip, Tag } from '@crazy/ui'
 import { useId, useState } from 'react'
@@ -13,15 +16,30 @@ import { useCommand } from '#/lib/useCommand'
 
 const join = (parts: (string | null)[]) => parts.filter(Boolean).join(' · ')
 
+interface StackRowProps {
+  todo: TodayTodo
+  /** The hours the timeline draws, which are the hours a Slot can be picked from. */
+  hours: number[]
+  events: DayEvent[]
+  now: Date
+  /** Says which Todo the pointer has picked up, so the timeline knows what is coming. */
+  onDrag: (todo: TodayTodo | null) => void
+}
+
 /**
  * One Todo in the stack. The frame draws the Todo, its Project and estimate
- * and its chip; how long it has been carried and why it sits where it does
- * open underneath when the Todo is pressed.
+ * and its chip; how long it has been carried, why it sits where it does, the
+ * snoozes and its Slot open underneath when the Todo is pressed.
+ *
+ * The row is what a pointer drags onto an hour of the timeline. Everything the
+ * drag can do the hour picker does too, so a thumb and a keyboard plan the day
+ * as well as a mouse.
  */
-function StackRow({ todo }: { todo: TodayTodo }) {
+function StackRow({ todo, hours, events, now, onDrag }: StackRowProps) {
   const [open, setOpen] = useState(false)
   const command = useCommand()
   const whyId = useId()
+  const dragId = useId()
   const why = join([carriedLabel(todo.carryCount), todo.reason])
 
   const what = (
@@ -43,19 +61,61 @@ function StackRow({ todo }: { todo: TodayTodo }) {
           checked={false}
           onChange={() => command.mutate({ type: 'todo.complete', todoId: todo.id })}
         />
+        {/* The Todo's own words are what a pointer picks up and drops on an hour.
+            Dragging says nothing to assistive technology, so the row says it. */}
         <button
           type="button"
           className="stack__what"
           aria-expanded={open}
           aria-controls={whyId}
+          aria-describedby={dragId}
           onClick={() => setOpen(!open)}
+          draggable
+          onDragStart={(event) => {
+            event.dataTransfer.effectAllowed = 'move'
+            event.dataTransfer.setData('text/plain', todo.title)
+            onDrag(todo)
+          }}
+          onDragEnd={() => onDrag(null)}
         >
           {what}
         </button>
+        <span id={dragId} hidden>
+          Open this Todo to give it an hour of the day, or drag it onto one.
+        </span>
         <SourceChip source={todo.source && SOURCE_KINDS[todo.source.kind]} />
       </div>
       <div id={whyId} className="stack__why" hidden={!open}>
         {why && <p>{why}</p>}
+        <label className="stack__slot">
+          Slot
+          {/* Never disabled while the command is in flight: it is the control a
+              keyboard is on, and disabling it would throw the focus away. */}
+          <select
+            className="input stack__hour"
+            value={todo.slotHours[0] ?? ''}
+            onChange={(event) =>
+              command.mutate(
+                event.target.value === ''
+                  ? { type: 'todo.clearSlot', todoId: todo.id }
+                  : { type: 'todo.slot', todoId: todo.id, hour: Number(event.target.value) },
+              )
+            }
+          >
+            <option value="">No Slot</option>
+            {hours.map((hour) => (
+              // An hour the day cannot take is offered and refused, and says in
+              // a word or two why, so the picker reads as the timeline behaves.
+              <option
+                key={hour}
+                value={hour}
+                disabled={slotRefusal(todo, hour, events, now) !== null}
+              >
+                {hourChoice(todo, hour, events, now)}
+              </option>
+            ))}
+          </select>
+        </label>
         <fieldset className="stack__snooze">
           <legend className="sr-only">Snooze: {todo.title}</legend>
           {SNOOZE_CHOICES.map(({ minutes, label }) => (
@@ -106,6 +166,10 @@ interface PriorityStackProps {
   timeZone: string
   carriedOver: number
   sentBack: number
+  hours: number[]
+  events: DayEvent[]
+  now: Date
+  onDrag: (todo: TodayTodo | null) => void
 }
 
 /** The `today` Todos in the order Crazy recommends, and what the last Rollover did. */
@@ -116,6 +180,10 @@ export function PriorityStack({
   timeZone,
   carriedOver,
   sentBack,
+  hours,
+  events,
+  now,
+  onDrag,
 }: PriorityStackProps) {
   return (
     <Blueprint as="section" className="card stack" aria-labelledby="stack-title">
@@ -127,7 +195,14 @@ export function PriorityStack({
       ) : (
         <ol className="stack__todos">
           {stack.map((todo) => (
-            <StackRow key={todo.id} todo={todo} />
+            <StackRow
+              key={todo.id}
+              todo={todo}
+              hours={hours}
+              events={events}
+              now={now}
+              onDrag={onDrag}
+            />
           ))}
         </ol>
       )}

@@ -1,11 +1,13 @@
 import { z } from 'zod'
-import type { Signal } from './today'
+import { type DayEvent, LAST_HOUR, hoursIfSlottedAt, meetingHolds } from './timeline'
+import { type Signal, formatHour } from './today'
 import {
   OPEN_TODO_STATES,
   type SignalKind,
   type Source,
   type TodayTodo,
   type TodoState,
+  isSnoozed,
   sameSource,
   source,
   todoState,
@@ -18,6 +20,10 @@ import {
 // which is what keeps the optimistic screen truthful. Neither reads the clock.
 
 const id = z.string().min(1)
+/** An hour of the day on the user's wall clock, which is what a Slot is one of. */
+const hour = z.number().int().min(0).max(LAST_HOUR)
+/** A user's local date: "2025-09-17", never a moment. */
+const day = z.string().min(1)
 
 /** How long a Todo can be snoozed for: at least a minute, at most a week. */
 export const SNOOZE_MINUTES = { min: 1, max: 7 * 24 * 60 } as const
@@ -39,6 +45,10 @@ export const command = z.discriminatedUnion('type', [
     minutes: z.number().int().min(SNOOZE_MINUTES.min).max(SNOOZE_MINUTES.max),
   }),
   z.object({ type: z.literal('signal.add'), signalId: id, todoId: id }),
+  // Slotting, and moving a Slot, are the same command: the Todo ends up holding
+  // the hour named and no other, on the day the user is looking at.
+  z.object({ type: z.literal('todo.slot'), todoId: id, hour }),
+  z.object({ type: z.literal('todo.clearSlot'), todoId: id }),
 ])
 export type Command = z.infer<typeof command>
 
@@ -71,6 +81,15 @@ export const op = z.discriminatedUnion('type', [
   z.object({ type: z.literal('todo.set'), id, set: todoChange }),
   z.object({ type: z.literal('todo.insert'), todo: newTodo }),
   z.object({ type: z.literal('signal.set'), id, set: signalChange }),
+  // Every Slot the Todo holds on that day, as a whole: laid twice it says the same.
+  z.object({
+    type: z.literal('slot.set'),
+    todoId: id,
+    day,
+    hours: z.array(hour),
+    /** When the Slots were given, which is what a new one is created at. */
+    at: z.iso.datetime(),
+  }),
 ])
 export type Op = z.infer<typeof op>
 
@@ -83,6 +102,10 @@ export interface TodoFacts {
   id: string
   state: TodoState
   source: Source | null
+  /** While this moment is still to come the Todo has left the day; null when not snoozed. */
+  snoozedUntil: string | null
+  /** The hours it holds a Slot on, on the day the state is of (`needsTheDay`). */
+  slotHours: readonly number[]
 }
 
 /** What `decide` needs to know of a Signal. */
@@ -90,8 +113,12 @@ export type SignalFacts = Pick<Signal, 'id' | 'kind' | 'who' | 'text' | 'source'
 
 /** The state a command is decided against: the rows it names, wherever they were loaded from. */
 export interface CommandState {
+  /** Which day it is on the user's wall clock: the day a Slot falls on. */
+  day: string
   todos: readonly TodoFacts[]
   signals: readonly SignalFacts[]
+  /** The day's calendar, so that a command cannot displace a meeting; empty unless `needsTheDay`. */
+  events: readonly DayEvent[]
 }
 
 export type Decision = { ok: true; ops: Op[] } | { ok: false; reason: string }
@@ -107,6 +134,8 @@ export function todosNamed(input: Command): string[] {
   switch (input.type) {
     case 'todo.complete':
     case 'todo.snooze':
+    case 'todo.slot':
+    case 'todo.clearSlot':
       return [input.todoId]
     case 'todo.add':
       return [input.id]
@@ -123,6 +152,111 @@ export function signalsNamed(input: Command): string[] {
     default:
       return []
   }
+}
+
+/**
+ * Whether a command plans the day's hours, and so is decided against the day
+ * itself: the day's calendar and the Slots the Todos it names already hold.
+ * The others are decided against the rows they name alone.
+ */
+export function needsTheDay(input: Command): boolean {
+  return input.type === 'todo.slot' || input.type === 'todo.clearSlot'
+}
+
+/** What stands between a Todo and an hour, once there is something. */
+type SlotBlock =
+  | { why: 'state' }
+  | { why: 'snoozed' }
+  | { why: 'day-end' }
+  | { why: 'meeting'; hour: number }
+
+/** What the Todo is asking of the day, and what the day says back. */
+type Slottable = Pick<TodoFacts, 'state' | 'snoozedUntil' | 'slotHours'>
+
+function slotBlock(
+  todo: Slottable,
+  hour: number,
+  events: readonly DayEvent[],
+  now: Date,
+): SlotBlock | null {
+  if (todo.state !== 'today') return { why: 'state' }
+  if (isSnoozed(todo, now)) return { why: 'snoozed' }
+  const hours = hoursIfSlottedAt(todo, hour)
+  if (hours.some((each) => each > LAST_HOUR)) return { why: 'day-end' }
+  const taken = hours.find((each) => meetingHolds(events, each))
+  return taken === undefined ? null : { why: 'meeting', hour: taken }
+}
+
+/**
+ * Why the day cannot take a Todo at that hour, in a sentence, or null when it
+ * can. The rule lives here and not in a component: `decide` refuses in these
+ * words, and the screen says them to the user when a drop lands on an hour
+ * that cannot take it.
+ */
+export function slotRefusal(
+  todo: Slottable,
+  hour: number,
+  events: readonly DayEvent[],
+  now: Date,
+): string | null {
+  const blocked = slotBlock(todo, hour, events, now)
+  if (!blocked) return null
+  switch (blocked.why) {
+    case 'state':
+      return 'Only a Todo in the Priority stack can be given a Slot.'
+    case 'snoozed':
+      return 'A snoozed Todo is out of the day until its snooze ends.'
+    case 'day-end':
+      return 'The day ends before that Todo would.'
+    case 'meeting':
+      return `${formatHour(blocked.hour)} is a meeting, and Crazy never moves a meeting.`
+  }
+}
+
+/**
+ * How one hour reads in a list of hours to choose from: the hour, and in a word
+ * or two why it cannot take this Todo. The same rule as `slotRefusal`, said in
+ * the room a picker has.
+ */
+export function hourChoice(
+  todo: Slottable,
+  hour: number,
+  events: readonly DayEvent[],
+  now: Date,
+): string {
+  const blocked = slotBlock(todo, hour, events, now)
+  if (!blocked) return formatHour(hour)
+  const brief =
+    blocked.why === 'meeting'
+      ? blocked.hour === hour
+        ? 'a meeting'
+        : `a meeting at ${formatHour(blocked.hour)}`
+      : blocked.why === 'day-end'
+        ? 'past the end of the day'
+        : blocked.why === 'snoozed'
+          ? 'snoozed'
+          : 'not in the stack'
+  return `${formatHour(hour)} — ${brief}`
+}
+
+/** The same hours, in the same order. */
+const sameHours = (a: readonly number[], b: readonly number[]) =>
+  a.length === b.length && a.every((each, index) => each === b[index])
+
+/**
+ * The operations that leave a Todo holding exactly `hours` on the day, and none
+ * at all when it holds them already, so that slotting where it sits changes
+ * nothing. Planning an hour is a touch (CONTEXT.md, "Touched"). Crazy's wording
+ * for the hours is left alone: it simply stops describing an hour it was not
+ * written for, and describes it again if the user puts it back (`timeline`).
+ */
+function slotOps(todo: TodoFacts, day: string, hours: number[], at: string): Op[] {
+  const held = [...todo.slotHours].sort((a, b) => a - b)
+  if (sameHours(held, hours)) return []
+  return [
+    { type: 'slot.set', todoId: todo.id, day, hours, at },
+    { type: 'todo.set', id: todo.id, set: { touchedAt: at } },
+  ]
 }
 
 /**
@@ -229,6 +363,24 @@ export function decide(state: CommandState, input: Command, now: Date): Decision
         ],
       }
     }
+
+    case 'todo.slot': {
+      const todo = state.todos.find((each) => each.id === input.todoId)
+      if (!todo) return refuse('That Todo no longer exists.')
+      const refusal = slotRefusal(todo, input.hour, state.events, now)
+      if (refusal) return refuse(refusal)
+      return { ok: true, ops: slotOps(todo, state.day, hoursIfSlottedAt(todo, input.hour), at) }
+    }
+
+    case 'todo.clearSlot': {
+      const todo = state.todos.find((each) => each.id === input.todoId)
+      if (!todo) return refuse('That Todo no longer exists.')
+      // A Todo that has left the day has nothing to take off it, and must not be
+      // touched by the asking: a touch would change what the Rollover does with
+      // it. A snoozed Todo is still in `today`, and can be taken off its hour.
+      if (todo.state !== 'today') return { ok: true, ops: [] }
+      return { ok: true, ops: slotOps(todo, state.day, [], at) }
+    }
   }
 }
 
@@ -252,6 +404,8 @@ function born(todo: NewTodo): TodayTodo {
 export interface Applicable {
   todos: readonly TodayTodo[]
   signals?: readonly { id: string; todoId: string | null }[]
+  /** The day these rows are of; a state that does not say which cannot hold Slots. */
+  day?: string
 }
 
 /**
@@ -280,6 +434,19 @@ export function apply<S extends Applicable>(state: S, ops: readonly Op[]): S {
         signals = signals?.map((signal) =>
           signal.id === each.id ? { ...signal, ...each.set } : signal,
         )
+        break
+      // Slots belong to one day, so a state of another day (or one that does
+      // not say which) is left alone.
+      case 'slot.set': {
+        if (state.day !== each.day) break
+        const held = todos.find((todo) => todo.id === each.todoId)
+        // A Todo the state does not hold, or one already on those hours, leaves
+        // the cache as it is: an applied patch must not churn what nothing read.
+        if (!held || sameHours(held.slotHours, each.hours)) break
+        todos = todos.map((todo) =>
+          todo.id === each.todoId ? { ...todo, slotHours: [...each.hours] } : todo,
+        )
+      }
     }
   }
   if (todos === state.todos && signals === state.signals) return state
@@ -287,7 +454,22 @@ export function apply<S extends Applicable>(state: S, ops: readonly Op[]): S {
   return { ...state, todos, ...(signals === state.signals ? {} : { signals }) } as S
 }
 
-/** The row an operation touches. Todo ids and Signal ids are separate namespaces. */
+/**
+ * Whether operations name a day other than the one a cached state is of. A Slot
+ * written on another day is how a tab learns that the user's day has turned
+ * over while it was open: `apply` rightly leaves such an operation alone, and
+ * what the tab is showing is yesterday, so it reads everything again.
+ */
+export function namesAnotherDay(state: Pick<Applicable, 'day'>, ops: readonly Op[]): boolean {
+  const { day } = state
+  if (day === undefined) return false
+  return ops.some((each) => each.type === 'slot.set' && each.day !== day)
+}
+
+/**
+ * The row an operation touches. Todo ids and Signal ids are separate
+ * namespaces, and a Todo's Slots on one day are a row of their own.
+ */
 function rowTouched(each: Op): string {
   switch (each.type) {
     case 'todo.insert':
@@ -296,6 +478,8 @@ function rowTouched(each: Op): string {
       return `todo:${each.id}`
     case 'signal.set':
       return `signal:${each.id}`
+    case 'slot.set':
+      return `slot:${each.todoId}:${each.day}`
   }
 }
 

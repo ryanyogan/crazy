@@ -3,12 +3,13 @@ import {
   LIVE_PATH,
   hear,
   markApplied,
+  namesAnotherDay,
   reconnectDelay,
   serverMessage,
 } from '@crazy/shared'
 import { type QueryClient, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useSyncExternalStore } from 'react'
-import { applyToCache } from './queries'
+import { applyToCache, todayQuery } from './queries'
 
 // The browser's socket to its user's Coordinator. What another device commits
 // arrives here as a patch and is laid over the query cache, so a screen stays
@@ -137,7 +138,13 @@ class Live {
 
     const { applied, ...heard } = hear(this.known ?? NOWHERE, message)
     this.known = applied
-    if (heard.then === 'apply') applyToCache(this.queryClient, heard.ops)
+    if (heard.then === 'apply') {
+      const showing = this.queryClient.getQueryData(todayQuery.queryKey)
+      applyToCache(this.queryClient, heard.ops)
+      // A Slot written on a day this tab is not showing: the user's day turned
+      // over while it sat open, so what it holds is yesterday's and is read again.
+      if (showing && namesAnotherDay(showing, heard.ops)) this.refetch()
+    }
     if (heard.then === 'refetch') this.refetch()
     if (message.type === 'hello') {
       // Caught up. Only now does the next failure start its waits from the shortest again.

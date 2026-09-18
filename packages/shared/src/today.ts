@@ -137,6 +137,11 @@ export function viewToday(today: Today, now: Date, timeZone: string): TodayView 
 
 const two = (value: number) => String(value).padStart(2, '0')
 
+/** "14:00": one hour of the day, as an hour of the timeline is named. */
+export function formatHour(hour: number): string {
+  return `${two(hour)}:00`
+}
+
 /** "09:00–11:00", or "09–11" where there is a phone's width. */
 export function formatHours({ from, until }: Hours, length: 'long' | 'short'): string {
   return length === 'long' ? `${two(from)}:00–${two(until)}:00` : `${two(from)}–${two(until)}`

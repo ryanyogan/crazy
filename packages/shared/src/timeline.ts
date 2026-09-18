@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import type { Hours } from './today'
 import {
   type CalendarEventKind,
@@ -33,7 +34,17 @@ export interface HourWording {
   title: string
   note: string | null
   source: SourceKind | null
+  /**
+   * The Todos that held a Slot on the hour when the words were written. They
+   * describe that hour and no other plan of it, so the moment the user slots
+   * something else there the words are set aside — and taken up again if the
+   * hour comes back to what it was. Empty for an hour worded with no Todo on it.
+   */
+  writtenFor: readonly string[]
 }
+
+/** The Todo ids a wording was written for, as D1 holds them: SQLite has no lists. */
+export const writtenFor = z.array(z.string())
 
 export type HourKind = 'meeting' | 'focus' | 'slotted' | 'free'
 
@@ -48,25 +59,71 @@ export interface TimelineHour {
 /** The hours the timeline always shows; it widens to hold anything outside them. */
 export const DAY_HOURS: Hours = { from: 8, until: 18 }
 
-const two = (value: number) => String(value).padStart(2, '0')
-const join = (parts: (string | null)[], by: string) => parts.filter(Boolean).join(by) || null
+/** The last hour any day has: a Slot cannot run past it. */
+export const LAST_HOUR = 23
 
 /** Whether the event takes up any part of the hour. */
 const during = (event: DayEvent, hour: number) =>
   event.from < (hour + 1) * 60 && event.until > hour * 60
 
+/**
+ * Whether meetings leave no minute of that hour free. Crazy never changes a
+ * Provider's calendar, so an hour meetings fill is the one hour of the day a
+ * Todo cannot be given a Slot on. One meeting need not do it on its own: two
+ * back to back fill the hour between them, while an hour a meeting only half
+ * fills can hold a Todo as well, as the 16:00 hour of frame 1a does.
+ */
+export function meetingHolds(events: readonly DayEvent[], hour: number): boolean {
+  const from = hour * 60
+  const until = from + 60
+  const here = events
+    .filter((event) => event.kind === 'meeting' && during(event, hour))
+    .sort((a, b) => a.from - b.from)
+
+  // Walk the hour: a meeting that starts after the minute reached leaves a gap,
+  // and a gap anywhere is room the user can still plan into.
+  let reached = from
+  for (const meeting of here) {
+    if (meeting.from > reached) return false
+    reached = Math.max(reached, meeting.until)
+    if (reached >= until) return true
+  }
+  return false
+}
+
+/**
+ * The hours a Todo would hold if it were given a Slot at `hour`: as many as it
+ * holds now, so moving a two-hour Todo keeps it two hours long, and one that
+ * holds no Slot yet takes a single hour.
+ */
+export function hoursIfSlottedAt(todo: { slotHours: readonly number[] }, hour: number): number[] {
+  const span = Math.max(1, todo.slotHours.length)
+  return Array.from({ length: span }, (_, index) => hour + index)
+}
+
+const two = (value: number) => String(value).padStart(2, '0')
+const join = (parts: (string | null)[], by: string) => parts.filter(Boolean).join(by) || null
+
 type SlottedTodo = Pick<
   TodayTodo,
-  'title' | 'slotHours' | 'estimateMinutes' | 'energy' | 'carryCount' | 'source'
+  'id' | 'title' | 'slotHours' | 'estimateMinutes' | 'energy' | 'carryCount' | 'source'
 >
 
-function wordHour(hour: number, todos: SlottedTodo[], meetings: DayEvent[]): HourWording {
+function wordHour(
+  hour: number,
+  todos: SlottedTodo[],
+  meetings: DayEvent[],
+  focus: DayEvent[],
+): HourWording {
+  // A focus block is where work goes, so it is named only when nothing is in it.
+  const empty = todos.length === 0 && meetings.length === 0
   const title = join(
     [
       ...todos.map((todo) => (todo.slotHours.includes(hour - 1) ? `↳ ${todo.title}` : todo.title)),
       ...meetings.map(({ title, from }) =>
         from % 60 === 0 ? title : `${title} ${two(Math.floor(from / 60))}:${two(from % 60)}`,
       ),
+      ...(empty ? focus.map((block) => block.title) : []),
     ],
     ' · ',
   )
@@ -76,6 +133,7 @@ function wordHour(hour: number, todos: SlottedTodo[], meetings: DayEvent[]): Hou
   const lengths = [
     ...todos.map((each) => formatEstimate(each.estimateMinutes)),
     ...meetings.map((each) => formatEstimate(each.until - each.from)),
+    ...(empty ? focus.map((each) => formatEstimate(each.until - each.from)) : []),
   ]
   let note: string | null
   if (meeting && !todo) {
@@ -100,14 +158,27 @@ function wordHour(hour: number, todos: SlottedTodo[], meetings: DayEvent[]): Hou
     hour,
     title: title ?? 'Free',
     note,
-    source: todo?.source?.kind ?? (meeting ? 'calendar_event' : null),
+    source:
+      todo?.source?.kind ?? (meeting || (empty && focus.length > 0) ? 'calendar_event' : null),
+    writtenFor: todos.map((each) => each.id),
   }
+}
+
+/** Whether an hour still holds exactly the Todos a wording was written for. */
+function stillDescribes(wording: HourWording, todos: readonly SlottedTodo[]): boolean {
+  return (
+    wording.writtenFor.length === todos.length &&
+    todos.every((todo) => wording.writtenFor.includes(todo.id))
+  )
 }
 
 /**
  * The day, hour by hour. How an hour is drawn always follows from what it
  * holds: a meeting wins over a focus block, which wins over Slots alone. How it
- * is worded is Crazy's wording when there is one, and otherwise derived.
+ * is worded is Crazy's wording while that still describes the hour — while the
+ * hour holds the Todos the words were written for — and otherwise derived from
+ * what the hour holds now. Nothing is thrown away: an hour put back the way
+ * Crazy planned it reads the way Crazy wrote it.
  */
 export function timeline(
   stack: readonly SlottedTodo[],
@@ -127,6 +198,7 @@ export function timeline(
     const meetings = here
       .filter((event) => event.kind === 'meeting')
       .sort((a, b) => a.from - b.from)
+    const focus = here.filter((event) => event.kind === 'focus').sort((a, b) => a.from - b.from)
     const todos = stack.filter((todo) => todo.slotHours.includes(hour))
     const kind: HourKind =
       meetings.length > 0
@@ -136,8 +208,10 @@ export function timeline(
           : todos.length > 0
             ? 'slotted'
             : 'free'
-    const words = wording.find((each) => each.hour === hour) ?? wordHour(hour, todos, meetings)
-    hours.push({ ...words, kind })
+    const written = wording.find((each) => each.hour === hour)
+    const words =
+      written && stillDescribes(written, todos) ? written : wordHour(hour, todos, meetings, focus)
+    hours.push({ hour, kind, title: words.title, note: words.note, source: words.source })
   }
   return hours
 }

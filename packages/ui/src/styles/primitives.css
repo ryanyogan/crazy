@@ -56,6 +56,13 @@
   --tl-fill: transparent;
 }
 
+/* The hour a Todo is being dragged over, whatever else holds it. The cell wears
+   it on a phone and the row's box from 900px, as every other kind does. */
+.tl-row--over {
+  --tl-border: 1px solid var(--color-accent);
+  --tl-fill: var(--color-accent-100);
+}
+
 .tl-row__label {
   font-family: var(--font-heading);
   font-size: 12px;

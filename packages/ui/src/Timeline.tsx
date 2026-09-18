@@ -18,7 +18,7 @@ export function Timeline({ className, ...rest }: ComponentPropsWithoutRef<'ol'>)
   return <ol className={className ? `tl ${className}` : 'tl'} {...rest} />
 }
 
-interface TimelineRowProps {
+type TimelineRowProps = {
   /** The hour, as the row's label: "09". */
   label: string
   kind: TimelineRowKind
@@ -26,11 +26,25 @@ interface TimelineRowProps {
   note?: string | null
   /** What follows the note: a source chip. */
   children?: ReactNode
-}
+  /**
+   * Anything else a screen hangs on the row, such as a drop target for a Todo
+   * dragged onto the hour. From 900px the row is `display: contents` and draws
+   * no box of its own, so what it is given is reached by what bubbles up from
+   * its parts rather than by the pointer landing on the row itself.
+   */
+} & Omit<ComponentPropsWithoutRef<'li'>, 'children' | 'title'>
 
-export function TimelineRow({ label, kind, title, note, children }: TimelineRowProps) {
+export function TimelineRow({
+  label,
+  kind,
+  title,
+  note,
+  children,
+  className,
+  ...rest
+}: TimelineRowProps) {
   return (
-    <li className={`tl-row tl-row--${kind}`}>
+    <li className={[`tl-row tl-row--${kind}`, className].filter(Boolean).join(' ')} {...rest}>
       <div className="tl-row__label">{label}</div>
       <div className="tl-row__body">
         <div className="tl-row__box">

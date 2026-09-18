@@ -1,11 +1,19 @@
 import { expect, it } from 'vite-plus/test'
-import { type DayEvent, type HourWording, formatAge, meetingCount, timeline } from './timeline'
+import {
+  type DayEvent,
+  type HourWording,
+  formatAge,
+  meetingCount,
+  meetingHolds,
+  timeline,
+} from './timeline'
 import type { TodayTodo } from './todo'
 
 type Slotted = Parameters<typeof timeline>[0][number]
 
 function todo(title: string, slotHours: number[], fields: Partial<TodayTodo> = {}): Slotted {
   return {
+    id: title,
     title,
     slotHours,
     estimateMinutes: null,
@@ -128,10 +136,17 @@ it('words a meeting by its length and who it is with, and says when it starts of
   })
 })
 
+/** Crazy's words for an hour, written for the Todos it held at the time. */
+const worded = (hour: number, title: string, writtenFor: string[]): HourWording => ({
+  hour,
+  title,
+  note: 'deep focus',
+  source: 'linear_issue',
+  writtenFor,
+})
+
 it("uses Crazy's own wording of an hour where it has written one, without changing how it is drawn", () => {
-  const wording: HourWording[] = [
-    { hour: 10, title: '↳ spike continues', note: 'deep focus', source: 'linear_issue' },
-  ]
+  const wording = [worded(10, '↳ spike continues', ['Spike'])]
   const hours = timeline([todo('Spike', [9, 10])], [event('focus', 'Focus', '09:00', 120)], wording)
   expect(at(hours, 10)).toEqual({
     hour: 10,
@@ -141,6 +156,72 @@ it("uses Crazy's own wording of an hour where it has written one, without changi
     source: 'linear_issue',
   })
   expect(at(hours, 9).title).toBe('Spike')
+})
+
+it('words an hour itself once it no longer holds what Crazy planned for it', () => {
+  const wording = [worded(15, 'Draft Q4 priorities · section 2', ['Q4'])]
+
+  // The hour Crazy planned, and then the same hour with another Todo on it.
+  expect(at(timeline([todo('Q4', [15])], [], wording), 15).title).toBe(
+    'Draft Q4 priorities · section 2',
+  )
+  expect(at(timeline([todo('Book dentist', [15])], [], wording), 15)).toMatchObject({
+    title: 'Book dentist',
+    source: null,
+  })
+  // Nothing left on it at all: the hour reads free, not as the plan that was.
+  expect(at(timeline([], [], wording), 15)).toMatchObject({ kind: 'free', title: 'Free' })
+  // And put back the way Crazy planned it, the words are there again: nothing
+  // the user does throws generated text away.
+  expect(at(timeline([todo('Q4', [15])], [], wording), 15).title).toBe(
+    'Draft Q4 priorities · section 2',
+  )
+})
+
+it('keeps the words of an hour worded for nothing until something is slotted on it', () => {
+  const wording = [{ ...worded(8, 'Brief · inbox skim', []), note: 'free', source: null }]
+
+  expect(at(timeline([], [], wording), 8).title).toBe('Brief · inbox skim')
+  expect(at(timeline([todo('Book dentist', [8])], [], wording), 8).title).toBe('Book dentist')
+})
+
+it('takes Crazy at its word only when the hour holds every Todo it was written for', () => {
+  const wording = [worded(12, 'Reply to Priya · book dentist', ['Priya', 'Dentist'])]
+  const both = [todo('Priya', [12]), todo('Dentist', [12])]
+
+  expect(at(timeline(both, [], wording), 12).title).toBe('Reply to Priya · book dentist')
+  expect(at(timeline([both[0]!], [], wording), 12).title).toBe('Priya')
+})
+
+// ── The hours meetings leave no room in ───────────────────────────────────────
+
+it('holds an hour two meetings fill between them, and leaves one with a gap in it', () => {
+  const halves = [event('meeting', 'Standup', '08:00', 30), event('meeting', '1:1', '08:30', 30)]
+  expect(meetingHolds(halves, 8)).toBe(true)
+
+  // Ten minutes between them is ten minutes the user can still plan into.
+  const gap = [event('meeting', 'Standup', '08:00', 25), event('meeting', '1:1', '08:35', 25)]
+  expect(meetingHolds(gap, 8)).toBe(false)
+})
+
+it('holds an hour a meeting fills on its own, or with one that overlaps it', () => {
+  expect(meetingHolds([event('meeting', 'Design review', '14:00', 60)], 14)).toBe(true)
+  expect(meetingHolds([event('meeting', 'All hands', '13:30', 120)], 14)).toBe(true)
+
+  const overlapping = [
+    event('meeting', 'Standup', '09:00', 40),
+    event('meeting', 'Handover', '09:20', 40),
+  ]
+  expect(meetingHolds(overlapping, 9)).toBe(true)
+})
+
+it('leaves an hour a meeting only part fills, and one a focus block fills', () => {
+  expect(meetingHolds([event('meeting', 'Standup', '11:00', 30)], 11)).toBe(false)
+  expect(meetingHolds([event('meeting', '1:1 with Devon', '16:30', 30)], 16)).toBe(false)
+  expect(meetingHolds([event('meeting', 'Design review', '14:00', 60)], 15)).toBe(false)
+  // A focus block is the user's own hour, however long it runs.
+  expect(meetingHolds([event('focus', 'Focus', '09:00', 120)], 9)).toBe(false)
+  expect(meetingHolds([], 9)).toBe(false)
 })
 
 it('counts meetings, which focus blocks are not', () => {

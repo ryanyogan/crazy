@@ -347,6 +347,96 @@ it("brings a Mention's Todo into the day when its Source's only open Todo is in 
   expect(await todayTitles('user_u')).toHaveLength(7)
 })
 
+const slotsOf = async (todoId: string) =>
+  (
+    await env.DB.prepare('SELECT day, hour FROM slot WHERE todoId = ? ORDER BY hour')
+      .bind(todoId)
+      .all<{ day: string; hour: number }>()
+  ).results
+
+const wordedHours = async (userId: string) =>
+  (
+    await env.DB.prepare('SELECT hour FROM timeline_hour WHERE userId = ? ORDER BY hour')
+      .bind(userId)
+      .all<{ hour: number }>()
+  ).results.map((row) => row.hour)
+
+it('gives a Todo a Slot on the day the user is in, and touches it', async () => {
+  const coordinator = coordinatorFor('user_v')
+  await coordinator.provision({ timeZone: 'America/Chicago' })
+  const dentist = (await todoRow('user_v', 'Book dentist'))!
+  const untouchedSince = '2025-09-16T16:00:00.000Z'
+  await env.DB.prepare('UPDATE todo SET touchedAt = ? WHERE id = ?')
+    .bind(untouchedSince, dentist.id)
+    .run()
+
+  const result = await coordinator.command({ type: 'todo.slot', todoId: dentist.id, hour: 8 })
+
+  expect(result).toMatchObject({
+    ok: true,
+    patch: {
+      seq: 1,
+      ops: [
+        { type: 'slot.set', todoId: dentist.id, hours: [8], day: expect.any(String) },
+        { type: 'todo.set', id: dentist.id, set: { touchedAt: expect.any(String) } },
+      ],
+    },
+  })
+  // The Coordinator reads its own clock, so which day it is is its answer to
+  // give: the row it wrote and the patch it sent say the same day and hour.
+  const slotted = result.ok && result.patch.ops[0]
+  expect(await slotsOf(dentist.id)).toEqual([
+    { day: slotted && slotted.type === 'slot.set' ? slotted.day : null, hour: 8 },
+  ])
+  // Slotting is a touch, and no wording of the day was deleted along the way.
+  const after = (await todoById(dentist.id))!
+  expect(new Date(after.touchedAt).getTime()).toBeGreaterThan(new Date(untouchedSince).getTime())
+  expect(await wordedHours('user_v')).toEqual([8, 9, 10, 11, 12, 13, 14, 15, 16, 17])
+})
+
+it('refuses the hour a meeting fills, writes nothing and spends no sequence number', async () => {
+  const coordinator = coordinatorFor('user_w')
+  await coordinator.provision({ timeZone: 'America/Chicago' })
+  const dentist = (await todoRow('user_w', 'Book dentist'))!
+
+  // Frame 1a's design review has the whole of 14:00; the standup has half of 11:00.
+  const refused = await coordinator.command({ type: 'todo.slot', todoId: dentist.id, hour: 14 })
+
+  expect(refused).toEqual({
+    ok: false,
+    reason: '14:00 is a meeting, and Crazy never moves a meeting.',
+  })
+  expect((await slotsOf(dentist.id)).map((slot) => slot.hour)).toEqual([12])
+  expect(
+    await coordinator.command({ type: 'todo.slot', todoId: dentist.id, hour: 11 }),
+  ).toMatchObject({ ok: true, patch: { seq: 1 } })
+})
+
+it('takes a Todo off the day, and says so once however often it is asked', async () => {
+  const coordinator = coordinatorFor('user_x')
+  await coordinator.provision({ timeZone: 'America/Chicago' })
+  const deposit = (await todoRow('user_x', 'Send movers deposit'))!
+
+  const first = await coordinator.command({ type: 'todo.clearSlot', todoId: deposit.id })
+  const again = await coordinator.command({ type: 'todo.clearSlot', todoId: deposit.id })
+
+  expect(first.ok && first.patch.ops[0]).toMatchObject({ type: 'slot.set', hours: [] })
+  // Asked again it is already off the day, which is what was asked for.
+  expect(again).toMatchObject({ ok: true, patch: { seq: 2, ops: [] } })
+  expect(await slotsOf(deposit.id)).toEqual([])
+})
+
+it("cannot give another user's Todo a Slot", async () => {
+  await coordinatorFor('user_y').provision({ timeZone: 'America/Chicago' })
+  await coordinatorFor('user_z').provision({ timeZone: 'America/Chicago' })
+  const theirs = (await todoRow('user_z', 'Book dentist'))!
+
+  expect(
+    await coordinatorFor('user_y').command({ type: 'todo.slot', todoId: theirs.id, hour: 8 }),
+  ).toEqual({ ok: false, reason: 'That Todo no longer exists.' })
+  expect((await slotsOf(theirs.id)).map((slot) => slot.hour)).toEqual([12])
+})
+
 it("cannot add another user's Mention", async () => {
   await coordinatorFor('user_s').provision({ timeZone: 'America/Chicago' })
   await coordinatorFor('user_t').provision({ timeZone: 'America/Chicago' })

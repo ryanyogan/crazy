@@ -95,6 +95,28 @@ it('tells a second tab about the Todo added from a Mention, and the Mention mark
   }
 })
 
+it('tells a second tab where a Todo was dropped, and on which day', async () => {
+  await coordinatorFor('live_m').provision({ timeZone: 'America/Chicago' })
+  const desk = await openSocket('live_m')
+  const phone = await openSocket('live_m')
+  const dentist = await todoId('live_m', 'Book dentist')
+
+  // The seed had it at 12:00; it is dropped on 08:00.
+  await coordinatorFor('live_m').command({ type: 'todo.slot', todoId: dentist, hour: 8 })
+
+  for (const tab of [desk, phone]) {
+    expect((await tab.hear(2))[1]).toMatchObject({
+      type: 'patch',
+      seq: 1,
+      ops: [
+        // The day is the user's own, so a tab showing another one knows to read again.
+        { type: 'slot.set', todoId: dentist, hours: [8], day: expect.any(String) },
+        { type: 'todo.set', id: dentist, set: { touchedAt: expect.any(String) } },
+      ],
+    })
+  }
+})
+
 it("sends nothing to another user's sockets", async () => {
   await coordinatorFor('live_c').provision({ timeZone: 'America/Chicago' })
   await coordinatorFor('live_d').provision({ timeZone: 'America/Chicago' })

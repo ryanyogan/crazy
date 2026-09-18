@@ -10,8 +10,44 @@ import {
   startOfDay,
   todoState,
   wallClock,
+  writtenFor,
 } from '@crazy/shared'
 import type { ReadDb } from '../client'
+
+/**
+ * The day's calendar, as the timeline and the Slot commands read it: meetings
+ * and focus blocks placed in minutes into the user's day, clipped to it.
+ */
+export async function readDayEvents(
+  db: ReadDb,
+  userId: string,
+  day: string,
+  timeZone: string,
+): Promise<DayEvent[]> {
+  const dayStart = startOfDay(day, timeZone)
+  const dayEnd = startOfDay(addDays(day, 1), timeZone)
+  const events = await db.calendarEvent.findMany({
+    where: { userId, startsAt: { lt: dayEnd }, endsAt: { gt: dayStart } },
+    orderBy: { startsAt: 'asc' },
+  })
+
+  /** Minutes into this day, for a moment that may fall outside it. */
+  const minuteOfDay = (moment: Date) => {
+    if (moment <= dayStart) return 0
+    if (moment >= dayEnd) return 24 * 60
+    const { hour, minute } = wallClock(moment, timeZone)
+    return hour * 60 + minute
+  }
+
+  return events.map((row): DayEvent => ({
+    id: row.id,
+    kind: calendarEventKind.parse(row.kind),
+    title: row.title,
+    who: row.who,
+    from: minuteOfDay(row.startsAt),
+    until: minuteOfDay(row.endsAt),
+  }))
+}
 
 /**
  * A user's day as D1 holds it at one moment. What the Today screen makes of it
@@ -43,21 +79,10 @@ export async function readToday(
       },
     }),
     db.todo.count({ where: { userId, state: 'backlog', sentBackAt: { gte: dayStart } } }),
-    db.calendarEvent.findMany({
-      where: { userId, startsAt: { lt: dayEnd }, endsAt: { gt: dayStart } },
-      orderBy: { startsAt: 'asc' },
-    }),
+    readDayEvents(db, userId, day, timeZone),
     db.timelineHour.findMany({ where: { userId, day }, orderBy: { hour: 'asc' } }),
     db.signal.findMany({ where: { userId, kind: 'mention' }, orderBy: { at: 'desc' } }),
   ])
-
-  /** Minutes into this day, for a moment that may fall outside it. */
-  const minuteOfDay = (moment: Date) => {
-    if (moment <= dayStart) return 0
-    if (moment >= dayEnd) return 24 * 60
-    const { hour, minute } = wallClock(moment, timeZone)
-    return hour * 60 + minute
-  }
 
   return {
     day,
@@ -88,19 +113,15 @@ export async function readToday(
       snoozedUntil: row.snoozedUntil?.toISOString() ?? null,
       doneAt: row.doneAt?.toISOString() ?? null,
     })),
-    events: events.map((row): DayEvent => ({
-      id: row.id,
-      kind: calendarEventKind.parse(row.kind),
-      title: row.title,
-      who: row.who,
-      from: minuteOfDay(row.startsAt),
-      until: minuteOfDay(row.endsAt),
-    })),
+    events,
     hours: hours.map((row) => ({
       hour: row.hour,
       title: row.title,
       note: row.note,
       source: row.sourceKind === null ? null : sourceKind.parse(row.sourceKind),
+      // The Todos the words were written for; the timeline uses them to tell
+      // whether they still describe the hour. Stored as JSON: SQLite has no lists.
+      writtenFor: writtenFor.parse(JSON.parse(row.writtenFor)),
     })),
     signals: signals.map((row) => ({
       id: row.id,
