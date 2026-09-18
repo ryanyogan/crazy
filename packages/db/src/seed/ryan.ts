@@ -8,6 +8,7 @@ import {
   addDays,
   localTimeToInstant,
   startOfDay,
+  startOfWeek,
   wallClock,
 } from '@crazy/shared'
 import type { Prisma } from '../generated/prisma/client'
@@ -103,6 +104,405 @@ const STACK: SeedTodo[] = [
     reason: 'five minutes between meetings',
     slots: [12],
   },
+]
+
+/**
+ * The rest of the week frame 1c draws, a day of it per weekday, so the persona
+ * lands on the week it is seeded in whatever day that is. A day behind today
+ * holds work that is done; a day ahead holds work that is planned; the day that
+ * *is* today is left to the Today persona above, which is the week's middle day
+ * in the mockups. Nothing is ever recorded as done in the future.
+ *
+ * The Week screen's figures are computed from these, so the Todos, their
+ * estimates and their days are the content: on the mockups' Wednesday that is
+ * 11 of 27 done, 6.5 hours of finished work and four Todos carried.
+ */
+interface SeedWeekTodo {
+  key: string
+  title: string
+  project?: string
+  minutes: number
+  energy: Energy
+  /** The hours of its day it sits on. */
+  slots: number[]
+  /** The hour it was finished at, on a day that has passed. */
+  doneAt: string
+  /** Rollovers in a row it had been carried over by then. */
+  carried?: number
+}
+
+/** A meeting on one of the week's days. Frame 1a draws today's; these are the rest. */
+interface SeedWeekEvent {
+  key: string
+  title: string
+  who?: string
+  from: string
+  until: string
+}
+
+/**
+ * How Crazy words one thing a day holds, in the few words the card has room
+ * for: `todo` names a Todo of that day, `event` one of its meetings. Generated
+ * text, like the timeline's hours. How long a Todo has been carried is derived
+ * from the Todo, so no wording says it.
+ */
+interface SeedWeekLine {
+  text: string
+  todo?: string
+  event?: string
+}
+
+interface SeedWeekDay {
+  /** Monday is 0. */
+  weekday: number
+  work: SeedWeekTodo[]
+  meetings: SeedWeekEvent[]
+  lines: SeedWeekLine[]
+  /** The words Crazy adds beside the day's figures. Never a number. */
+  note?: string
+}
+
+const STANDUP = { title: 'Platform standup', who: '12 people', from: '11:00', until: '11:30' }
+
+const WEEK: SeedWeekDay[] = [
+  {
+    weekday: 0,
+    work: [
+      {
+        key: 'mon-kickoff',
+        title: 'Kick off the auth migration milestone',
+        project: 'auth',
+        minutes: 45,
+        energy: 'deep_focus',
+        slots: [9],
+        doneAt: '09:50',
+      },
+      {
+        key: 'mon-q4-outline',
+        title: 'Outline the Q4 priorities doc',
+        project: 'q4',
+        minutes: 60,
+        energy: 'deep_focus',
+        slots: [10],
+        doneAt: '11:05',
+      },
+      {
+        key: 'mon-headcount',
+        title: 'Reply to Devon about headcount',
+        minutes: 15,
+        energy: 'people_admin',
+        slots: [11],
+        doneAt: '11:40',
+      },
+      {
+        key: 'mon-staging-key',
+        title: 'Rotate the staging API key',
+        project: 'auth',
+        minutes: 30,
+        energy: 'quick_win',
+        slots: [13],
+        doneAt: '13:35',
+      },
+      {
+        key: 'mon-book-movers',
+        title: 'Book Northside Movers',
+        project: 'move',
+        minutes: 30,
+        energy: 'people_admin',
+        slots: [14],
+        doneAt: '14:40',
+      },
+      {
+        key: 'mon-easy-run',
+        title: 'Easy run, 8 km',
+        project: 'marathon',
+        minutes: 30,
+        energy: 'quick_win',
+        slots: [17],
+        doneAt: '18:05',
+      },
+    ],
+    meetings: [
+      { key: 'standup-mon', ...STANDUP },
+      {
+        key: 'weekly-planning',
+        title: 'Weekly planning',
+        who: 'Platform',
+        from: '13:00',
+        until: '14:30',
+      },
+    ],
+    lines: [
+      { text: 'Kickoff auth milestone', todo: 'mon-kickoff' },
+      { text: 'Q4 doc outline', todo: 'mon-q4-outline' },
+    ],
+  },
+  {
+    weekday: 1,
+    work: [
+      {
+        key: 'tue-kv-secret',
+        title: 'Rotate the KV secret',
+        project: 'auth',
+        minutes: 60,
+        energy: 'deep_focus',
+        slots: [9],
+        doneAt: '10:10',
+      },
+      {
+        key: 'tue-onboarding-copy',
+        title: 'Review the onboarding copy',
+        project: 'onboarding',
+        minutes: 45,
+        energy: 'deep_focus',
+        slots: [10],
+        doneAt: '11:00',
+      },
+      {
+        key: 'tue-packing-boxes',
+        title: 'Order packing boxes',
+        project: 'move',
+        minutes: 30,
+        energy: 'quick_win',
+        slots: [13],
+        doneAt: '13:25',
+      },
+      {
+        key: 'tue-platform-inbox',
+        title: 'Triage the platform inbox',
+        minutes: 30,
+        energy: 'people_admin',
+        slots: [14],
+        doneAt: '14:35',
+        carried: 1,
+      },
+      {
+        key: 'tue-race-entry',
+        title: 'Confirm the race entry',
+        project: 'marathon',
+        minutes: 15,
+        energy: 'quick_win',
+        slots: [16],
+        doneAt: '16:20',
+      },
+    ],
+    meetings: [
+      { key: 'standup-tue', ...STANDUP },
+      { key: 'design-sync', title: 'Design sync', who: 'Design', from: '15:00', until: '16:00' },
+      {
+        key: 'product-review',
+        title: 'Product review',
+        who: 'Product + Platform',
+        from: '16:00',
+        until: '17:00',
+      },
+    ],
+    lines: [
+      { text: 'Rotate KV secret', todo: 'tue-kv-secret' },
+      // Sam's PR was placed on Tuesday and not finished, so Tuesday carried it;
+      // the Todo is in today's stack, and the "(carried)" comes off its count.
+      { text: "Sam's PR", todo: 'review-sam' },
+    ],
+  },
+  {
+    weekday: 2,
+    work: [
+      {
+        key: 'wed-pair-priya',
+        title: 'Pair with Priya on the edge worker',
+        project: 'auth',
+        minutes: 60,
+        energy: 'deep_focus',
+        slots: [10],
+        doneAt: '11:10',
+      },
+      {
+        key: 'wed-runbook-index',
+        title: 'Update the platform runbook index',
+        project: 'auth',
+        minutes: 30,
+        energy: 'quick_win',
+        slots: [13],
+        doneAt: '13:40',
+      },
+      {
+        key: 'wed-groceries',
+        title: "Order the week's groceries",
+        minutes: 15,
+        energy: 'quick_win',
+        slots: [17],
+        doneAt: '17:20',
+      },
+    ],
+    meetings: [
+      { key: 'standup-wed', ...STANDUP },
+      {
+        key: 'platform-weekly',
+        title: 'Platform weekly',
+        who: 'Platform',
+        from: '15:00',
+        until: '16:00',
+      },
+    ],
+    lines: [
+      { text: 'Pair on the edge worker', todo: 'wed-pair-priya' },
+      { text: 'Runbook index', todo: 'wed-runbook-index' },
+    ],
+  },
+  {
+    weekday: 3,
+    work: [
+      {
+        key: 'thu-q4-section-3',
+        title: 'Draft Q4 priorities, section 3',
+        project: 'q4',
+        minutes: 60,
+        energy: 'deep_focus',
+        slots: [9],
+        doneAt: '10:05',
+      },
+      {
+        key: 'thu-runbook',
+        title: 'Write the auth migration runbook',
+        project: 'auth',
+        minutes: 45,
+        energy: 'deep_focus',
+        slots: [11],
+        doneAt: '11:50',
+      },
+      {
+        key: 'thu-runbook-to-design',
+        title: 'Send the auth runbook to Design',
+        project: 'auth',
+        minutes: 30,
+        energy: 'people_admin',
+        slots: [13],
+        doneAt: '13:35',
+      },
+      {
+        key: 'thu-movers-window',
+        title: 'Confirm the movers arrival window',
+        project: 'move',
+        minutes: 30,
+        energy: 'quick_win',
+        slots: [16],
+        doneAt: '16:30',
+      },
+    ],
+    meetings: [
+      {
+        key: 'onboarding-ship',
+        title: 'Onboarding v2 ship review',
+        who: 'Design + Platform',
+        from: '14:00',
+        until: '15:00',
+      },
+    ],
+    lines: [
+      { text: 'Q4 doc: sections 2–3', todo: 'thu-q4-section-3' },
+      { text: 'Runbook to Design', todo: 'thu-runbook-to-design' },
+    ],
+    note: 'Q4 held',
+  },
+  {
+    weekday: 4,
+    work: [
+      {
+        key: 'fri-ship-sessions',
+        title: 'Ship edge sessions to production',
+        project: 'auth',
+        minutes: 120,
+        energy: 'deep_focus',
+        slots: [9, 10],
+        doneAt: '11:15',
+      },
+      {
+        key: 'fri-runbook-priya',
+        title: 'Hand the runbook to Priya',
+        project: 'auth',
+        minutes: 30,
+        energy: 'people_admin',
+        slots: [13],
+        doneAt: '13:30',
+      },
+      {
+        key: 'fri-movers-balance',
+        title: 'Check the movers deposit cleared',
+        project: 'move',
+        minutes: 30,
+        energy: 'quick_win',
+        slots: [16],
+        doneAt: '16:20',
+      },
+    ],
+    meetings: [
+      { key: 'standup-fri', ...STANDUP },
+      {
+        key: 'milestone-demo',
+        title: 'Edge sessions demo',
+        who: 'Platform + Leadership',
+        from: '15:00',
+        until: '16:00',
+      },
+    ],
+    lines: [
+      { text: 'Auth migration milestone', todo: 'fri-ship-sessions' },
+      { text: 'Movers deposit', todo: 'fri-movers-balance' },
+    ],
+    note: 'Sam out',
+  },
+  {
+    weekday: 5,
+    work: [
+      {
+        key: 'sat-long-run',
+        title: 'Long run, 16 km',
+        project: 'marathon',
+        minutes: 120,
+        energy: 'deep_focus',
+        slots: [8, 9],
+        doneAt: '10:20',
+      },
+    ],
+    meetings: [],
+    lines: [{ text: 'Long run · 16 km', todo: 'sat-long-run' }],
+  },
+  {
+    weekday: 6,
+    work: [
+      {
+        key: 'sun-pack-kitchen',
+        title: 'Pack the kitchen',
+        project: 'move',
+        minutes: 45,
+        energy: 'quick_win',
+        slots: [15],
+        doneAt: '15:50',
+      },
+    ],
+    meetings: [],
+    lines: [{ text: 'Pack kitchen', todo: 'sun-pack-kitchen' }],
+  },
+]
+
+/**
+ * How Crazy words today itself on the Week screen. Today is always the Today
+ * persona's day, whatever weekday it falls on, so its wording hangs off the
+ * Todos and meetings frame 1a draws.
+ */
+const TODAY_LINES: SeedWeekLine[] = [
+  { text: 'Session spike', todo: 'spike' },
+  { text: 'Design review 14:00', event: 'design-review' },
+  { text: '1:1 Devon', event: 'one-to-one-devon' },
+]
+
+/**
+ * What Tuesday did not finish: placed on it, carried by its Rollover, and in
+ * today's stack now. Only seeded once Tuesday has passed.
+ */
+const CARRIED_FROM_TUESDAY: { todo: string; hour: number }[] = [
+  { todo: 'review-sam', hour: 13 },
+  { todo: 'movers-deposit', hour: 17 },
 ]
 
 /** The calendar as frame 1a's timeline draws it: three meetings, and the focus blocks the deep work sits in. */
@@ -345,8 +745,12 @@ const PROJECTS: {
   status: ProjectStatus
   statusNote?: string
   milestone: string
-  /** Days from the mockups' Wednesday 17 Sep. */
-  milestoneIn: number
+  /** The weekday of this week it falls on, Monday 0, for a milestone the week turns on. */
+  milestoneWeekday?: number
+  /** Days from today, for one further out than the week. */
+  milestoneIn?: number
+  /** Where Ryan ties in this week, as frame 1c words it, and when that falls. */
+  tieIn?: { text: string; when: string }
 }[] = [
   {
     key: 'auth',
@@ -354,7 +758,11 @@ const PROJECTS: {
     circle: 'platform',
     status: 'on_track',
     milestone: 'Edge sessions live',
-    milestoneIn: 2,
+    milestoneWeekday: 4,
+    tieIn: {
+      text: 'You own the spike and the runbook; Priya is blocked on both.',
+      when: 'Milestone Fri',
+    },
   },
   {
     key: 'onboarding',
@@ -362,7 +770,11 @@ const PROJECTS: {
     circle: 'platform',
     status: 'at_risk',
     milestone: 'v2 ships',
-    milestoneIn: 1,
+    milestoneWeekday: 3,
+    tieIn: {
+      text: 'You are the last reviewer before Design ships v2.',
+      when: 'Review today 14:00',
+    },
   },
   {
     key: 'q4',
@@ -370,7 +782,9 @@ const PROJECTS: {
     circle: 'leadership',
     status: 'behind',
     milestone: 'Doc review',
-    milestoneIn: 5,
+    // The Monday after this one: the doc is read at the start of next week.
+    milestoneWeekday: 7,
+    tieIn: { text: 'Section 2 is yours; Devon reads the doc Monday.', when: 'Thu morning held' },
   },
   {
     key: 'move',
@@ -379,6 +793,7 @@ const PROJECTS: {
     status: 'on_track',
     milestone: 'Move day',
     milestoneIn: 14,
+    tieIn: { text: 'Deposit, then keys with the landlord.', when: 'Fri · 1 Oct' },
   },
   {
     key: 'marathon',
@@ -397,6 +812,13 @@ const BRIEF = {
     "Light morning, two meetings after 11. Take the session spike first; Priya's waiting on it. Three items carried over.",
 }
 
+/** The Week brief: the state of the union frame 1c opens with. */
+const WEEK_BRIEF = {
+  body: "You're on track for the auth migration milestone on Friday if the spike lands today. Onboarding is at risk: the design review this afternoon decides whether Sam's PR ships before he's out Friday. The Q4 doc is behind; I've held Thursday morning for it so it's ready for Devon on Monday. Personal side is quiet apart from the movers deposit.",
+  bodyShort:
+    'Auth lands Friday if the spike does today. Onboarding is at risk and the Q4 doc is behind; Thursday morning is held for it.',
+}
+
 export function ryan({ userId, now, timeZone }: SeedInput) {
   const today = wallClock(now, timeZone).day
   const id = (kind: string, key: string) => `${userId}/${kind}/${key}`
@@ -413,6 +835,16 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
     return moment > now ? now : moment
   }
   const lastRollover = startOfDay(today, timeZone)
+
+  // The week today falls in. Every day of the persona's week hangs off its
+  // Monday, so the mockups' week lands on the right weekdays whichever day the
+  // persona is seeded on, and today itself is always frame 1a's day.
+  const monday = startOfWeek(today)
+  const dayOfWeek = (weekday: number) => addDays(monday, weekday)
+  const DAY = 24 * 60 * 60 * 1000
+  /** How many days back a day of this week is: 0 is today, less than 0 still ahead. */
+  const back = (day: string) =>
+    Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${day}T00:00:00Z`)) / DAY)
 
   const connections: Prisma.ConnectionCreateManyInput[] = (
     [
@@ -444,7 +876,7 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
     }),
   )
 
-  const projects: Prisma.ProjectCreateManyInput[] = PROJECTS.map((project) => ({
+  const projects: Prisma.ProjectCreateManyInput[] = PROJECTS.map((project, index) => ({
     id: id('project', project.key),
     userId,
     circleId: id('circle', project.circle),
@@ -452,9 +884,30 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
     status: project.status,
     statusNote: project.statusNote ?? null,
     milestone: project.milestone,
-    milestoneDay: addDays(today, project.milestoneIn),
-    createdAt: past(45, '09:00'),
+    milestoneDay:
+      project.milestoneWeekday === undefined
+        ? addDays(today, project.milestoneIn ?? 0)
+        : dayOfWeek(project.milestoneWeekday),
+    // Started a week apart, oldest first: the order the Week screen lists the tie-ins in.
+    createdAt: past(45 - index * 7, '09:00'),
   }))
+
+  // Where Ryan ties in, written for this week the way the Week brief is.
+  const tieIns: Prisma.TieInCreateManyInput[] = PROJECTS.flatMap((project) =>
+    project.tieIn === undefined
+      ? []
+      : [
+          {
+            id: id('tie-in', `${project.key}-${monday}`),
+            userId,
+            projectId: id('project', project.key),
+            week: monday,
+            text: project.tieIn.text,
+            when: project.tieIn.when,
+            createdAt: past(0, '06:00'),
+          },
+        ],
+  )
 
   const todos: Prisma.TodoCreateManyInput[] = STACK.map((todo, index) => {
     const carried = todo.carried ?? 0
@@ -506,6 +959,33 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
     touchedAt: past(2, '15:00'),
     sentBackAt: lastRollover,
   })
+  // The rest of the week, day by day. Today is the Today persona's, so its own
+  // weekday is left out; a day behind us holds work that is done, a day ahead
+  // holds work that is placed on it and waits in the backlog until its Rollover
+  // brings it into today.
+  const weekDays = WEEK.map((entry) => ({ ...entry, day: dayOfWeek(entry.weekday) })).filter(
+    (entry) => entry.day !== today,
+  )
+  for (const { day, work } of weekDays) {
+    const away = back(day)
+    for (const todo of work) {
+      const done = away > 0 ? past(away, todo.doneAt) : null
+      todos.push({
+        id: id('todo', todo.key),
+        userId,
+        title: todo.title,
+        state: done ? 'done' : 'backlog',
+        projectId: todo.project ? id('project', todo.project) : null,
+        estimateMinutes: todo.minutes,
+        energy: todo.energy,
+        carryCount: todo.carried ?? 0,
+        createdAt: past(Math.max(away, 0) + (todo.carried ?? 0) + 2, '09:30'),
+        // Finished when it was finished; the week ahead was planned last night.
+        touchedAt: done ?? past(1, '17:30'),
+        doneAt: done,
+      })
+    }
+  }
 
   const slots: Prisma.SlotCreateManyInput[] = STACK.flatMap((todo) =>
     todo.slots.map((hour) => ({
@@ -517,6 +997,36 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
       createdAt: past(0, '08:05'),
     })),
   )
+  for (const { day, work } of weekDays) {
+    const away = back(day)
+    for (const todo of work) {
+      for (const hour of todo.slots) {
+        slots.push({
+          id: id('slot', `${todo.key}-${hour}`),
+          userId,
+          todoId: id('todo', todo.key),
+          day,
+          hour,
+          createdAt: past(Math.max(away, 0) + 1, '17:30'),
+        })
+      }
+    }
+  }
+  // Tuesday's unfinished work is still placed on Tuesday; it is in today's stack
+  // because the Rollover carried it, which is what the day card says of Tuesday.
+  const tuesday = dayOfWeek(1)
+  if (back(tuesday) > 0) {
+    for (const { todo, hour } of CARRIED_FROM_TUESDAY) {
+      slots.push({
+        id: id('slot', `${todo}-tue-${hour}`),
+        userId,
+        todoId: id('todo', todo),
+        day: tuesday,
+        hour,
+        createdAt: past(back(tuesday) + 1, '17:30'),
+      })
+    }
+  }
 
   // Crazy matched these this morning, with the rest of the day's planning. An
   // Overlap belongs to the week Crazy last matched it in, so laying the persona
@@ -566,7 +1076,44 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
       ...BRIEF,
       createdAt: past(0, '06:00'),
     },
+    {
+      // A Week brief is written for its Monday, whichever day it is read on.
+      id: id('brief', `week-${monday}`),
+      userId,
+      kind: 'weekly',
+      day: monday,
+      ...WEEK_BRIEF,
+      createdAt: past(0, '06:00'),
+    },
   ]
+
+  // The few words each day's card gives to one thing it holds, beside the
+  // figures Crazy computes. A line is kept with the Todo or the meeting it
+  // words, so it leaves the card when that thing does.
+  const wordDay = (day: string, lines: SeedWeekLine[]): Prisma.WeekDayLineCreateManyInput[] =>
+    lines.map((line, position) => ({
+      id: id('week-line', `${day}-${position}`),
+      userId,
+      day,
+      position,
+      text: line.text,
+      todoId: line.todo === undefined ? null : id('todo', line.todo),
+      calendarEventId: line.event === undefined ? null : id('event', line.event),
+      createdAt: past(0, '06:00'),
+    }))
+
+  const weekDayLines: Prisma.WeekDayLineCreateManyInput[] = [
+    ...wordDay(today, TODAY_LINES),
+    ...weekDays.flatMap(({ day, lines }) => wordDay(day, lines)),
+  ]
+
+  // Crazy writes a note for the days still to come, with the Week brief; it does
+  // not go back and add one to a day that has been and gone.
+  const weekDayNotes: Prisma.WeekDayNoteCreateManyInput[] = weekDays.flatMap(({ day, note }) =>
+    note === undefined || back(day) > 0
+      ? []
+      : [{ id: id('week-note', day), userId, day, text: note, createdAt: past(0, '06:00') }],
+  )
 
   const calendarEvents: Prisma.CalendarEventCreateManyInput[] = EVENTS.map((event) => ({
     id: id('event', event.key),
@@ -580,6 +1127,23 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
     endsAt: at(0, event.until),
     createdAt: past(7, '09:00'),
   }))
+  for (const { day, meetings } of weekDays) {
+    const away = back(day)
+    for (const event of meetings) {
+      calendarEvents.push({
+        id: id('event', event.key),
+        userId,
+        connectionId: id('connection', 'google'),
+        itemId: event.key,
+        kind: 'meeting',
+        title: event.title,
+        who: event.who ?? null,
+        startsAt: at(away, event.from),
+        endsAt: at(away, event.until),
+        createdAt: past(7, '09:00'),
+      })
+    }
+  }
 
   const timelineHours: Prisma.TimelineHourCreateManyInput[] = HOURS.map((hour) => ({
     id: id('hour', `${today}-${hour.hour}`),
@@ -624,6 +1188,9 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
     overlapNotes,
     slots,
     briefs,
+    weekDayLines,
+    weekDayNotes,
+    tieIns,
     calendarEvents,
     timelineHours,
     signals,

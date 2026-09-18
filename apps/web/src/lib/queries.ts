@@ -1,6 +1,6 @@
 import { type Patch, apply } from '@crazy/shared'
 import { type QueryClient, queryOptions } from '@tanstack/react-query'
-import { getCircles, getShell, getToday } from '#/server/functions'
+import { getCircles, getShell, getToday, getWeek } from '#/server/functions'
 
 // One query per read model. Loaders `ensureQueryData` these during SSR and
 // screens read them with `useSuspenseQuery`, so the cache is the only source.
@@ -8,6 +8,8 @@ import { getCircles, getShell, getToday } from '#/server/functions'
 export const shellQuery = queryOptions({ queryKey: ['shell'], queryFn: () => getShell() })
 
 export const todayQuery = queryOptions({ queryKey: ['today'], queryFn: () => getToday() })
+
+export const weekQuery = queryOptions({ queryKey: ['week'], queryFn: () => getWeek() })
 
 export const circlesQuery = queryOptions({ queryKey: ['circles'], queryFn: () => getCircles() })
 

@@ -26,6 +26,9 @@ export async function seedPersona(db: Db, input: SeedInput): Promise<void> {
   const rows = PERSONA_SEEDS[input.persona](input)
 
   await db.signal.deleteMany({ where: { userId } })
+  await db.weekDayLine.deleteMany({ where: { userId } })
+  await db.weekDayNote.deleteMany({ where: { userId } })
+  await db.tieIn.deleteMany({ where: { userId } })
   await db.timelineHour.deleteMany({ where: { userId } })
   await db.calendarEvent.deleteMany({ where: { userId } })
   await db.slot.deleteMany({ where: { userId } })
@@ -45,7 +48,11 @@ export async function seedPersona(db: Db, input: SeedInput): Promise<void> {
   await db.overlapNote.createMany({ data: rows.overlapNotes })
   await db.slot.createMany({ data: rows.slots })
   await db.brief.createMany({ data: rows.briefs })
+  await db.weekDayNote.createMany({ data: rows.weekDayNotes })
+  await db.tieIn.createMany({ data: rows.tieIns })
   await db.calendarEvent.createMany({ data: rows.calendarEvents })
+  // A day's wording is kept beside the Todo or the meeting it words.
+  await db.weekDayLine.createMany({ data: rows.weekDayLines })
   await db.timelineHour.createMany({ data: rows.timelineHours })
   await db.signal.createMany({ data: rows.signals })
 }

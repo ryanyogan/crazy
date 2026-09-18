@@ -1,6 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { EmptyScreen } from '#/features/screens/EmptyScreen'
+import { WeekScreen } from '#/features/week/WeekScreen'
+import { weekQuery } from '#/lib/queries'
 
 export const Route = createFileRoute('/_app/week')({
-  component: () => <EmptyScreen title="Week" />,
+  loader: ({ context }) => context.queryClient.ensureQueryData(weekQuery),
+  component: WeekScreen,
 })

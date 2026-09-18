@@ -39,26 +39,28 @@ browser ── apps/web (TanStack Start, SSR) ──reads──▶ D1 (Prisma)
 
 Updated as tickets land.
 
-| What                                                                                                                                              | State                                                                                             |
-| ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| Monorepo on Vite+; format, lint, typecheck, test, build from the root                                                                             | Real                                                                                              |
-| Both Workers from one `pnpm dev`, sharing a local D1; Coordinator bound across Workers                                                            | Real                                                                                              |
-| Clerk sign-in (Google, GitHub, email code); demo user Ryan without keys                                                                           | Real (the Clerk path has not been exercised with real keys yet)                                   |
-| Lazy provisioning: settings row and Coordinator on the first authenticated request; time zone taken from the request                              | Real                                                                                              |
-| The Shell at both widths, the More screen, a route behind every destination                                                                       | Real; every route but Today and Circles is empty                                                  |
-| Live across devices: `/live` hands the socket to the user's Coordinator, patches land in the query cache, the Live indicator shows the connection | Real; nothing pings, so a connection that dies silently is not noticed until the browser notices  |
-| The current time as an injected value in the web app, which a development request can pin                                                         | Real                                                                                              |
-| Visual comparison harness (`pnpm visual`): frames 1a and 1c–1g against their routes, derived phone screenshots                                    | Real; the Cori frames (2a–2c, 3a, 3b, 4a) join with ticket 16                                     |
-| Schema for Connection, Circle, Project, Todo, Slot, Brief, calendar event, Signal and the timeline's wording                                      | Real; "one Source, one open Todo" is a partial unique index                                       |
-| The Ryan persona seed (`seedPersona` in `@crazy/db/write`): every new user starts from it; `POST /dev/seed` resets                                | Real; nothing is stamped later than the moment seeded over; Promises, Waiting on, history to come |
-| Today screen: greeting, date, Brief, Take on now, Priority stack with footer, read from D1 by `readToday`                                         | Real on seeded rows; Start and Swap are drawn only                                                |
-| The command seam (`decide` and `apply` in `@crazy/shared`), `useCommand`, the Coordinator's single write path                                     | Real, for six commands: complete, add, snooze a Todo, give it a Slot or take it off; a Mention    |
-| The Brief's text, the stack's order and each Todo's reason                                                                                        | Seeded, stored where generated text will live                                                     |
-| Today screen: hour timeline, Mentions, the place to add a Todo                                                                                    | Real on seeded rows; adding, dragging a Todo onto an hour and the hour picker are wired           |
-| How each hour of the timeline is worded                                                                                                           | Seeded (`timeline_hour`), while the hour still holds the Todos it was written for; else derived   |
-| A Todo's match to a Circle (`circle_match`), and an Overlap's wording (`overlap_note`)                                                            | Seeded; nothing writes either yet. An Overlap is never a row — it is a Todo matched to 2+ Circles |
-| Circles screen: the figure of the Circles with their Sides, and this week's Overlaps, read from D1 by `readCircles`                               | Real on seeded rows; how many people a Circle holds and its Overlaps' wording are seeded          |
-| Everything else in the spec                                                                                                                       | Not started                                                                                       |
+| What                                                                                                                                              | State                                                                                                             |
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Monorepo on Vite+; format, lint, typecheck, test, build from the root                                                                             | Real                                                                                                              |
+| Both Workers from one `pnpm dev`, sharing a local D1; Coordinator bound across Workers                                                            | Real                                                                                                              |
+| Clerk sign-in (Google, GitHub, email code); demo user Ryan without keys                                                                           | Real (the Clerk path has not been exercised with real keys yet)                                                   |
+| Lazy provisioning: settings row and Coordinator on the first authenticated request; time zone taken from the request                              | Real                                                                                                              |
+| The Shell at both widths, the More screen, a route behind every destination                                                                       | Real; every route but Today, Week and Circles is empty                                                            |
+| Live across devices: `/live` hands the socket to the user's Coordinator, patches land in the query cache, the Live indicator shows the connection | Real; nothing pings, so a connection that dies silently is not noticed until the browser notices                  |
+| The current time as an injected value in the web app, which a development request can pin                                                         | Real                                                                                                              |
+| Visual comparison harness (`pnpm visual`): frames 1a and 1c–1g against their routes, derived phone screenshots                                    | Real; the Cori frames (2a–2c, 3a, 3b, 4a) join with ticket 16                                                     |
+| Schema for Connection, Circle, Project, Todo, Slot, Brief, calendar event, Signal and the timeline's wording                                      | Real; "one Source, one open Todo" is a partial unique index                                                       |
+| The Ryan persona seed (`seedPersona` in `@crazy/db/write`): every new user starts from it; `POST /dev/seed` resets                                | Real; nothing is stamped later than the moment seeded over; Promises, Waiting on, history to come                 |
+| Today screen: greeting, date, Brief, Take on now, Priority stack with footer, read from D1 by `readToday`                                         | Real on seeded rows; Start and Swap are drawn only                                                                |
+| The command seam (`decide` and `apply` in `@crazy/shared`), `useCommand`, the Coordinator's single write path                                     | Real, for six commands: complete, add, snooze a Todo, give it a Slot or take it off; a Mention                    |
+| The Brief's text, the stack's order and each Todo's reason                                                                                        | Seeded, stored where generated text will live                                                                     |
+| Today screen: hour timeline, Mentions, the place to add a Todo                                                                                    | Real on seeded rows; adding, dragging a Todo onto an hour and the hour picker are wired                           |
+| How each hour of the timeline is worded                                                                                                           | Seeded (`timeline_hour`), while the hour still holds the Todos it was written for; else derived                   |
+| A Todo's match to a Circle (`circle_match`), and an Overlap's wording (`overlap_note`)                                                            | Seeded; nothing writes either yet. An Overlap is never a row — it is a Todo matched to 2+ Circles                 |
+| Circles screen: the figure of the Circles with their Sides, and this week's Overlaps, read from D1 by `readCircles`                               | Real on seeded rows; how many people a Circle holds and its Overlaps' wording are seeded                          |
+| Week screen: the week's head, the week in numbers, the seven days and their captions, read from D1 by `readWeek` and derived by `viewWeek`        | Real on seeded rows; every figure is computed from Todos, Slots and the calendar, none is stored                  |
+| The Week brief, the note beside a day's figures, each day's short wording, and where the user ties in per Project                                 | Seeded, stored where generated text will live (`brief` kind `weekly`, `week_day_note`, `week_day_line`, `tie_in`) |
+| Everything else in the spec                                                                                                                       | Not started                                                                                                       |
 
 ## Derived layouts
 
@@ -102,7 +104,19 @@ frames exist:
 - **A Circle the figure has no room for.** Frame 1e's figure seats four, three crossing and one
   standing apart, and a personal Circle takes the one that stands apart. A fifth Circle is named
   under the figure — "Not in the picture: …" — rather than silently left out. The seed has four.
-- Still to come, per the spec: phone layouts for Week, Projects, Metrics, Time, Invoices
+- **The Week screen on a phone**: one column of the same primitives, in the frame's order — the
+  week's line and the state of the union, the week in numbers, the seven days one under another
+  (each only as tall as what it holds), the legend, then the tie-ins. The short Week brief stands
+  in for the long one, as the Today screen's does.
+- **Today on the Week screen.** Frame 1c's day cards never pass the `today` flag its own template
+  supports, so it draws Wednesday like every other day; the app follows the frame and marks today
+  to assistive technology only (`aria-current`). The accent card the template hints at is one rule
+  away if the designer meant it.
+- **A day Crazy has no words for** shows its figures and nothing under them, rather than inventing
+  a line; a day that holds nothing at all says nothing. A week with nothing in it draws no bars.
+- **A week Crazy has not written about** keeps the "State of the union" heading and says so under
+  it, and shows no tie-in cards. No frame draws either.
+- Still to come, per the spec: phone layouts for Projects, Metrics, Time, Invoices
   and Integrations, and the started state of Take on now with the Billing module off.
 
 Five deliberate differences from the frames: the wordmark reads CRAZY where they read TODAY; the
@@ -138,10 +152,15 @@ and `report.json` holds the figures. How to read them:
   0.00% and its diff shows no red. Add a screen's regions to `tools/visual/src/targets.ts` as the
   screen is built.
 - **A mask** leaves out a rectangle the app is known not to match yet, and the report prints why.
-  A mask is a debt: delete it in the ticket that pays it. Today's is the foot of the rail in 1c–1g, which those frames leave empty and 1a draws. Two masks
-  are not debts: under the Priority stack on a phone, where the frame stops and the app goes on,
-  and the digits of the Live indicator's wake time, which come off the Coordinator's real clock.
-  The harness waits for the indicator to read live before it takes a picture.
+  A mask is a debt: delete it in the ticket that pays it. Today's are the foot of the rail in 1c–1g,
+  which those frames leave empty and 1a draws, and frame 1c's bars: the meetings third of each day's
+  strip, whose heights follow no scale the frame is consistent about, and one or two pixels at the
+  top edge of five of the Todo bars, where the frame's percentages are hand-rounded to a multiple of
+  five and the app's are the count of Todos over the week's largest count. Both go when a designer
+  settles what the bars measure; the numbers behind them are in `tools/visual/src/targets.ts`.
+  Two masks are not debts: under the Priority stack on a phone, where the frame stops and the app
+  goes on, and the digits of the Live indicator's wake time, which come off the Coordinator's real
+  clock (the harness waits for the indicator to read live before it takes a picture).
 - **Derived** routes (no phone frame) are screenshotted at 390px and listed without a figure.
 - The pictures are one viewport, the size of the frame. If the page runs longer, the report says
   by how much.
@@ -172,6 +191,12 @@ Crazy's wording of an hour (`timeline_hour`) records the Todos it was written fo
 the hour still holds exactly those Todos, and otherwise the hour is worded from what it holds now —
 so a re-planned hour never reads as the plan it was, and an hour put back the way Crazy had it
 reads the way Crazy wrote it. No user command deletes generated text.
+
+The mockups' week is laid on the week that moment falls in, a day of it per weekday, so the Week
+screen is whole whichever day the persona is seeded on. Today is always the Today screen's own day,
+so its weekday's content stands aside for frame 1a's; a day behind today holds work that is done and
+a day ahead holds work that is planned, and nothing is ever recorded as finished in the future.
+Seeded on the mockups' Wednesday, which is what the harness pins, the week is frame 1c's exactly.
 
 ## The design source
 

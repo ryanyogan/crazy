@@ -37,6 +37,10 @@ _Avoid_: Asset, upload, image
 The first-person summary Crazy writes for a user each morning: what the day holds, what to take first and why, and what happened at Rollover. The **Week brief** is its weekly counterpart.
 _Avoid_: Summary, digest, status, report
 
+**Tie-in**:
+What Crazy says about where a user is the dependency on one Project in one week, and when that falls. Written for a week, like the Week brief, so a week Crazy has not written about has none; the Week screen lists one card per Project that needs them.
+_Avoid_: Involvement, stake, ownership
+
 **Priority stack**:
 A user's `today` Todos in the order Crazy recommends doing them, each with a one-line reason. It is an ordering of Todos, not a separate list.
 _Avoid_: Queue, to-do list, today list

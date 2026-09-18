@@ -8,6 +8,7 @@ export type { UserSettings as UserSettingsRow } from './generated/prisma/client'
 export * from './read/circles'
 export * from './read/shell'
 export * from './read/today'
+export * from './read/week'
 
 export function createReadDb(d1: D1): ReadDb {
   return createClient(d1)

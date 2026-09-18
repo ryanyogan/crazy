@@ -128,9 +128,29 @@ model Project {
   milestoneDay String? // and the day it falls on
   createdAt    DateTime
   todos        Todo[]
+  tieIns       TieIn[]
 
   @@index([userId])
   @@map("project")
+}
+
+/// Where a user ties into one Project in one week: what the Week screen's card
+/// says, and when it falls. Generated text written for a week, like the Week
+/// brief, so a week Crazy has not written about shows none.
+model TieIn {
+  id        String   @id
+  userId    String
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  week      String // the week's Monday, as the user's local date
+  text      String
+  when      String? // when it falls, in words: "Milestone Fri"
+  createdAt DateTime
+
+  @@unique([userId, projectId, week])
+  // The Week read model: a user's tie-ins for one week.
+  @@index([userId, week])
+  @@map("tie_in")
 }
 
 /// One thing a person intends to do. No Project makes it a One-off.
@@ -166,9 +186,12 @@ model Todo {
   /// The Circles it is matched to. More than one makes it an Overlap.
   circles         CircleMatch[]
   overlapNote     OverlapNote?
+  weekDayLines    WeekDayLine[]
 
   // The Today read model: a user's `today` Todos in stack order.
   @@index([userId, state, stackPosition])
+  // The Week read model, and Today's done-today: a user's Todos finished in a span.
+  @@index([userId, state, doneAt])
   // One Source, one open Todo.
   @@unique([userId, sourceConnectionId, sourceItemId], where: raw("state IN ('backlog', 'today')"))
   @@map("todo")
@@ -204,6 +227,7 @@ model CalendarEvent {
   startsAt     DateTime
   endsAt       DateTime
   createdAt    DateTime
+  weekDayLines WeekDayLine[]
 
   @@unique([userId, connectionId, itemId])
   // The Today and Week read models: a user's events over a span of days.
@@ -232,6 +256,42 @@ model TimelineHour {
 
   @@unique([userId, day, hour])
   @@map("timeline_hour")
+}
+
+/// The words Crazy adds beside the figures it computes for one day of the Week
+/// screen: "Q4 held". Generated text, like the Brief. Never a number — every
+/// figure the day card shows is computed from Todos when it is read.
+model WeekDayNote {
+  id        String   @id
+  userId    String
+  day       String // the user's local date
+  text      String
+  createdAt DateTime
+
+  @@unique([userId, day])
+  @@map("week_day_note")
+}
+
+/// How Crazy words one thing on a day of the Week screen — a Todo or a meeting,
+/// said in the few words a day card has room for ("Session spike"). Generated
+/// text, like the timeline's hours, and kept beside the thing it words, so a
+/// line is shown only while that thing is still on the day. How long a Todo has
+/// been carried is derived from the Todo, never written into the words.
+model WeekDayLine {
+  id              String         @id
+  userId          String
+  day             String // the user's local date
+  position        Int // among the day's lines, top first
+  text            String
+  todoId          String?
+  todo            Todo?          @relation(fields: [todoId], references: [id], onDelete: Cascade)
+  calendarEventId String?
+  calendarEvent   CalendarEvent? @relation(fields: [calendarEventId], references: [id], onDelete: Cascade)
+  createdAt       DateTime
+
+  // The Week read model: a user's wording over a span of days.
+  @@unique([userId, day, position])
+  @@map("week_day_line")
 }
 
 /// Something Crazy noticed at a Provider that might deserve a Todo. It never

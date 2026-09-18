@@ -145,9 +145,11 @@ it('lists who is waiting on Ryan, newest first, and knows which Mention he alrea
 
 it("leaves yesterday's meetings and wording off today's timeline", async () => {
   const thursday = await today(at('2025-09-18T08:41'))
-  expect(thursday.events).toEqual([])
+  // Thursday holds a meeting of its own (the week the Week screen draws);
+  // Wednesday's three and its hour-by-hour wording are not on it.
+  expect(thursday.events.map((event) => event.title)).toEqual(['Onboarding v2 ship review'])
   expect(thursday.hours).toEqual([])
-  expect(thursday.meetings).toBe(0)
+  expect(thursday.meetings).toBe(1)
 })
 
 it('puts the same content back when the persona is seeded again', async () => {

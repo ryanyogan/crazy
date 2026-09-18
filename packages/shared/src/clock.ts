@@ -100,3 +100,16 @@ export function addDays(day: string, count: number): string {
   date.setUTCDate(date.getUTCDate() + count)
   return date.toISOString().slice(0, 10)
 }
+
+/** The seven local dates of the week `day` falls in, Monday first. */
+export function weekDays(day: string): string[] {
+  const monday = startOfWeek(day)
+  return Array.from({ length: 7 }, (_, index) => addDays(monday, index))
+}
+
+/** The ISO-8601 week number: week 1 is the one holding the year's first Thursday. */
+export function isoWeek(day: string): number {
+  const thursday = new Date(`${addDays(startOfWeek(day), 3)}T00:00:00Z`)
+  const firstDay = Date.UTC(thursday.getUTCFullYear(), 0, 1)
+  return Math.floor((thursday.getTime() - firstDay) / (7 * 24 * 60 * 60 * 1000)) + 1
+}

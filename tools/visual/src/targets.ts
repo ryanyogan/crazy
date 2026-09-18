@@ -82,6 +82,7 @@ function desktop(
   height: number,
   foot: 'drawn' | 'undrawn',
   regions: Record<string, Rect> = {},
+  masks: Mask[] = [],
 ): View {
   return {
     regions: { rail: { x: 0, y: 0, width: 168, height }, ...regions },
@@ -89,22 +90,66 @@ function desktop(
       foot === 'drawn'
         ? { x: 80, y: height - 66, width: 28, height: 15, why: WOKE_AT }
         : { x: 16, y: height - 68, width: 136, height: 50, why: FOOT_UNDRAWN },
+      ...masks,
     ],
   }
 }
 
 /** A screen drawn on desktop only, at Ryan's morning. */
-function drawn(frame: string, title: string, route: string, height: number): Target {
+function drawn(
+  frame: string,
+  title: string,
+  route: string,
+  height: number,
+  regions: Record<string, Rect> = {},
+  masks: Mask[] = [],
+): Target {
   return {
     frame,
     title,
     route,
     persona: 'ryan',
     now: RYANS_MORNING,
-    desktop: desktop(height, 'undrawn'),
+    desktop: desktop(height, 'undrawn', regions, masks),
     phone: null,
   }
 }
+
+/** The left edge of each of the seven day cards' bar strips; they sit at one height. */
+const BAR_STRIPS = [207, 345, 484, 622, 760, 898, 1037]
+
+const MEETING_BARS =
+  "The meetings bar. The frame draws Monday's two meetings at 40% and Thursday's one at 30%, Wednesday's three at 60% and Friday's two at 50%: no scale counts meetings that way, and nor do their hours (Wednesday holds two of them). The app counts meetings on the same scale as the Todos beside them. The two Todo bars are compared"
+
+const HAND_ROUNDED_BARS =
+  "The top edge of a day's done or planned bar, one or two pixels of it. The app draws the count of Todos over the week's largest count; the frame's percentages are hand-rounded to a multiple of five (Monday draws 6 of 7 as 90%, not 86%). Measured in pixels of the 36px strip, frame against app: Mon done 34/32, Tue done 26/27, Wed planned 37/37, Thu planned 23/22, Fri planned 17/17, Sat planned 7/6, Sun planned 5/6 — so Wednesday and Friday need nothing. A debt for the designer: it goes when the bars' scale is settled"
+
+/**
+ * The bars of the seven day cards: the meetings third of each strip, and the
+ * top edge of the two Todo bars, where the frame's hand-rounded percentages
+ * and the app's counts differ by a pixel or two.
+ */
+const DAY_BARS: Mask[] = [
+  ...BAR_STRIPS.map((x) => ({ x: x + 70, y: 247, width: 34, height: 36, why: MEETING_BARS })),
+  // The pixels a bar's top edge differs by, day by day: the done bar's third of
+  // the strip on Monday and Tuesday, the planned bar's on Thursday, Saturday
+  // and Sunday. Wednesday and Friday agree to the pixel and are compared whole.
+  ...(
+    [
+      ['done', 0, 250, 2],
+      ['done', 1, 257, 1],
+      ['planned', 3, 261, 1],
+      ['planned', 5, 277, 1],
+      ['planned', 6, 278, 1],
+    ] as const
+  ).map(([bar, index, y, height]) => ({
+    x: BAR_STRIPS[index]! + (bar === 'done' ? 0 : 35),
+    y,
+    width: 34,
+    height,
+    why: HAND_ROUNDED_BARS,
+  })),
+]
 
 export const TARGETS: Target[] = [
   {
@@ -134,7 +179,20 @@ export const TARGETS: Target[] = [
       masks: [{ x: 0, y: 684, width: 390, height: 141, why: BELOW_THE_STACK }],
     },
   },
-  drawn('1c', 'Week', '/week', 720),
+  drawn(
+    '1c',
+    'Week',
+    '/week',
+    720,
+    {
+      'state of the union': { x: 196, y: 22, width: 548, height: 161 },
+      'week in numbers': { x: 766, y: 16, width: 392, height: 106 },
+      'the week': { x: 196, y: 203, width: 956, height: 230 },
+      legend: { x: 196, y: 453, width: 956, height: 17 },
+      'where you tie in': { x: 190, y: 490, width: 968, height: 128 },
+    },
+    DAY_BARS,
+  ),
   drawn('1d', 'Projects', '/projects', 720),
   {
     ...drawn('1e', 'Circles', '/circles', 680),

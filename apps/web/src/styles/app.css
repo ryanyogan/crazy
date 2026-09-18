@@ -1,5 +1,6 @@
 @import './circles.css';
 @import './today.css';
+@import './week.css';
 
 /* The Shell and what every screen shares. Plain CSS on the Industry tokens
    (@crazy/ui/styles/industry.css). Mobile first; desktop from 900px. One DOM
