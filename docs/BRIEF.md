@@ -39,24 +39,24 @@ browser ── apps/web (TanStack Start, SSR) ──reads──▶ D1 (Prisma)
 
 Updated as tickets land.
 
-| What                                                                                                                 | State                                                           |
-| -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| Monorepo on Vite+; format, lint, typecheck, test, build from the root                                                | Real                                                            |
-| Both Workers from one `pnpm dev`, sharing a local D1; Coordinator bound across Workers                               | Real                                                            |
-| Clerk sign-in (Google, GitHub, email code); demo user Ryan without keys                                              | Real (the Clerk path has not been exercised with real keys yet) |
-| Lazy provisioning: settings row and Coordinator on the first authenticated request; time zone taken from the request | Real                                                            |
-| The Shell at both widths, the More screen, a route behind every destination                                          | Real; every route but Today is empty                            |
-| Live indicator                                                                                                       | Drawn; says "Not live yet" until the socket exists              |
-| The current time as an injected value in the web app, which a development request can pin                            | Real                                                            |
-| Visual comparison harness (`pnpm visual`): frames 1a and 1c–1g against their routes, derived phone screenshots       | Real; the Cori frames (2a–2c, 3a, 3b, 4a) join with ticket 16   |
-| Schema for Connection, Circle, Project, Todo, Slot, Brief, calendar event, Signal and the timeline's wording         | Real; "one Source, one open Todo" is a partial unique index     |
-| The Ryan persona seed (`seedPersona` in `@crazy/db/write`): every new user starts from it; `POST /dev/seed` resets   | Real; Promises, Waiting on and back-dated history to come       |
-| Today screen: greeting, date, Brief, Take on now, Priority stack with footer, read from D1 by `readToday`            | Real on seeded rows; Start and Swap are drawn only              |
-| The command seam (`decide` and `apply` in `@crazy/shared`), `useCommand`, the Coordinator's single write path        | Real, for one command: complete a Todo                          |
-| The Brief's text, the stack's order and each Todo's reason                                                           | Seeded, stored where generated text will live                   |
-| Today screen: hour timeline, Mentions, the place to add a Todo                                                       | Real on seeded rows; Add and dragging are drawn only (07, 08)   |
-| How each hour of the timeline is worded                                                                              | Seeded (`timeline_hour`); derived for an hour with no wording   |
-| Everything else in the spec                                                                                          | Not started                                                     |
+| What                                                                                                                                              | State                                                                                            |
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Monorepo on Vite+; format, lint, typecheck, test, build from the root                                                                             | Real                                                                                             |
+| Both Workers from one `pnpm dev`, sharing a local D1; Coordinator bound across Workers                                                            | Real                                                                                             |
+| Clerk sign-in (Google, GitHub, email code); demo user Ryan without keys                                                                           | Real (the Clerk path has not been exercised with real keys yet)                                  |
+| Lazy provisioning: settings row and Coordinator on the first authenticated request; time zone taken from the request                              | Real                                                                                             |
+| The Shell at both widths, the More screen, a route behind every destination                                                                       | Real; every route but Today is empty                                                             |
+| Live across devices: `/live` hands the socket to the user's Coordinator, patches land in the query cache, the Live indicator shows the connection | Real; nothing pings, so a connection that dies silently is not noticed until the browser notices |
+| The current time as an injected value in the web app, which a development request can pin                                                         | Real                                                                                             |
+| Visual comparison harness (`pnpm visual`): frames 1a and 1c–1g against their routes, derived phone screenshots                                    | Real; the Cori frames (2a–2c, 3a, 3b, 4a) join with ticket 16                                    |
+| Schema for Connection, Circle, Project, Todo, Slot, Brief, calendar event, Signal and the timeline's wording                                      | Real; "one Source, one open Todo" is a partial unique index                                      |
+| The Ryan persona seed (`seedPersona` in `@crazy/db/write`): every new user starts from it; `POST /dev/seed` resets                                | Real; Promises, Waiting on and back-dated history to come                                        |
+| Today screen: greeting, date, Brief, Take on now, Priority stack with footer, read from D1 by `readToday`                                         | Real on seeded rows; Start and Swap are drawn only                                               |
+| The command seam (`decide` and `apply` in `@crazy/shared`), `useCommand`, the Coordinator's single write path                                     | Real, for one command: complete a Todo                                                           |
+| The Brief's text, the stack's order and each Todo's reason                                                                                        | Seeded, stored where generated text will live                                                    |
+| Today screen: hour timeline, Mentions, the place to add a Todo                                                                                    | Real on seeded rows; Add and dragging are drawn only (07, 08)                                    |
+| How each hour of the timeline is worded                                                                                                           | Seeded (`timeline_hour`); derived for an hour with no wording                                    |
+| Everything else in the spec                                                                                                                       | Not started                                                                                      |
 
 ## Derived layouts
 
@@ -117,8 +117,10 @@ and `report.json` holds the figures. How to read them:
   0.00% and its diff shows no red. Add a screen's regions to `tools/visual/src/targets.ts` as the
   screen is built.
 - **A mask** leaves out a rectangle the app is known not to match yet, and the report prints why.
-  A mask is a debt: delete it in the ticket that pays it. Today's are the Live indicator (ticket 06) and the foot of the rail in 1c–1g, which those frames leave empty and 1a draws. One mask is
-  not a debt: under the Priority stack on a phone, where the frame stops and the app goes on.
+  A mask is a debt: delete it in the ticket that pays it. Today's is the foot of the rail in 1c–1g, which those frames leave empty and 1a draws. Two masks
+  are not debts: under the Priority stack on a phone, where the frame stops and the app goes on,
+  and the digits of the Live indicator's wake time, which come off the Coordinator's real clock.
+  The harness waits for the indicator to read live before it takes a picture.
 - **Derived** routes (no phone frame) are screenshotted at 390px and listed without a figure.
 - The pictures are one viewport, the size of the frame. If the page runs longer, the report says
   by how much.

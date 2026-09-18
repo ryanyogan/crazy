@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
+import { Route as LiveRouteImport } from './routes/live'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as SsoCallbackRouteImport } from './routes/sso-callback'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
@@ -25,6 +26,11 @@ import { Route as DevSeedRouteImport } from './routes/dev/seed'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LiveRoute = LiveRouteImport.update({
+  id: '/live',
+  path: '/live',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SignInRoute = SignInRouteImport.update({
@@ -90,6 +96,7 @@ const DevSeedRoute = DevSeedRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/live': typeof LiveRoute
   '/sign-in': typeof SignInRoute
   '/sso-callback': typeof SsoCallbackRoute
   '/circles': typeof AppCirclesRoute
@@ -103,6 +110,7 @@ export interface FileRoutesByFullPath {
   '/dev/seed': typeof DevSeedRoute
 }
 export interface FileRoutesByTo {
+  '/live': typeof LiveRoute
   '/sign-in': typeof SignInRoute
   '/sso-callback': typeof SsoCallbackRoute
   '/circles': typeof AppCirclesRoute
@@ -119,6 +127,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
+  '/live': typeof LiveRoute
   '/sign-in': typeof SignInRoute
   '/sso-callback': typeof SsoCallbackRoute
   '/_app/circles': typeof AppCirclesRoute
@@ -136,6 +145,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/live'
     | '/sign-in'
     | '/sso-callback'
     | '/circles'
@@ -149,6 +159,7 @@ export interface FileRouteTypes {
     | '/dev/seed'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/live'
     | '/sign-in'
     | '/sso-callback'
     | '/circles'
@@ -164,6 +175,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_app'
+    | '/live'
     | '/sign-in'
     | '/sso-callback'
     | '/_app/circles'
@@ -180,6 +192,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
+  LiveRoute: typeof LiveRoute
   SignInRoute: typeof SignInRoute
   SsoCallbackRoute: typeof SsoCallbackRoute
   DevSeedRoute: typeof DevSeedRoute
@@ -192,6 +205,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/live': {
+      id: '/live'
+      path: '/live'
+      fullPath: '/live'
+      preLoaderRoute: typeof LiveRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sign-in': {
@@ -309,6 +329,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
+  LiveRoute: LiveRoute,
   SignInRoute: SignInRoute,
   SsoCallbackRoute: SsoCallbackRoute,
   DevSeedRoute: DevSeedRoute,

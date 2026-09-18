@@ -1,5 +1,5 @@
 import { expect, it } from 'vite-plus/test'
-import { type Applied, hasApplied, markApplied, reconnectDelay, serverMessage } from './live'
+import { type Applied, hasApplied, hear, markApplied, reconnectDelay, serverMessage } from './live'
 
 const fresh: Applied = { upTo: 5, ahead: [] }
 
@@ -27,6 +27,38 @@ it('ignores a sequence number it has already applied', () => {
   const own = markApplied(fresh, 7)
   expect(markApplied(own, 7)).toBe(own)
   expect(markApplied(own, 4)).toBe(own)
+})
+
+const done = [{ type: 'todo.set' as const, id: 'dentist', set: { state: 'done' as const } }]
+
+it("applies another device's patch once, however often it is delivered", () => {
+  const first = hear(fresh, { type: 'patch', seq: 6, ops: done })
+  expect(first).toEqual({ applied: { upTo: 6, ahead: [] }, then: 'apply', ops: done })
+  expect(hear(first.applied, { type: 'patch', seq: 6, ops: done }).then).toBe('nothing')
+})
+
+it('ignores its own patch when the socket brings it after the answer to its command', () => {
+  const own = markApplied(fresh, 6)
+  expect(hear(own, { type: 'patch', seq: 6, ops: done })).toEqual({ applied: own, then: 'nothing' })
+})
+
+it('reads everything again when told to, and carries on from where the Coordinator stands', () => {
+  expect(hear(fresh, { type: 'refetch', seq: 240 })).toEqual({
+    applied: { upTo: 240, ahead: [] },
+    then: 'refetch',
+  })
+  // Even backwards: a Coordinator whose log was wiped counts from 0 again.
+  expect(hear(fresh, { type: 'refetch', seq: 0 }).applied).toEqual({ upTo: 0, ahead: [] })
+})
+
+it('learns where the sequence stands from the greeting when it connected without knowing', () => {
+  const unknown: Applied = { upTo: 0, ahead: [] }
+  expect(hear(unknown, { type: 'hello', seq: 12, wokeAt: null }).applied.upTo).toBe(12)
+  // A greeting never takes a client backwards, nor forgets a patch of its own still ahead.
+  expect(hear(markApplied(fresh, 9), { type: 'hello', seq: 5, wokeAt: null }).applied).toEqual({
+    upTo: 5,
+    ahead: [9],
+  })
 })
 
 it('backs off from a second to half a minute, never hammering', () => {

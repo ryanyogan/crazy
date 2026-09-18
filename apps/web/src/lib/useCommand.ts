@@ -1,17 +1,13 @@
-import { type Command, type Patch, apply, decide } from '@crazy/shared'
-import { type QueryClient, useMutation, useQueryClient } from '@tanstack/react-query'
+import { type Command, type Patch, decide } from '@crazy/shared'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { sendCommand } from '#/server/functions'
 import { browserNow } from './clock'
+import { liveFor } from './live'
 import { notify } from './notices'
-import { todayQuery } from './queries'
+import { applyToCache, todayQuery } from './queries'
 
 /** The Coordinator said no. Its reason is written for the user. */
 class CommandRefused extends Error {}
-
-/** Lays operations over every cached read model that holds the rows they name. */
-export function applyToCache(queryClient: QueryClient, ops: Patch['ops']): void {
-  queryClient.setQueryData(todayQuery.queryKey, (today) => today && apply(today, ops))
-}
 
 /**
  * The one way the browser changes anything. The command is decided here first,
@@ -39,6 +35,8 @@ export function useCommand() {
     onSuccess: (patch) => {
       // The Coordinator's word replaces the guess: its moment, not the browser's.
       applyToCache(queryClient, patch.ops)
+      // The socket brings the same patch; it is not to be applied a second time.
+      liveFor(queryClient).applied(patch.seq)
     },
     onError: (error, _command, context) => {
       if (context?.before) queryClient.setQueryData(todayQuery.queryKey, context.before)

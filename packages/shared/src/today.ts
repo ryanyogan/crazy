@@ -1,4 +1,4 @@
-import { wallClock } from './clock'
+import { clockTime, wallClock } from './clock'
 import {
   type DayEvent,
   type HourWording,
@@ -138,13 +138,13 @@ export function greeting(hour: number, firstName: string): string {
 
 /** "Wednesday · 17 Sep · 08:41", as the user's wall clock reads. */
 export function dayLine(now: Date, timeZone: string): string {
-  const { day, hour, minute } = wallClock(now, timeZone)
+  const { day } = wallClock(now, timeZone)
   const date = new Date(`${day}T00:00:00Z`)
   const name = (options: Intl.DateTimeFormatOptions) =>
     new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', ...options }).format(date)
   return [
     name({ weekday: 'long' }),
     `${date.getUTCDate()} ${name({ month: 'short' })}`,
-    `${two(hour)}:${two(minute)}`,
+    clockTime(now, timeZone),
   ].join(' · ')
 }

@@ -37,8 +37,12 @@ export const getToday = createServerFn().handler(async () => {
 
   const { timeZone } = await settingsFor(userId)
   const now = requestNow(timeZone)
+  // Before the read, not beside it: a socket opened from this is replayed
+  // whatever was committed while D1 was being read (Coordinator.lastSeq).
+  const seq = await coordinatorFor(userId).lastSeq()
   return {
     ...(await readToday(createReadDb(env.DB), userId, now, timeZone)),
+    seq,
     now: now.toISOString(),
     timeZone,
   }

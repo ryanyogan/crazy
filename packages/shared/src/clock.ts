@@ -63,6 +63,12 @@ export function wallClock(instant: Date, timeZone: string): WallClock {
   }
 }
 
+/** "08:41", as the wall clock in `timeZone` reads at `instant`. */
+export function clockTime(instant: Date, timeZone: string): string {
+  const { hour, minute } = wallClock(instant, timeZone)
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+}
+
 /** The moment `day` began in `timeZone`: the last Rollover, seen from inside that day. */
 export function startOfDay(day: string, timeZone: string): Date {
   const start = localTimeToInstant(`${day}T00:00`, timeZone)

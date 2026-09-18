@@ -69,6 +69,13 @@ export async function shootRoute(
     if (strays.size > 0) throw new Error(`${route} made requests to ${[...strays].join(', ')}`)
 
     await tab.evaluate(() => document.fonts.ready)
+    // The frames draw a connected app, and the socket opens after the page has loaded.
+    await tab
+      .locator('.live[data-state="live"]')
+      .waitFor({ timeout: 10_000 })
+      .catch(() => {
+        throw new Error(`${route} never went live: the socket to the Coordinator did not connect`)
+      })
     const overflow = await tab.evaluate(
       () => document.documentElement.scrollHeight - window.innerHeight,
     )

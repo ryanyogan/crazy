@@ -60,7 +60,8 @@ export interface Target {
 /** Wednesday 17 Sep 2025, 08:41: "It is Wednesday 08:41" in the first mockup. */
 const RYANS_MORNING = '2025-09-17T08:41'
 
-const NOT_LIVE = 'The Live indicator says "Not live yet" until the socket exists (ticket 06)'
+const WOKE_AT =
+  'When the Coordinator last woke is read off the real clock, not the pinned one: the frame says 08:59'
 
 const BELOW_THE_STACK =
   'The phone frame stops at the Priority stack. On a phone, Mentions and the place to add a Todo follow it (derived, docs/BRIEF.md); this is not a debt'
@@ -70,7 +71,8 @@ const FOOT_UNDRAWN =
 
 /**
  * The rail is the same in every Billing-off frame, but only 1a draws its foot:
- * the Live line above the user, 18px up from the bottom edge.
+ * the Live line above the user, 18px up from the bottom edge. Only the digits
+ * of its wake time are masked.
  */
 function desktop(
   height: number,
@@ -81,7 +83,7 @@ function desktop(
     regions: { rail: { x: 0, y: 0, width: 168, height }, ...regions },
     masks: [
       foot === 'drawn'
-        ? { x: 16, y: height - 68, width: 136, height: 20, why: NOT_LIVE }
+        ? { x: 80, y: height - 66, width: 28, height: 15, why: WOKE_AT }
         : { x: 16, y: height - 68, width: 136, height: 50, why: FOOT_UNDRAWN },
     ],
   }
@@ -125,10 +127,7 @@ export const TARGETS: Target[] = [
         'priority stack': { x: 0, y: 288, width: 390, height: 396 },
         'tab bar': { x: 0, y: 825, width: 390, height: 45 },
       },
-      masks: [
-        { x: 290, y: 14, width: 82, height: 28, why: NOT_LIVE },
-        { x: 0, y: 684, width: 390, height: 141, why: BELOW_THE_STACK },
-      ],
+      masks: [{ x: 0, y: 684, width: 390, height: 141, why: BELOW_THE_STACK }],
     },
   },
   drawn('1c', 'Week', '/week', 720),

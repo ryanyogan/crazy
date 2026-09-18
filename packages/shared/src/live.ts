@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { op } from './command'
+import { type Op, op } from './command'
 
 // What travels over the socket between a browser and the user's Coordinator,
 // and the two pieces of arithmetic a client needs: which sequence numbers it
@@ -42,6 +42,39 @@ export function markApplied(applied: Applied, seq: number): Applied {
   let upTo = applied.upTo
   while (ahead.delete(upTo + 1)) upTo += 1
   return { upTo, ahead: [...ahead].sort((a, b) => a - b) }
+}
+
+/** What a client does about a message, and what it has applied once it has. */
+export type Heard =
+  | { applied: Applied; then: 'apply'; ops: Op[] }
+  | { applied: Applied; then: 'refetch' }
+  | { applied: Applied; then: 'nothing' }
+
+/**
+ * A client's whole answer to the socket. A patch is applied once, whichever
+ * way it arrived first. `refetch` and `hello` say where the sequence stands.
+ * After `refetch` the client reads everything again, so it stands exactly
+ * there, even if that is behind where it thought it was (a Coordinator whose
+ * log was wiped starts again from 0). `hello` only ever moves a client
+ * forwards: one that connected without knowing where it was.
+ */
+export function hear(applied: Applied, message: ServerMessage): Heard {
+  switch (message.type) {
+    case 'patch':
+      if (hasApplied(applied, message.seq)) return { applied, then: 'nothing' }
+      return { applied: markApplied(applied, message.seq), then: 'apply', ops: message.ops }
+    case 'refetch':
+      return { applied: { upTo: message.seq, ahead: [] }, then: 'refetch' }
+    case 'hello':
+      return { applied: caughtUpTo(applied, message.seq), then: 'nothing' }
+  }
+}
+
+function caughtUpTo(applied: Applied, seq: number): Applied {
+  if (seq <= applied.upTo) return applied
+  let next: Applied = { upTo: seq, ahead: [] }
+  for (const ahead of applied.ahead) next = markApplied(next, ahead)
+  return next
 }
 
 const FIRST_RETRY_MS = 1_000

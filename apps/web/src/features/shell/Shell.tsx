@@ -2,6 +2,7 @@ import { shellDestinations, tabBarDestinations } from '@crazy/shared'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
+import { useLive } from '#/lib/live'
 import { shellQuery } from '#/lib/queries'
 import { LiveIndicator } from './LiveIndicator'
 import { Notices } from './Notices'
@@ -13,6 +14,7 @@ import { UserBadge } from './UserBadge'
  */
 export function Shell({ children }: { children: ReactNode }) {
   const { data: shell } = useSuspenseQuery(shellQuery)
+  useLive()
 
   return (
     <div className="shell">
@@ -35,7 +37,7 @@ export function Shell({ children }: { children: ReactNode }) {
           ))}
         </nav>
         <div className="shell__foot">
-          <LiveIndicator />
+          <LiveIndicator now={shell.now} timeZone={shell.timeZone} />
           <UserBadge name={shell.name} initials={shell.initials} />
         </div>
       </aside>

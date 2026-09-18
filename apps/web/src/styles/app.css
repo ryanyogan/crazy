@@ -151,9 +151,15 @@ body {
   background: var(--color-accent);
 }
 
-.live[data-state='off'] .live__dot {
+/* Solid only while live: hollow says the screen may be behind. */
+.live:not([data-state='live']) .live__dot {
   background: transparent;
   border: 1px solid var(--color-neutral-600);
+}
+
+/* The rail's wording on desktop, the top bar's on a phone. */
+.live__rail {
+  display: none;
 }
 
 /* ── User badge ───────────────────────────────────────────────────────────── */
@@ -352,6 +358,14 @@ button.badge:active .badge__initials {
 
   .shell__foot .badge {
     display: flex;
+  }
+
+  .live__rail {
+    display: inline;
+  }
+
+  .live__bar {
+    display: none;
   }
 
   .shell__main {
