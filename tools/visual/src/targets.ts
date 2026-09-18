@@ -37,6 +37,10 @@ export const COPY: [from: string, to: string][] = [
   ['1 moved to backlog', '1 sent back'],
   // "Follow-up" is loose talk for all three kinds of Signal; the card lists Mentions.
   ['>Mentions &amp; follow-ups<', '>Mentions<'],
+  // "Group" and "tool" are the words the glossary keeps off a Circle and a
+  // Provider, and frame 1e uses each as the name of the thing.
+  ['Four groups this week.', 'Four Circles this week.'],
+  ['which tools the work lives in', 'which Providers the work lives in'],
 ]
 
 export interface View {
@@ -132,7 +136,16 @@ export const TARGETS: Target[] = [
   },
   drawn('1c', 'Week', '/week', 720),
   drawn('1d', 'Projects', '/projects', 720),
-  drawn('1e', 'Circles', '/circles', 680),
+  {
+    ...drawn('1e', 'Circles', '/circles', 680),
+    // The figure and the Overlap cards are blueprints: measured with their
+    // corner marks, 6px beyond the box.
+    desktop: desktop(680, 'undrawn', {
+      heading: { x: 190, y: 18, width: 532, height: 88 },
+      figure: { x: 190, y: 106, width: 532, height: 460 },
+      overlaps: { x: 736, y: 18, width: 424, height: 644 },
+    }),
+  },
   drawn('1f', 'Metrics', '/metrics', 720),
   drawn('1g', 'Integrations', '/integrations', 680),
 ]

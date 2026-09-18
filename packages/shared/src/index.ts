@@ -1,3 +1,4 @@
+export * from './circles'
 export * from './clock'
 export * from './command'
 export * from './demo'

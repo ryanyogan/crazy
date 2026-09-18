@@ -1,0 +1,147 @@
+/* The Circles screen, frame 1e. Measurements are the frame's; no frame draws a
+   phone, so below 900px the two columns fall into one (docs/BRIEF.md). */
+
+.circles {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  align-content: start;
+}
+
+.circles__lede {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--color-neutral-700);
+}
+
+/* ── The figure ───────────────────────────────────────────────────────────── */
+
+/* A phone has no 520px to give it: the drawing keeps its proportions instead. */
+.circles__drawing {
+  display: block;
+  width: 100%;
+  height: auto;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+}
+
+.circles__rings {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 1;
+}
+
+/* The personal Side is drawn as an outline, wherever the figure seats it. */
+.circles__ring--outline {
+  stroke-dasharray: 4 4;
+}
+
+/* The wash is one object, so where two Circles cross it stays the same weight. */
+.circles__wash {
+  fill: var(--color-accent);
+  opacity: 0.18;
+}
+
+.circles__names {
+  fill: var(--color-text);
+}
+
+.circles__lenses {
+  fill: var(--color-accent-900);
+  font-family: var(--font-body);
+  font-size: 11px;
+}
+
+.circles__people {
+  fill: var(--color-accent-800);
+  font-size: 12px;
+}
+
+.circles__providers {
+  fill: var(--color-neutral-700);
+  font-family: var(--font-body);
+  font-size: 11px;
+}
+
+/* A Circle the figure has no seat for is named rather than dropped. */
+.circles__unseated {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--color-neutral-700);
+}
+
+/* ── Overlaps this week ───────────────────────────────────────────────────── */
+
+.circles__overlaps,
+.circles__list {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+/* The same kicker as the Today screen's `.day__title`. A third screen wanting it
+   makes it a primitive in packages/ui; the Week screen is being built beside
+   this one, so the move waits for both to land. */
+.circles__kicker {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 13px;
+  line-height: 1.12;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-neutral-700);
+}
+
+.circles__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.circles__overlap {
+  padding: 12px 14px;
+  gap: 4px;
+}
+
+.circles__tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.circles__tag {
+  font-size: 10px;
+}
+
+.circles__empty,
+.circles__note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-neutral-700);
+}
+
+/* ── Desktop ──────────────────────────────────────────────────────────────── */
+
+@media (min-width: 900px) {
+  .circles {
+    /* The figure is drawn at one size; the Overlaps take what is left. */
+    grid-template-columns: 520px 1fr;
+    gap: 32px;
+  }
+
+  .circles .screen__title {
+    font-size: 32px;
+    margin: 0 0 4px;
+  }
+
+  .circles__figure {
+    height: 440px;
+  }
+
+  .circles__drawing {
+    width: 520px;
+    height: 440px;
+  }
+}

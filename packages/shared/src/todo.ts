@@ -53,16 +53,20 @@ export type Energy = z.infer<typeof energy>
 
 /**
  * What a Source is at its Provider, and the chip that stands for it. One
- * Provider can hold several kinds: Gmail and Calendar are both Google.
+ * Provider can hold several kinds: Gmail and Calendar are both Google. `short`
+ * is the name where a line has room for a word: the Circles figure's "Cal".
  */
 export const SOURCE_KINDS = {
-  linear_issue: { provider: 'linear', chip: 'LN', name: 'Linear' },
-  slack_message: { provider: 'slack', chip: 'SL', name: 'Slack' },
-  notion_page: { provider: 'notion', chip: 'NO', name: 'Notion' },
-  gmail_message: { provider: 'google', chip: 'GM', name: 'Gmail' },
-  calendar_event: { provider: 'google', chip: 'CAL', name: 'Google Calendar' },
-  github_pull_request: { provider: 'github', chip: 'GH', name: 'GitHub' },
-} as const satisfies Record<string, { provider: Provider; chip: string; name: string }>
+  linear_issue: { provider: 'linear', chip: 'LN', name: 'Linear', short: 'Linear' },
+  slack_message: { provider: 'slack', chip: 'SL', name: 'Slack', short: 'Slack' },
+  notion_page: { provider: 'notion', chip: 'NO', name: 'Notion', short: 'Notion' },
+  gmail_message: { provider: 'google', chip: 'GM', name: 'Gmail', short: 'Gmail' },
+  calendar_event: { provider: 'google', chip: 'CAL', name: 'Google Calendar', short: 'Cal' },
+  github_pull_request: { provider: 'github', chip: 'GH', name: 'GitHub', short: 'GitHub' },
+} as const satisfies Record<
+  string,
+  { provider: Provider; chip: string; name: string; short: string }
+>
 export const sourceKind = z.enum(
   Object.keys(SOURCE_KINDS) as [keyof typeof SOURCE_KINDS, ...(keyof typeof SOURCE_KINDS)[]],
 )

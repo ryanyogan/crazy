@@ -1,5 +1,12 @@
 import { expect, it } from 'vite-plus/test'
-import { clockTime, dayAndTime, localTimeToInstant, startOfDay, wallClock } from './clock'
+import {
+  clockTime,
+  dayAndTime,
+  localTimeToInstant,
+  startOfDay,
+  startOfWeek,
+  wallClock,
+} from './clock'
 
 it("reads a wall-clock time in the user's time zone", () => {
   // The mockups' moment: Wednesday 17 Sep 2025, 08:41.
@@ -56,4 +63,12 @@ it('words a moment as the day and time the user will read it at', () => {
 
 it("finds the user's local midnight", () => {
   expect(startOfDay('2025-09-17', 'America/Chicago').toISOString()).toBe('2025-09-17T05:00:00.000Z')
+})
+
+it('starts a week on the Monday the day falls after', () => {
+  // The mockups' Wednesday, its own Monday, and the Sunday that ends that week.
+  expect(startOfWeek('2025-09-17')).toBe('2025-09-15')
+  expect(startOfWeek('2025-09-15')).toBe('2025-09-15')
+  expect(startOfWeek('2025-09-21')).toBe('2025-09-15')
+  expect(startOfWeek('2025-09-22')).toBe('2025-09-22')
 })

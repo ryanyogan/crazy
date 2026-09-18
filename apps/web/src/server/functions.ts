@@ -1,4 +1,4 @@
-import { createReadDb, readToday } from '@crazy/db'
+import { createReadDb, readCircles, readToday } from '@crazy/db'
 import { type CommandResult, command, initials } from '@crazy/shared'
 import { redirect } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
@@ -46,6 +46,16 @@ export const getToday = createServerFn().handler(async () => {
     now: now.toISOString(),
     timeZone,
   }
+})
+
+/** The Circles screen's read model, at the moment this request is served. */
+export const getCircles = createServerFn().handler(async () => {
+  const userId = await viewerId()
+  if (!userId) throw redirect({ to: '/sign-in' })
+
+  const { timeZone } = await settingsFor(userId)
+  const now = requestNow(timeZone)
+  return readCircles(createReadDb(env.DB), userId, now, timeZone)
 })
 
 /**

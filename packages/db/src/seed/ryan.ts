@@ -235,12 +235,108 @@ const MENTIONS: {
   },
 ]
 
-const CIRCLES: { key: string; name: string; side: Side }[] = [
-  { key: 'platform', name: 'Platform team', side: 'work' },
-  { key: 'design', name: 'Design', side: 'work' },
-  { key: 'leadership', name: 'Leadership', side: 'work' },
-  { key: 'personal', name: 'Personal', side: 'personal' },
+/**
+ * The Circles frame 1e draws. Crazy infers these, so the count of people and
+ * the Providers each Circle's work lives in are inferred with them; the Personal
+ * Circle has no count, as the frame shows.
+ */
+const CIRCLES: {
+  key: string
+  name: string
+  side: Side
+  people?: number
+  providers: SourceKind[]
+}[] = [
+  {
+    key: 'platform',
+    name: 'Platform team',
+    side: 'work',
+    people: 12,
+    providers: ['slack_message', 'linear_issue'],
+  },
+  {
+    key: 'design',
+    name: 'Design',
+    side: 'work',
+    people: 5,
+    providers: ['notion_page', 'slack_message'],
+  },
+  {
+    key: 'leadership',
+    name: 'Leadership',
+    side: 'work',
+    people: 3,
+    providers: ['notion_page', 'gmail_message'],
+  },
+  {
+    key: 'personal',
+    name: 'Personal',
+    side: 'personal',
+    providers: ['gmail_message', 'calendar_event'],
+  },
 ]
+
+/**
+ * Frame 1e's Overlaps. Each is a Todo of its own, matched to two Circles —
+ * nothing else makes an Overlap — waiting in the backlog, so the Today screen
+ * is untouched. Everything the mockup words as generated is kept as drawn,
+ * including the shorter wording it writes inside the figure.
+ */
+const OVERLAPS: {
+  key: string
+  title: string
+  circles: [string, string]
+  text: string
+  people: string
+  timing: string
+  figure?: { title: string; note: string }
+  /** Days before today the Todo was made; the oldest Overlap is listed first. */
+  createdDaysAgo: number
+}[] = [
+  {
+    key: 'onboarding-v2-review',
+    title: 'Onboarding v2 design review',
+    circles: ['platform', 'design'],
+    text: 'Your PR review and the design decision land on the same day. Do the review first so the meeting can be about what ships.',
+    people: 'Sam · Lena · Priya',
+    timing: 'Today 13:00 → 14:00',
+    figure: { title: 'Onboarding v2', note: 'Sam · Priya · Lena' },
+    createdDaysAgo: 5,
+  },
+  {
+    key: 'auth-in-q4-doc',
+    title: 'Auth migration in the Q4 doc',
+    circles: ['platform', 'leadership'],
+    text: 'Section 2 is the migration story. Finishing the spike today gives you real numbers for it tomorrow.',
+    people: 'Devon',
+    timing: 'Thu → Mon',
+    figure: { title: 'Auth migration', note: 'Q4 doc · Devon' },
+    createdDaysAgo: 4,
+  },
+  {
+    key: 'onboarding-metrics-q4',
+    title: 'Onboarding metrics for Q4',
+    circles: ['leadership', 'design'],
+    text: 'Lena has the activation numbers Devon will ask about.',
+    people: 'Lena · Devon',
+    timing: 'Ask by Thu',
+    figure: { title: 'Design review', note: '14:00 today' },
+    createdDaysAgo: 3,
+  },
+  {
+    key: 'move-day-wednesday',
+    title: 'Move day is a Wednesday',
+    circles: ['personal', 'platform'],
+    text: '1 Oct collides with the platform release train. Flag it in standup.',
+    people: 'You',
+    timing: '1 Oct',
+    // Personal stands apart in the figure, so this Overlap has nowhere to be written.
+    createdDaysAgo: 2,
+  },
+]
+
+/** A Todo already in the stack that belongs to one Circle, and so is no Overlap. */
+const MATCHED: { todo: string; circle: string }[] = [{ todo: 'movers-deposit', circle: 'personal' }]
 
 const PROJECTS: {
   key: string
@@ -336,13 +432,17 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
     createdAt: past(60, '09:00'),
   }))
 
-  const circles: Prisma.CircleCreateManyInput[] = CIRCLES.map(({ key, name, side }) => ({
-    id: id('circle', key),
-    userId,
-    name,
-    side,
-    createdAt: past(60, '09:00'),
-  }))
+  const circles: Prisma.CircleCreateManyInput[] = CIRCLES.map(
+    ({ key, name, side, people, providers }) => ({
+      id: id('circle', key),
+      userId,
+      name,
+      side,
+      people: people ?? null,
+      providers: providers.join(','),
+      createdAt: past(60, '09:00'),
+    }),
+  )
 
   const projects: Prisma.ProjectCreateManyInput[] = PROJECTS.map((project) => ({
     id: id('project', project.key),
@@ -380,6 +480,19 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
       touchedAt: carried > 0 ? past(1, '16:00') : past(0, '08:05'),
     }
   })
+  // Each Overlap's Todo waits in the backlog: Crazy has noticed that it serves
+  // two Circles, and the user has not put it in a day yet.
+  for (const overlap of OVERLAPS) {
+    todos.push({
+      id: id('todo', overlap.key),
+      userId,
+      title: overlap.title,
+      state: 'backlog',
+      carryCount: 0,
+      createdAt: past(overlap.createdDaysAgo, '09:00'),
+      touchedAt: past(overlap.createdDaysAgo, '09:00'),
+    })
+  }
   // The one the last Rollover sent back: nobody touched it for a day.
   todos.push({
     id: id('todo', 'expense-report'),
@@ -404,6 +517,45 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
       createdAt: past(0, '08:05'),
     })),
   )
+
+  // Crazy matched these this morning, with the rest of the day's planning. An
+  // Overlap belongs to the week Crazy last matched it in, so laying the persona
+  // over any weekday — a Monday included — still fills the Circles screen.
+  const matchedAt = past(0, '08:05')
+
+  const circleMatches: Prisma.CircleMatchCreateManyInput[] = [
+    ...OVERLAPS.flatMap((overlap) =>
+      // Matches made at the same moment read in the order of their ids, so the
+      // id carries the order the mockup tags them in.
+      overlap.circles.map((circle, order) => ({
+        id: id('match', `${overlap.key}-${String(order).padStart(2, '0')}-${circle}`),
+        userId,
+        todoId: id('todo', overlap.key),
+        circleId: id('circle', circle),
+        createdAt: matchedAt,
+      })),
+    ),
+    ...MATCHED.map((match) => ({
+      id: id('match', `${match.todo}-${match.circle}`),
+      userId,
+      todoId: id('todo', match.todo),
+      circleId: id('circle', match.circle),
+      createdAt: matchedAt,
+    })),
+  ]
+
+  const overlapNotes: Prisma.OverlapNoteCreateManyInput[] = OVERLAPS.map((overlap) => ({
+    id: id('overlap', overlap.key),
+    userId,
+    todoId: id('todo', overlap.key),
+    text: overlap.text,
+    people: overlap.people,
+    timing: overlap.timing,
+    figureTitle: overlap.figure?.title ?? null,
+    figureNote: overlap.figure?.note ?? null,
+    // Worded when the week was last planned, with the Brief.
+    createdAt: past(0, '06:00'),
+  }))
 
   const briefs: Prisma.BriefCreateManyInput[] = [
     {
@@ -461,6 +613,8 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
     circles,
     projects,
     todos,
+    circleMatches,
+    overlapNotes,
     slots,
     briefs,
     calendarEvents,

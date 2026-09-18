@@ -45,7 +45,7 @@ Updated as tickets land.
 | Both Workers from one `pnpm dev`, sharing a local D1; Coordinator bound across Workers                                                            | Real                                                                                              |
 | Clerk sign-in (Google, GitHub, email code); demo user Ryan without keys                                                                           | Real (the Clerk path has not been exercised with real keys yet)                                   |
 | Lazy provisioning: settings row and Coordinator on the first authenticated request; time zone taken from the request                              | Real                                                                                              |
-| The Shell at both widths, the More screen, a route behind every destination                                                                       | Real; every route but Today is empty                                                              |
+| The Shell at both widths, the More screen, a route behind every destination                                                                       | Real; every route but Today and Circles is empty                                                  |
 | Live across devices: `/live` hands the socket to the user's Coordinator, patches land in the query cache, the Live indicator shows the connection | Real; nothing pings, so a connection that dies silently is not noticed until the browser notices  |
 | The current time as an injected value in the web app, which a development request can pin                                                         | Real                                                                                              |
 | Visual comparison harness (`pnpm visual`): frames 1a and 1c–1g against their routes, derived phone screenshots                                    | Real; the Cori frames (2a–2c, 3a, 3b, 4a) join with ticket 16                                     |
@@ -56,6 +56,8 @@ Updated as tickets land.
 | The Brief's text, the stack's order and each Todo's reason                                                                                        | Seeded, stored where generated text will live                                                     |
 | Today screen: hour timeline, Mentions, the place to add a Todo                                                                                    | Real on seeded rows; adding is wired, dragging is drawn only (08)                                 |
 | How each hour of the timeline is worded                                                                                                           | Seeded (`timeline_hour`); derived for an hour with no wording                                     |
+| A Todo's match to a Circle (`circle_match`), and an Overlap's wording (`overlap_note`)                                                            | Seeded; nothing writes either yet. An Overlap is never a row — it is a Todo matched to 2+ Circles |
+| Circles screen: the figure of the Circles with their Sides, and this week's Overlaps, read from D1 by `readCircles`                               | Real on seeded rows; how many people a Circle holds and its Overlaps' wording are seeded          |
 | Everything else in the spec                                                                                                                       | Not started                                                                                       |
 
 ## Derived layouts
@@ -87,14 +89,22 @@ frames exist:
 - **Start, Swap and the stack's footer on a phone.** The phone frame draws none of them, so they
   are hidden below 900px. Start and Swap will need a phone treatment when they are wired (ticket 09).
 - **An empty Priority stack** says "Nothing left for today." and the Take on now card is absent.
-- Still to come, per the spec: phone layouts for Week, Projects, Circles, Metrics, Time, Invoices
+- **The Circles screen on a phone.** The frame draws desktop only. The two columns fall into one:
+  the heading, the figure at the width there is (it keeps its proportions), then the Overlaps and
+  the note. Nothing is dropped and nothing scrolls sideways.
+- **A Circle the figure has no room for.** Frame 1e's figure seats four, three crossing and one
+  standing apart, and a personal Circle takes the one that stands apart. A fifth Circle is named
+  under the figure — "Not in the picture: …" — rather than silently left out. The seed has four.
+- Still to come, per the spec: phone layouts for Week, Projects, Metrics, Time, Invoices
   and Integrations, and the started state of Take on now with the Billing module off.
 
-Three deliberate differences from the frames: the wordmark reads CRAZY where they read TODAY; the
-stack's footer says "1 sent back" where frame 1a says "1 moved to backlog"; and the Mentions card
-is titled "Mentions" where the frame says "Mentions & follow-ups". The glossary lists both of the
-frame's wordings as ones to avoid. The harness draws the frames with all three changes (`WORDMARK`
-and `COPY` in `tools/visual/src/targets.ts`).
+Five deliberate differences from the frames: the wordmark reads CRAZY where they read TODAY; the
+stack's footer says "1 sent back" where frame 1a says "1 moved to backlog"; the Mentions card
+is titled "Mentions" where the frame says "Mentions & follow-ups"; the Circles screen says "Four
+Circles this week" where frame 1e says "Four groups this week"; and it says Circles are inferred
+from "which Providers the work lives in" where the frame says "which tools". The glossary lists
+every one of the frame's wordings as one to avoid. The harness draws the frames with all five
+changes (`WORDMARK` and `COPY` in `tools/visual/src/targets.ts`).
 
 ## Comparing a screen with its frame
 

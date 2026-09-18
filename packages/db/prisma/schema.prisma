@@ -56,16 +56,63 @@ model Connection {
 }
 
 /// A group of people and tools a user moves in. The only place a Side is stored.
+/// Crazy infers a Circle, so `people` and `providers` are inferred with it: how
+/// many people it holds, and the Providers its work lives in (SOURCE_KINDS,
+/// comma separated). Both are null until Crazy has looked.
 model Circle {
-  id        String    @id
+  id        String        @id
   userId    String
   name      String
   side      String // SIDES
+  people    Int?
+  providers String?
   createdAt DateTime
   projects  Project[]
+  todos     CircleMatch[]
 
   @@index([userId])
   @@map("circle")
+}
+
+/// One Todo matched to one Circle. A Todo matched to more than one Circle is an
+/// **Overlap**: doing it serves both. An Overlap is never a row of its own — it
+/// is read off these matches, so nothing can say a Todo overlaps and not match.
+model CircleMatch {
+  id        String   @id
+  userId    String
+  todoId    String
+  todo      Todo     @relation(fields: [todoId], references: [id], onDelete: Cascade)
+  circleId  String
+  circle    Circle   @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  createdAt DateTime
+
+  @@unique([todoId, circleId])
+  // The Circles read model: a user's matches, and one Todo's Circles.
+  @@index([userId])
+  @@map("circle_match")
+}
+
+/// How Crazy worded one Overlap on the Circles screen: why the Todo serves both
+/// Circles, who is in it, when it lands, and the two short lines it writes where
+/// those Circles meet on the figure. Generated text, like the Brief. The Overlap
+/// itself is the Todo's matches; a Todo with a note and one match is not one.
+model OverlapNote {
+  id        String   @id
+  userId    String
+  todoId    String   @unique
+  todo      Todo     @relation(fields: [todoId], references: [id], onDelete: Cascade)
+  text      String
+  people    String
+  /// When the Overlap lands, in words: "Today 13:00 → 14:00". Written, not read
+  /// off the Todo's Slots, so once a Todo can be slotted (ticket 08) the two can
+  /// disagree. Which wins is undecided; nothing reconciles them yet.
+  timing    String
+  figureTitle String?
+  figureNote  String?
+  createdAt DateTime
+
+  @@index([userId])
+  @@map("overlap_note")
 }
 
 /// A named body of work. Progress is derived from its Todos, never stored.
@@ -116,6 +163,9 @@ model Todo {
   doneAt          DateTime?
   slots           Slot[]
   signals         Signal[]
+  /// The Circles it is matched to. More than one makes it an Overlap.
+  circles         CircleMatch[]
+  overlapNote     OverlapNote?
 
   // The Today read model: a user's `today` Todos in stack order.
   @@index([userId, state, stackPosition])

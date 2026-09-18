@@ -88,6 +88,12 @@ export function startOfDay(day: string, timeZone: string): Date {
   return start
 }
 
+/** The Monday of the week `day` falls in. A week runs Monday to Sunday. */
+export function startOfWeek(day: string): string {
+  const weekday = new Date(`${day}T00:00:00Z`).getUTCDay()
+  return addDays(day, -((weekday + 6) % 7))
+}
+
 /** The day `count` days after `day` (before it, when negative). */
 export function addDays(day: string, count: number): string {
   const date = new Date(`${day}T00:00:00Z`)
