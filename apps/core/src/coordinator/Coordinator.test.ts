@@ -420,10 +420,14 @@ it('takes a Todo off the day, and says so once however often it is asked', async
   const first = await coordinator.command({ type: 'todo.clearSlot', todoId: deposit.id })
   const again = await coordinator.command({ type: 'todo.clearSlot', todoId: deposit.id })
 
-  expect(first.ok && first.patch.ops[0]).toMatchObject({ type: 'slot.set', hours: [] })
+  const cleared = first.ok ? first.patch.ops[0] : undefined
+  expect(cleared).toMatchObject({ type: 'slot.set', hours: [] })
   // Asked again it is already off the day, which is what was asked for.
   expect(again).toMatchObject({ ok: true, patch: { seq: 2, ops: [] } })
-  expect(await slotsOf(deposit.id)).toEqual([])
+  // Off this day only: a carried Todo keeps the hour it held on the day it was carried from,
+  // which the persona gives it once that day has passed.
+  const day = cleared?.type === 'slot.set' ? cleared.day : undefined
+  expect((await slotsOf(deposit.id)).filter((slot) => slot.day === day)).toEqual([])
 })
 
 it("cannot give another user's Todo a Slot", async () => {
