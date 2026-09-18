@@ -33,8 +33,18 @@ async function openSocket(userId: string, since?: number) {
   return { socket, hear }
 }
 
+async function signalId(userId: string, person: string): Promise<string> {
+  const row = await env.DB.prepare('SELECT id FROM signal WHERE userId = ? AND person = ?')
+    .bind(userId, person)
+    .first<{ id: string }>()
+  return row!.id
+}
+
 const complete = (userId: string, id: string) =>
   coordinatorFor(userId).command({ type: 'todo.complete', todoId: id })
+
+const addSignal = (userId: string, signalId: string, todoId: string) =>
+  coordinatorFor(userId).command({ type: 'signal.add', signalId, todoId })
 
 it('greets a socket with where the sequence stands, and nothing from the SDK', async () => {
   await coordinatorFor('live_a').provision({ timeZone: 'America/Chicago' })
@@ -56,6 +66,31 @@ it("broadcasts a committed command to the user's open sockets, stamped with its 
       type: 'patch',
       seq: 1,
       ops: [{ type: 'todo.set', id: dentist, set: { state: 'done', doneAt: expect.any(String) } }],
+    })
+  }
+})
+
+it('tells a second tab about the Todo added from a Mention, and the Mention marked as added', async () => {
+  await coordinatorFor('live_k').provision({ timeZone: 'America/Chicago' })
+  const desk = await openSocket('live_k')
+  const phone = await openSocket('live_k')
+  const devon = await signalId('live_k', 'Devon')
+
+  await addSignal('live_k', devon, 'todo_live_k_1')
+
+  // Both tabs are told the whole command: the Todo born with the Mention's
+  // Source, and the Mention now showing as added.
+  for (const tab of [desk, phone]) {
+    expect((await tab.hear(2))[1]).toMatchObject({
+      type: 'patch',
+      seq: 1,
+      ops: [
+        {
+          type: 'todo.insert',
+          todo: { id: 'todo_live_k_1', state: 'today', source: { kind: 'notion_page' } },
+        },
+        { type: 'signal.set', id: devon, set: { todoId: 'todo_live_k_1' } },
+      ],
     })
   }
 })
@@ -85,6 +120,29 @@ it('replays what a reconnecting socket missed, in order, then says where things 
     ['patch', 3],
     ['hello', 3],
   ])
+})
+
+it('replays an added Mention to a reconnecting socket, the new Todo and all', async () => {
+  await coordinatorFor('live_l').provision({ timeZone: 'America/Chicago' })
+  const devon = await signalId('live_l', 'Devon')
+  await complete('live_l', await todoId('live_l', 'Book dentist'))
+  await addSignal('live_l', devon, 'todo_live_l_1')
+
+  // A tab that applied the completion and then lost the socket is handed the
+  // rest whole: what it missed is more than changes to Todos it already had.
+  const { hear } = await openSocket('live_l', 1)
+
+  expect((await hear(2))[0]).toMatchObject({
+    type: 'patch',
+    seq: 2,
+    ops: [
+      {
+        type: 'todo.insert',
+        todo: { id: 'todo_live_l_1', state: 'today', source: { kind: 'notion_page' } },
+      },
+      { type: 'signal.set', id: devon, set: { todoId: 'todo_live_l_1' } },
+    ],
+  })
 })
 
 it('replays nothing to a socket that missed nothing', async () => {

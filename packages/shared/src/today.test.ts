@@ -16,30 +16,39 @@ function todo(id: string, fields: Partial<TodayTodo> = {}): TodayTodo {
     source: null,
     slotHours: [],
     createdAt: '2025-09-16T09:00:00.000Z',
+    touchedAt: '2025-09-16T09:00:00.000Z',
+    snoozedUntil: null,
     doneAt: null,
     ...fields,
   }
 }
 
 const ids = (todos: { id: string }[]) => todos.map(({ id }) => id)
+const now = new Date('2025-09-17T13:41:00.000Z')
 
 it('lists only `today` Todos in the Priority stack, in the recommended order', () => {
-  const stack = priorityStack([
-    todo('third', { stackPosition: 3 }),
-    todo('someday', { state: 'backlog', stackPosition: 1 }),
-    todo('first', { stackPosition: 1 }),
-    todo('finished', { state: 'done', stackPosition: 2 }),
-    todo('second', { stackPosition: 2 }),
-  ])
+  const stack = priorityStack(
+    [
+      todo('third', { stackPosition: 3 }),
+      todo('someday', { state: 'backlog', stackPosition: 1 }),
+      todo('first', { stackPosition: 1 }),
+      todo('finished', { state: 'done', stackPosition: 2 }),
+      todo('second', { stackPosition: 2 }),
+    ],
+    now,
+  )
   expect(ids(stack)).toEqual(['first', 'second', 'third'])
 })
 
 it('puts a Todo with no position yet after the placed ones, oldest first', () => {
-  const stack = priorityStack([
-    todo('jotted later', { createdAt: '2025-09-17T08:00:00.000Z' }),
-    todo('jotted earlier', { createdAt: '2025-09-17T07:00:00.000Z' }),
-    todo('placed', { stackPosition: 5 }),
-  ])
+  const stack = priorityStack(
+    [
+      todo('jotted later', { createdAt: '2025-09-17T08:00:00.000Z' }),
+      todo('jotted earlier', { createdAt: '2025-09-17T07:00:00.000Z' }),
+      todo('placed', { stackPosition: 5 }),
+    ],
+    now,
+  )
   expect(ids(stack)).toEqual(['placed', 'jotted earlier', 'jotted later'])
 })
 
@@ -49,7 +58,7 @@ it('takes the top of the Priority stack as the Take on now, for the hours it is 
 })
 
 it('has no Take on now when no `today` Todo remains', () => {
-  expect(takeOnNow(priorityStack([todo('finished', { state: 'done' })]), 8)).toBeNull()
+  expect(takeOnNow(priorityStack([todo('finished', { state: 'done' })], now), 8)).toBeNull()
 })
 
 it('names no hours for a Take on now whose Slots have passed or were never given', () => {

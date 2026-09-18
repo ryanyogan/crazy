@@ -110,6 +110,8 @@ model Todo {
   sourceUrl          String?
   createdAt       DateTime
   touchedAt       DateTime // the last time the user touched it
+  /// While this moment is still to come the Todo is out of the Priority stack.
+  snoozedUntil    DateTime?
   sentBackAt      DateTime? // the Rollover that last sent it back
   doneAt          DateTime?
   slots           Slot[]

@@ -307,6 +307,15 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
   /** A wall-clock time some days before today. */
   const at = (daysAgo: number, time: string) =>
     localTimeToInstant(`${addDays(today, -daysAgo)}T${time}`, timeZone)!
+  /**
+   * The same, for something the persona says has already happened. The day is
+   * laid over whatever moment it is seeded at, so an hour of it can still be to
+   * come: nothing is recorded as done, synced or written in the future.
+   */
+  const past = (daysAgo: number, time: string) => {
+    const moment = at(daysAgo, time)
+    return moment > now ? now : moment
+  }
   const lastRollover = startOfDay(today, timeZone)
 
   const connections: Prisma.ConnectionCreateManyInput[] = (
@@ -323,8 +332,8 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
     externalAccountId: `seed_${provider}`,
     defaultSide: 'work',
     status,
-    lastSyncAt: status === 'connected' ? at(0, '08:39') : at(0, '06:12'),
-    createdAt: at(60, '09:00'),
+    lastSyncAt: status === 'connected' ? past(0, '08:39') : past(0, '06:12'),
+    createdAt: past(60, '09:00'),
   }))
 
   const circles: Prisma.CircleCreateManyInput[] = CIRCLES.map(({ key, name, side }) => ({
@@ -332,7 +341,7 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
     userId,
     name,
     side,
-    createdAt: at(60, '09:00'),
+    createdAt: past(60, '09:00'),
   }))
 
   const projects: Prisma.ProjectCreateManyInput[] = PROJECTS.map((project) => ({
@@ -344,7 +353,7 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
     statusNote: project.statusNote ?? null,
     milestone: project.milestone,
     milestoneDay: addDays(today, project.milestoneIn),
-    createdAt: at(45, '09:00'),
+    createdAt: past(45, '09:00'),
   }))
 
   const todos: Prisma.TodoCreateManyInput[] = STACK.map((todo, index) => {
@@ -366,9 +375,9 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
       sourceKind: todo.source?.kind ?? null,
       sourceItemId: todo.source?.item ?? null,
       sourceRef: todo.source?.ref ?? null,
-      createdAt: at(carried + 1, '10:00'),
+      createdAt: past(carried + 1, '10:00'),
       // Carried over means touched the day before; the rest were slotted this morning.
-      touchedAt: carried > 0 ? at(1, '16:00') : at(0, '08:05'),
+      touchedAt: carried > 0 ? past(1, '16:00') : past(0, '08:05'),
     }
   })
   // The one the last Rollover sent back: nobody touched it for a day.
@@ -380,8 +389,8 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
     estimateMinutes: 30,
     energy: 'people_admin',
     carryCount: 0,
-    createdAt: at(6, '11:00'),
-    touchedAt: at(2, '15:00'),
+    createdAt: past(6, '11:00'),
+    touchedAt: past(2, '15:00'),
     sentBackAt: lastRollover,
   })
 
@@ -392,7 +401,7 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
       todoId: id('todo', todo.key),
       day: today,
       hour,
-      createdAt: at(0, '08:05'),
+      createdAt: past(0, '08:05'),
     })),
   )
 
@@ -403,7 +412,7 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
       kind: 'daily',
       day: today,
       ...BRIEF,
-      createdAt: at(0, '06:00'),
+      createdAt: past(0, '06:00'),
     },
   ]
 
@@ -417,7 +426,7 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
     who: event.who ?? null,
     startsAt: at(0, event.from),
     endsAt: at(0, event.until),
-    createdAt: at(7, '09:00'),
+    createdAt: past(7, '09:00'),
   }))
 
   const timelineHours: Prisma.TimelineHourCreateManyInput[] = HOURS.map((hour) => ({
@@ -429,7 +438,7 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
     note: hour.note,
     sourceKind: hour.source,
     // Worded when the status was last refreshed, on the hour.
-    createdAt: at(0, '08:00'),
+    createdAt: past(0, '08:00'),
   }))
 
   const signals: Prisma.SignalCreateManyInput[] = MENTIONS.map((mention) => ({
@@ -438,13 +447,13 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
     kind: 'mention',
     person: mention.person,
     text: mention.text,
-    at: at(mention.daysAgo, mention.time),
+    at: past(mention.daysAgo, mention.time),
     connectionId: id('connection', SOURCE_KINDS[mention.source.kind].provider),
     sourceKind: mention.source.kind,
     sourceItemId: mention.source.item,
     sourceRef: mention.source.ref ?? null,
     todoId: mention.addedAs ? id('todo', mention.addedAs) : null,
-    createdAt: at(mention.daysAgo, mention.time),
+    createdAt: past(mention.daysAgo, mention.time),
   }))
 
   return {

@@ -69,6 +69,18 @@ export function clockTime(instant: Date, timeZone: string): string {
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
 }
 
+/** "Sep 18 · 08:14": the day and the time a wall clock in `timeZone` reads at `instant`. */
+export function dayAndTime(instant: Date, timeZone: string): string {
+  const { day } = wallClock(instant, timeZone)
+  const date = new Date(`${day}T00:00:00Z`)
+  const named = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'UTC',
+    month: 'short',
+    day: 'numeric',
+  }).format(date)
+  return `${named} · ${clockTime(instant, timeZone)}`
+}
+
 /** The moment `day` began in `timeZone`: the last Rollover, seen from inside that day. */
 export function startOfDay(day: string, timeZone: string): Date {
   const start = localTimeToInstant(`${day}T00:00`, timeZone)

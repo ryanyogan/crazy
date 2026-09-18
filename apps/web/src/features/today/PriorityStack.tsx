@@ -1,5 +1,13 @@
-import { SOURCE_KINDS, type TodayTodo, carriedLabel, formatEstimate } from '@crazy/shared'
-import { Blueprint, NotWired, SourceChip, Tag } from '@crazy/ui'
+import {
+  SNOOZE_CHOICES,
+  SOURCE_KINDS,
+  type SnoozedTodo,
+  type TodayTodo,
+  carriedLabel,
+  dayAndTime,
+  formatEstimate,
+} from '@crazy/shared'
+import { Blueprint, Button, NotWired, SourceChip, Tag } from '@crazy/ui'
 import { useId, useState } from 'react'
 import { useCommand } from '#/lib/useCommand'
 
@@ -35,26 +43,32 @@ function StackRow({ todo }: { todo: TodayTodo }) {
           checked={false}
           onChange={() => command.mutate({ type: 'todo.complete', todoId: todo.id })}
         />
-        {why ? (
-          <button
-            type="button"
-            className="stack__what"
-            aria-expanded={open}
-            aria-controls={whyId}
-            onClick={() => setOpen(!open)}
-          >
-            {what}
-          </button>
-        ) : (
-          <span className="stack__what">{what}</span>
-        )}
+        <button
+          type="button"
+          className="stack__what"
+          aria-expanded={open}
+          aria-controls={whyId}
+          onClick={() => setOpen(!open)}
+        >
+          {what}
+        </button>
         <SourceChip source={todo.source && SOURCE_KINDS[todo.source.kind]} />
       </div>
-      {why && (
-        <p id={whyId} className="stack__why" hidden={!open}>
-          {why}
-        </p>
-      )}
+      <div id={whyId} className="stack__why" hidden={!open}>
+        {why && <p>{why}</p>}
+        <fieldset className="stack__snooze">
+          <legend className="sr-only">Snooze: {todo.title}</legend>
+          {SNOOZE_CHOICES.map(({ minutes, label }) => (
+            <Button
+              key={minutes}
+              disabled={command.isPending}
+              onClick={() => command.mutate({ type: 'todo.snooze', todoId: todo.id, minutes })}
+            >
+              Snooze {label}
+            </Button>
+          ))}
+        </fieldset>
+      </div>
     </li>
   )
 }
@@ -88,12 +102,21 @@ function DoneRow({ todo }: { todo: TodayTodo }) {
 interface PriorityStackProps {
   stack: TodayTodo[]
   done: TodayTodo[]
+  snoozed: SnoozedTodo[]
+  timeZone: string
   carriedOver: number
   sentBack: number
 }
 
 /** The `today` Todos in the order Crazy recommends, and what the last Rollover did. */
-export function PriorityStack({ stack, done, carriedOver, sentBack }: PriorityStackProps) {
+export function PriorityStack({
+  stack,
+  done,
+  snoozed,
+  timeZone,
+  carriedOver,
+  sentBack,
+}: PriorityStackProps) {
   return (
     <Blueprint as="section" className="card stack" aria-labelledby="stack-title">
       <h2 id="stack-title" className="card-kicker stack__title">
@@ -114,6 +137,21 @@ export function PriorityStack({ stack, done, carriedOver, sentBack }: PrioritySt
             <DoneRow key={todo.id} todo={todo} />
           ))}
         </ul>
+      )}
+      {snoozed.length > 0 && (
+        <details className="stack__snoozed">
+          <summary>{snoozed.length} snoozed</summary>
+          <ul>
+            {snoozed.map((todo) => (
+              <li key={todo.id}>
+                {todo.title}
+                <span className="stack__meta">
+                  Snoozed until {dayAndTime(new Date(todo.snoozedUntil), timeZone)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
       {(carriedOver > 0 || sentBack > 0) && (
         <div className="stack__foot">

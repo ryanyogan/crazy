@@ -68,12 +68,21 @@ export const sourceKind = z.enum(
 )
 export type SourceKind = z.infer<typeof sourceKind>
 
-/** The Provider item a Todo was made from. */
-export interface Source {
-  kind: SourceKind
+/** The Provider item a Todo was made from, or a Signal is. */
+export const source = z.object({
+  /** The Connection it arrived through, and the item's id at the Provider: together, its identity. */
+  connectionId: z.string().min(1),
+  itemId: z.string().min(1),
+  kind: sourceKind,
   /** What people call the item, when it has a name of its own: "HAL-212". */
-  ref: string | null
-  url: string | null
+  ref: z.string().nullable(),
+  url: z.string().nullable(),
+})
+export type Source = z.infer<typeof source>
+
+/** Whether two Sources are the same Provider item. */
+export function sameSource(a: Source, b: Source): boolean {
+  return a.connectionId === b.connectionId && a.itemId === b.itemId
 }
 
 /** A Todo as the Today screen reads it. */
@@ -93,8 +102,17 @@ export interface TodayTodo {
   /** The hours of the day in question this Todo holds a Slot on, ascending. */
   slotHours: number[]
   createdAt: string
+  /** The last time the user touched it (CONTEXT.md, "Touched"). */
+  touchedAt: string
+  /** While this moment is still to come the Todo is out of the Priority stack; null when not snoozed. */
+  snoozedUntil: string | null
   /** When it was completed; null until it is. */
   doneAt: string | null
+}
+
+/** A snoozed Todo is out of the stack until its snooze ends. */
+export function isSnoozed(todo: Pick<TodayTodo, 'snoozedUntil'>, now: Date): boolean {
+  return todo.snoozedUntil !== null && new Date(todo.snoozedUntil) > now
 }
 
 /** "2h", "45m", "1h 30m"; nothing when there is no estimate. */

@@ -6,7 +6,7 @@ import {
   meetingCount,
   timeline,
 } from './timeline'
-import type { Source, TodayTodo } from './todo'
+import { type SignalKind, type Source, type TodayTodo, isSnoozed } from './todo'
 
 // The rules of the Today screen that need no database: what the Priority
 // stack is, which Todo is the Take on now, and how the moment is worded.
@@ -14,13 +14,14 @@ import type { Source, TodayTodo } from './todo'
 /**
  * The Priority stack: the `today` Todos in the order Crazy recommends. It is
  * an ordering of Todos, not a list of its own. A Todo with no position yet
- * (one just added) follows the placed ones, oldest first.
+ * (one just added) follows the placed ones, oldest first. A snoozed Todo is
+ * out of it until its snooze ends.
  */
-export function priorityStack<T extends Pick<TodayTodo, 'state' | 'stackPosition' | 'createdAt'>>(
-  todos: readonly T[],
-): T[] {
+export function priorityStack<
+  T extends Pick<TodayTodo, 'state' | 'stackPosition' | 'createdAt' | 'snoozedUntil'>,
+>(todos: readonly T[], now: Date): T[] {
   return todos
-    .filter((todo) => todo.state === 'today')
+    .filter((todo) => todo.state === 'today' && !isSnoozed(todo, now))
     .sort(
       (a, b) =>
         (a.stackPosition ?? Infinity) - (b.stackPosition ?? Infinity) ||
@@ -64,12 +65,14 @@ export function takeOnNow<T extends Pick<TodayTodo, 'slotHours'>>(
   return { todo, hours: fittingHours(todo.slotHours, hourNow) }
 }
 
-/** A Signal where someone addressed the user at a Provider. */
-export interface Mention {
+/** Something Crazy noticed at a Provider that might deserve a Todo. It never becomes one on its own. */
+export interface Signal {
   id: string
+  kind: SignalKind
+  /** Who addressed the user, was promised something, or owes them. */
   who: string
   text: string
-  /** When it was said. */
+  /** When it happened at the Provider. */
   at: string
   /** The Provider item it is; a Todo made from it takes this as its Source. */
   source: Source
@@ -91,14 +94,19 @@ export interface Today {
   todos: TodayTodo[]
   events: DayEvent[]
   hours: HourWording[]
-  /** Newest first. */
-  mentions: Mention[]
+  /** The day's Signals, newest first: every Mention, for now. */
+  signals: Signal[]
   /** How many Todos the last Rollover sent back. */
   sentBack: number
 }
 
+/** A snoozed Todo, which always knows the moment it returns. */
+export type SnoozedTodo = TodayTodo & { snoozedUntil: string }
+
 export interface TodayView {
   stack: TodayTodo[]
+  /** Snoozed, and so out of the stack for now; the soonest to return first. */
+  snoozed: SnoozedTodo[]
   /** Completed this day, most recently first. */
   done: TodayTodo[]
   takeOnNow: TakeOnNow<TodayTodo> | null
@@ -108,11 +116,15 @@ export interface TodayView {
   carriedOver: number
 }
 
-/** Everything the Today screen derives from the day, at an hour of it. */
-export function viewToday(today: Today, hourNow: number): TodayView {
-  const stack = priorityStack(today.todos)
+/** Everything the Today screen derives from the day, at a moment of it. */
+export function viewToday(today: Today, now: Date, timeZone: string): TodayView {
+  const hourNow = wallClock(now, timeZone).hour
+  const stack = priorityStack(today.todos, now)
   return {
     stack,
+    snoozed: today.todos
+      .filter((todo): todo is SnoozedTodo => todo.state === 'today' && isSnoozed(todo, now))
+      .sort((a, b) => a.snoozedUntil.localeCompare(b.snoozedUntil)),
     done: today.todos
       .filter((todo) => todo.state === 'done')
       .sort((a, b) => (b.doneAt ?? '').localeCompare(a.doneAt ?? '')),

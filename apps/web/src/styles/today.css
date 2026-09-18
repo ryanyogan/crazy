@@ -213,10 +213,58 @@ button.stack__what {
   color: var(--color-neutral-700);
 }
 
+/* The reason is the paragraph Industry gives a bottom margin; here the box
+   around it holds the spacing. */
+.stack__why > p {
+  margin: 0;
+}
+
 .stack__empty {
   margin: 0;
   font-size: 13px;
   color: var(--color-neutral-700);
+}
+
+/* A fieldset for the group's name, without the box the browser draws for one. */
+.stack__snooze {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-inline-size: 0;
+}
+
+.stack__why > p + .stack__snooze {
+  margin-top: var(--space-2);
+}
+
+/* The frame does not draw these; on a phone they are still for a thumb, so
+   they take Industry's 36px touch height. */
+.stack__snooze .btn {
+  padding: var(--space-1) var(--space-2);
+  min-height: 36px;
+  font-size: inherit;
+}
+
+.stack__snoozed {
+  color: var(--color-neutral-700);
+  font-size: 12px;
+}
+
+.stack__snoozed summary {
+  cursor: pointer;
+  padding-block: var(--space-3);
+}
+
+.stack__snoozed ul {
+  padding-left: var(--space-6);
+  margin-block: var(--space-2);
+}
+
+.stack__snoozed li + li {
+  margin-top: var(--space-2);
 }
 
 /* The phone frame draws no footer; the short Brief says what was carried over. */
@@ -397,6 +445,15 @@ button.stack__what {
 
   .stack__why {
     padding: 0 0 4px 23px;
+  }
+
+  /* A pointer, not a thumb: back to the density of the rows around them. */
+  .stack__snooze .btn {
+    min-height: 0;
+  }
+
+  .stack__snoozed summary {
+    padding-block: 0;
   }
 
   .stack__foot {

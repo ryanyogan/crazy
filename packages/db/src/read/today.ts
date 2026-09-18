@@ -5,6 +5,7 @@ import {
   addDays,
   calendarEventKind,
   energy,
+  signalKind,
   sourceKind,
   startOfDay,
   todoState,
@@ -26,7 +27,7 @@ export async function readToday(
   const dayStart = startOfDay(day, timeZone)
   const dayEnd = startOfDay(addDays(day, 1), timeZone)
 
-  const [brief, todos, sentBack, events, hours, mentions] = await Promise.all([
+  const [brief, todos, sentBack, events, hours, signals] = await Promise.all([
     db.brief.findUnique({
       where: { userId_kind_day: { userId, kind: 'daily', day } },
       select: { body: true, bodyShort: true },
@@ -72,11 +73,19 @@ export async function readToday(
       stackPosition: row.stackPosition,
       reason: row.stackReason,
       source:
-        row.sourceKind === null
+        row.sourceConnectionId === null || row.sourceItemId === null || row.sourceKind === null
           ? null
-          : { kind: sourceKind.parse(row.sourceKind), ref: row.sourceRef, url: row.sourceUrl },
+          : {
+              connectionId: row.sourceConnectionId,
+              itemId: row.sourceItemId,
+              kind: sourceKind.parse(row.sourceKind),
+              ref: row.sourceRef,
+              url: row.sourceUrl,
+            },
       slotHours: row.slots.map((slot) => slot.hour),
       createdAt: row.createdAt.toISOString(),
+      touchedAt: row.touchedAt.toISOString(),
+      snoozedUntil: row.snoozedUntil?.toISOString() ?? null,
       doneAt: row.doneAt?.toISOString() ?? null,
     })),
     events: events.map((row): DayEvent => ({
@@ -93,12 +102,19 @@ export async function readToday(
       note: row.note,
       source: row.sourceKind === null ? null : sourceKind.parse(row.sourceKind),
     })),
-    mentions: mentions.map((row) => ({
+    signals: signals.map((row) => ({
       id: row.id,
+      kind: signalKind.parse(row.kind),
       who: row.person,
       text: row.text,
       at: row.at.toISOString(),
-      source: { kind: sourceKind.parse(row.sourceKind), ref: row.sourceRef, url: row.sourceUrl },
+      source: {
+        connectionId: row.connectionId,
+        itemId: row.sourceItemId,
+        kind: sourceKind.parse(row.sourceKind),
+        ref: row.sourceRef,
+        url: row.sourceUrl,
+      },
       todoId: row.todoId,
     })),
     sentBack,

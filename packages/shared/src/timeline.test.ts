@@ -66,7 +66,13 @@ it('words a slotted Todo by its title, energy and estimate, and where it came fr
       todo('Spike', [9, 10], {
         estimateMinutes: 120,
         energy: 'deep_focus',
-        source: { kind: 'linear_issue', ref: 'HAL-212', url: null },
+        source: {
+          connectionId: 'linear-work',
+          itemId: 'HAL-212',
+          kind: 'linear_issue',
+          ref: 'HAL-212',
+          url: null,
+        },
       }),
     ],
     [],

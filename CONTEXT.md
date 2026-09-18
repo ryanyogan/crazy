@@ -67,6 +67,10 @@ _Avoid_: Origin, external item, link
 A Todo is touched on a day if the user created, edited, slotted or snoozed it, or started a timer on it, that day. Appearing in the priority stack is not a touch.
 _Avoid_: Active, updated, seen
 
+**Snooze**:
+Putting a `today` Todo out of the Priority stack until a moment the user chooses. Its state stays `today`, it returns by itself when that moment passes, and snoozing it counts as Touched. It is not a Swap, which only moves the Take on now down a place.
+_Avoid_: Defer, postpone, hide, dismiss
+
 **Rollover**:
 The moment at the user's local midnight when each Todo still in `today` is either carried over or sent back.
 _Avoid_: Nightly job, cleanup, end of day

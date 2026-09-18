@@ -6,6 +6,7 @@ import { DayTimeline } from './DayTimeline'
 import { Mentions } from './Mentions'
 import { PriorityStack } from './PriorityStack'
 import { TakeOnNowCard } from './TakeOnNowCard'
+import { useSnoozeExpiry } from './useSnoozeExpiry'
 
 /**
  * The Today screen, frame 1a. One DOM serves both widths: on a phone the
@@ -18,7 +19,8 @@ export function TodayScreen() {
   const { data: today } = useSuspenseQuery(todayQuery)
   const now = new Date(today.now)
   const { hour } = wallClock(now, today.timeZone)
-  const view = viewToday(today, hour)
+  const view = viewToday(today, now, today.timeZone)
+  useSnoozeExpiry(view.snoozed[0]?.snoozedUntil ?? null, today.now)
 
   return (
     <div className="screen today">
@@ -46,8 +48,13 @@ export function TodayScreen() {
             done={view.done}
             carriedOver={view.carriedOver}
             sentBack={today.sentBack}
+            snoozed={view.snoozed}
+            timeZone={today.timeZone}
           />
-          <Mentions mentions={today.mentions} now={now} />
+          <Mentions
+            mentions={today.signals.filter((signal) => signal.kind === 'mention')}
+            now={now}
+          />
           <AddTodo />
         </aside>
       </div>

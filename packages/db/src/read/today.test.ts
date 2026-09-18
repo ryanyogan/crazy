@@ -1,4 +1,4 @@
-import { formatAge, localTimeToInstant, viewToday, wallClock } from '@crazy/shared'
+import { formatAge, localTimeToInstant, viewToday } from '@crazy/shared'
 import { env } from 'cloudflare:test'
 import { beforeAll, expect, it } from 'vite-plus/test'
 import { createReadDb } from '../index'
@@ -14,7 +14,7 @@ const userId = 'user_ryan'
 /** The day as D1 holds it, and what the Today screen derives from it at that moment. */
 async function today(moment = now, user = userId) {
   const day = await readToday(createReadDb(env.DB), user, moment, timeZone)
-  return { ...day, ...viewToday(day, wallClock(moment, timeZone).hour) }
+  return { ...day, ...viewToday(day, moment, timeZone) }
 }
 
 beforeAll(async () => {
@@ -91,7 +91,8 @@ it('reads only the rows of the user asking', async () => {
     sentBack: 0,
     events: [],
     hours: [],
-    mentions: [],
+    signals: [],
+    snoozed: [],
   })
 })
 
@@ -124,10 +125,10 @@ it("places a meeting on the user's wall clock, whatever zone the server is in", 
 })
 
 it('lists who is waiting on Ryan, newest first, and knows which Mention he already added', async () => {
-  const { mentions, stack } = await today()
+  const { signals, stack } = await today()
 
   expect(
-    mentions.map((mention) => [
+    signals.map((mention) => [
       mention.who,
       formatAge(new Date(mention.at), now),
       mention.source.kind,
@@ -139,7 +140,7 @@ it('lists who is waiting on Ryan, newest first, and knows which Mention he alrea
     ['Northside Movers', '2d', 'gmail_message'],
   ])
   const reply = stack.find((todo) => todo.title === 'Reply to Priya on edge rate limits')!
-  expect(mentions.map((mention) => mention.todoId)).toEqual([reply.id, null, null, null])
+  expect(signals.map((mention) => mention.todoId)).toEqual([reply.id, null, null, null])
 })
 
 it("leaves yesterday's meetings and wording off today's timeline", async () => {
@@ -152,6 +153,81 @@ it("leaves yesterday's meetings and wording off today's timeline", async () => {
 it('puts the same content back when the persona is seeded again', async () => {
   await seedPersona(createDb(env.DB), { persona: 'ryan', userId, now, timeZone })
   expect((await today()).stack).toHaveLength(7)
+})
+
+it('lays the persona over an early hour with nothing recorded as touched later in the day', async () => {
+  const user = 'user_early_riser'
+  const early = at('2025-09-17T06:30')
+  await seedPersona(createDb(env.DB), { persona: 'ryan', userId: user, now: early, timeZone })
+
+  const { stack, meetings } = await today(early, user)
+
+  expect(stack).toHaveLength(7)
+  const ahead = stack
+    .flatMap((todo) => [todo.createdAt, todo.touchedAt])
+    .filter((stamp) => new Date(stamp) > early)
+  expect(ahead).toEqual([])
+  // The day itself is still to come, and it is left where the mockups draw it.
+  expect(meetings).toBe(3)
+})
+
+/** Seeds a user of their own and snoozes one of their stack's Todos until a given moment. */
+async function snoozeUntil(user: string, title: string, until: Date) {
+  const db = createDb(env.DB)
+  await seedPersona(db, { persona: 'ryan', userId: user, now, timeZone })
+  const { stack } = await today(now, user)
+  const todo = stack.find((each) => each.title === title)!
+  await persistOps(db, user, [
+    { type: 'todo.set', id: todo.id, set: { snoozedUntil: until.toISOString() } },
+  ])
+  return todo
+}
+
+it('reads a Todo snoozed until later today out of the Priority stack, and lists it as snoozed', async () => {
+  const user = 'user_snoozer'
+  const until = at('2025-09-17T11:30')
+  const spike = await snoozeUntil(user, 'Finish Cloudflare session-token spike', until)
+
+  const { stack, snoozed, takeOnNow } = await today(now, user)
+
+  expect(stack.map((todo) => todo.title)).not.toContain(spike.title)
+  expect(stack).toHaveLength(6)
+  expect(snoozed.map((todo) => [todo.title, todo.snoozedUntil])).toEqual([
+    [spike.title, until.toISOString()],
+  ])
+  // The Take on now is the top of what is left, never the snoozed Todo.
+  expect(takeOnNow?.todo.title).toBe('Reply to Priya on edge rate limits')
+})
+
+it('has a Todo whose snooze has ended back in the Priority stack', async () => {
+  const user = 'user_waker'
+  const spike = await snoozeUntil(
+    user,
+    'Finish Cloudflare session-token spike',
+    at('2025-09-17T09:30'),
+  )
+
+  const { stack, snoozed, takeOnNow } = await today(at('2025-09-17T09:31'), user)
+
+  expect(stack[0]?.title).toBe(spike.title)
+  expect(stack).toHaveLength(7)
+  expect(snoozed).toEqual([])
+  expect(takeOnNow?.todo.title).toBe(spike.title)
+})
+
+it("frees the hour a snoozed Todo held a Slot on, keeping Crazy's wording for it", async () => {
+  const user = 'user_slot_snoozer'
+  await snoozeUntil(user, 'Send movers deposit', at('2025-09-17T18:00'))
+
+  const { timeline } = await today(now, user)
+
+  // The stack the timeline is drawn from leaves out snoozed Todos, so 17:00
+  // holds nothing and is dashed. The hour keeps the words Crazy wrote for it
+  // this morning, which still name the Todo that is asleep.
+  expect(timeline.find((hour) => hour.hour === 17)).toMatchObject({
+    kind: 'free',
+    title: 'Send movers deposit · follow-ups',
+  })
 })
 
 it('keeps a Todo completed today on the day, out of the stack, and drops it the day after', async () => {

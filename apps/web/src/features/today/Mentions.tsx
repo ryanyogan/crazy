@@ -1,14 +1,16 @@
-import { type Mention, SOURCE_KINDS, formatAge } from '@crazy/shared'
-import { Blueprint, Button, NotWired, SourceChip, Tag } from '@crazy/ui'
+import { type Signal, SOURCE_KINDS, formatAge } from '@crazy/shared'
+import { Blueprint, Button, SourceChip, Tag } from '@crazy/ui'
 import { useId, useState } from 'react'
+import { useCommand } from '#/lib/useCommand'
 
 /**
  * One Mention. The frame draws where it was said, who said what and how long
  * ago; whether it is already a Todo, and the way to make it one, open
  * underneath when it is pressed.
  */
-function MentionRow({ mention, now }: { mention: Mention; now: Date }) {
+function MentionRow({ mention, now }: { mention: Signal; now: Date }) {
   const [open, setOpen] = useState(false)
+  const command = useCommand()
   const moreId = useId()
 
   return (
@@ -33,9 +35,19 @@ function MentionRow({ mention, now }: { mention: Mention; now: Date }) {
         {mention.todoId ? (
           <Tag tone="accent">Added to your Todos</Tag>
         ) : (
-          <NotWired>
-            <Button className="mentions__add">Add</Button>
-          </NotWired>
+          <Button
+            className="mentions__add"
+            disabled={command.isPending}
+            onClick={() =>
+              command.mutate({
+                type: 'signal.add',
+                signalId: mention.id,
+                todoId: crypto.randomUUID(),
+              })
+            }
+          >
+            Add
+          </Button>
         )}
       </div>
     </li>
@@ -43,7 +55,7 @@ function MentionRow({ mention, now }: { mention: Mention; now: Date }) {
 }
 
 /** Who addressed the user at a Provider. None becomes a Todo unless they add it. */
-export function Mentions({ mentions, now }: { mentions: Mention[]; now: Date }) {
+export function Mentions({ mentions, now }: { mentions: Signal[]; now: Date }) {
   return (
     <Blueprint as="section" className="card mentions" aria-labelledby="mentions-title">
       <h2 id="mentions-title" className="card-kicker mentions__title">
