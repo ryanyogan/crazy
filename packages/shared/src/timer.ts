@@ -93,7 +93,13 @@ export interface TimeEntryFacts {
   projectId: string | null
   /** The Todo it was started from; what makes a second spell on the same work a real change. */
   todoId: string | null
+  startedAt: string
   endedAt: string | null
+  /** Who Crazy thinks the hours were for, where the entry names no Client. */
+  suggestedClientId?: string | null
+  suggestedProjectId?: string | null
+  /** The Client's name, where the loader could say it: a refusal names whose hours it clashed with. */
+  clientName?: string | null
 }
 
 /** What `decide` needs to know of a Project a timer names: whose work it is. */
@@ -415,7 +421,7 @@ function held(timer: TodayTimer): TimerEntry[] {
  */
 export function nameEntry(
   timer: TodayTimer,
-  entry: Omit<TimerEntry, 'clientName' | 'projectName' | 'todoTitle' | 'endedAt'>,
+  entry: Omit<TimerEntry, 'clientName' | 'projectName' | 'todoTitle'>,
   picker?: TimerPicker | null,
   /** The Todo's title, where the caller holds the day and can say it. */
   todoTitle?: string | null,
@@ -456,7 +462,7 @@ export function nameEntry(
     note: entry.note,
     billable: entry.billable,
     startedAt: entry.startedAt,
-    endedAt: null,
+    endedAt: entry.endedAt,
   }
 }
 
@@ -492,24 +498,64 @@ export function addProject(
   return { ...picker, clients }
 }
 
+/** What a patch may change about a Time entry the bar is holding. */
+export interface EntryChange {
+  startedAt?: string
+  endedAt?: string | null
+  note?: string
+  billable?: boolean
+  clientId?: string | null
+  projectId?: string | null
+}
+
 /**
  * The timer's rows with one Time entry changed, wherever it is held. Given an
  * end it stops being the running one and becomes what the idle bar reports; a
  * change to an entry the cache does not hold leaves the cache as it was.
+ * Moving an entry's work renames it from the lists this cache already holds —
+ * the picker's, where it has them — because a patch carries ids and not names.
  */
 export function changeEntry(
   timer: TodayTimer,
   id: string,
-  change: Partial<Pick<TimerEntry, 'endedAt' | 'note'>>,
+  change: EntryChange,
+  picker?: TimerPicker | null,
 ): TodayTimer {
   const was = held(timer).find((entry) => entry.id === id)
   if (!was) return timer
-  const now: TimerEntry = { ...was, ...change }
+  const clientId = 'clientId' in change ? (change.clientId ?? null) : was.clientId
+  const projectId = 'projectId' in change ? (change.projectId ?? null) : was.projectId
+  const moved = clientId !== was.clientId || projectId !== was.projectId
+  const named = moved
+    ? {
+        clientName:
+          clientId === null
+            ? null
+            : (picker?.clients.find((each) => each.id === clientId)?.name ?? null),
+        projectName:
+          projectId === null
+            ? null
+            : (picker?.clients
+                .flatMap((client) => client.projects)
+                .find((each) => each.id === projectId)?.name ?? null),
+      }
+    : { clientName: was.clientName, projectName: was.projectName }
+  const now: TimerEntry = { ...was, ...change, clientId, projectId, ...named }
   const stopped = was.endedAt === null && now.endedAt !== null
 
   return {
     running: stopped ? null : timer.running?.id === id ? now : timer.running,
     last: stopped ? now : timer.last?.id === id ? now : timer.last,
     today: timer.today.map((entry) => (entry.id === id ? now : entry)),
+  }
+}
+
+/** The timer's rows with a Time entry taken out of them, wherever it was held. */
+export function removeEntry(timer: TodayTimer, id: string): TodayTimer {
+  if (!held(timer).some((entry) => entry.id === id)) return timer
+  return {
+    running: timer.running?.id === id ? null : timer.running,
+    last: timer.last?.id === id ? null : timer.last,
+    today: timer.today.filter((entry) => entry.id !== id),
   }
 }

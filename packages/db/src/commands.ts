@@ -13,6 +13,7 @@ import {
   needsEveryOpenTodo,
   needsTheDay,
   needsTheTimer,
+  spanNamed,
   timeEntriesNamed,
   workNamed,
   side,
@@ -34,6 +35,87 @@ import { readDayEvents } from './read/today'
 
 const toDate = (iso: string | null | undefined) =>
   iso === undefined ? undefined : iso === null ? null : new Date(iso)
+
+/** What `decide` is told about one of the user's Time entries. */
+const ENTRY_FACTS = {
+  id: true,
+  clientId: true,
+  projectId: true,
+  todoId: true,
+  startedAt: true,
+  endedAt: true,
+  suggestedClientId: true,
+  suggestedProjectId: true,
+  client: { select: { name: true } },
+} as const
+
+type EntryRow = {
+  id: string
+  clientId: string | null
+  projectId: string | null
+  todoId: string | null
+  startedAt: Date
+  endedAt: Date | null
+  suggestedClientId: string | null
+  suggestedProjectId: string | null
+  client: { name: string } | null
+}
+
+const entryFacts = (row: EntryRow): TimeEntryFacts => ({
+  id: row.id,
+  clientId: row.clientId,
+  projectId: row.projectId,
+  todoId: row.todoId,
+  startedAt: row.startedAt.toISOString(),
+  endedAt: row.endedAt?.toISOString() ?? null,
+  suggestedClientId: row.suggestedClientId,
+  suggestedProjectId: row.suggestedProjectId,
+  clientName: row.client?.name ?? null,
+})
+
+/**
+ * The Time entries a timer or Time-entry command is decided against: the one
+ * with no end — the running timer, wherever the command is about it or not —
+ * and any entry the command names by id. Only the user's own are ever loaded,
+ * so an entry that is not here is not theirs to change.
+ *
+ * A command that moves an entry's hours also needs every entry those hours
+ * would run over, because no two spells of a user's may overlap. They are read
+ * by the window the hours would occupy rather than by reading the timesheet:
+ * the span is known only once the named entry is in hand, so it is a second
+ * query and never a scan of every row.
+ */
+async function loadTimeEntries(
+  db: Db,
+  userId: string,
+  command: Command,
+  entryIds: string[],
+  now: Date,
+): Promise<TimeEntryFacts[]> {
+  const rows = await db.timeEntry.findMany({
+    where: { userId, OR: [{ endedAt: null }, { id: { in: entryIds } }] },
+    select: ENTRY_FACTS,
+  })
+  const entries = rows.map(entryFacts)
+
+  const span = spanNamed(
+    command,
+    entries.find((entry) => entryIds.includes(entry.id)),
+    now,
+  )
+  if (!span) return entries
+  const near = await db.timeEntry.findMany({
+    where: {
+      userId,
+      startedAt: { lt: span.to },
+      OR: [{ endedAt: null }, { endedAt: { gt: span.from } }],
+    },
+    select: ENTRY_FACTS,
+  })
+  const held = new Map(entries.map((entry) => [entry.id, entry]))
+  for (const row of near) held.set(row.id, entryFacts(row))
+  return [...held.values()]
+}
 
 /** The rows a command is decided against, and only the user's own. */
 export async function loadCommandState(
@@ -154,22 +236,25 @@ export async function loadCommandState(
   // an entry that is not here is not theirs to change.
   const entryIds = timeEntriesNamed(command)
   const timeEntries = needsTheTimer(command)
-    ? (
-        await db.timeEntry.findMany({
-          where: { userId, OR: [{ endedAt: null }, { id: { in: entryIds } }] },
-          select: { id: true, clientId: true, projectId: true, todoId: true, endedAt: true },
-        })
-      ).map((row): TimeEntryFacts => ({ ...row, endedAt: row.endedAt?.toISOString() ?? null }))
+    ? await loadTimeEntries(db, userId, command, entryIds, now)
     : undefined
 
   // The work a timer names: the Project decides the Client, so the Project's
   // own row has to be read before a start can be decided. A timer started from
   // a Todo names no Project of its own — the Todo's is the work — so that one
-  // is read as well, from the Todo that has just been loaded.
+  // is read as well, from the Todo that has just been loaded. Confirming a
+  // suggestion names neither: what it applies is on the entry's own row, so
+  // that Client and Project are read from there (`timeEntry.confirmSuggestion`).
   const work = workNamed(command)
+  const suggested = timeEntries?.filter((entry) => entryIds.includes(entry.id)) ?? []
   const wanted = [
     work?.projectId,
+    ...suggested.map((entry) => entry.suggestedProjectId),
     ...(needsTheTimer(command) ? todos.map((todo) => todo.projectId) : []),
+  ].filter((each) => each !== null && each !== undefined)
+  const wantedClients = [
+    work?.clientId,
+    ...suggested.map((entry) => entry.suggestedClientId),
   ].filter((each) => each !== null && each !== undefined)
   const [projects, clients] = await Promise.all([
     wanted.length > 0
@@ -178,13 +263,17 @@ export async function loadCommandState(
           select: { id: true, clientId: true },
         })
       : ([] as ProjectFacts[]),
-    work?.clientId
-      ? db.client.findMany({ where: { userId, id: work.clientId }, select: { id: true } })
+    wantedClients.length > 0
+      ? db.client.findMany({
+          where: { userId, id: { in: [...new Set(wantedClients)] } },
+          select: { id: true },
+        })
       : [],
   ])
 
   return {
     day,
+    timeZone,
     todos,
     signals,
     events,
@@ -291,7 +380,7 @@ export async function persistOps(db: Db, userId: string, ops: readonly Op[]): Pr
         await db.connection.updateMany({ where: { id: op.id, userId }, data: op.set })
         break
       case 'timeEntry.insert': {
-        const { startedAt, createdAt, ...rest } = op.entry
+        const { startedAt, endedAt, createdAt, ...rest } = op.entry
         // The partial unique index on the entries with no end is the backstop
         // under the rule `decide` holds: a second running entry cannot land.
         await db.timeEntry.create({
@@ -299,20 +388,26 @@ export async function persistOps(db: Db, userId: string, ops: readonly Op[]): Pr
             ...rest,
             userId,
             startedAt: new Date(startedAt),
-            endedAt: null,
+            endedAt: endedAt === null ? null : new Date(endedAt),
             createdAt: new Date(createdAt),
           },
         })
         break
       }
       case 'timeEntry.set': {
-        const { endedAt, ...rest } = op.set
+        const { startedAt, endedAt, ...rest } = op.set
         await db.timeEntry.updateMany({
           where: { id: op.id, userId },
-          data: { ...rest, endedAt: toDate(endedAt) },
+          data: { ...rest, startedAt: toDate(startedAt) ?? undefined, endedAt: toDate(endedAt) },
         })
         break
       }
+      // Hours that were never worked are worse than no record at all, so a
+      // mistaken entry goes. `deleteMany` with the user on it is what keeps one
+      // user's removal from landing on another's row.
+      case 'timeEntry.delete':
+        await db.timeEntry.deleteMany({ where: { id: op.id, userId } })
+        break
       case 'project.insert': {
         const { createdAt, ...rest } = op.project
         // No Circle: Crazy infers Circles, and a Project named by hand has none

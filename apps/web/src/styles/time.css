@@ -1,0 +1,588 @@
+/* The Time screen, frame 2b's left half. Measurements are the frame's; no frame
+   draws a phone, so below 900px the two columns fall into one and each entry
+   becomes a compact two-line row (docs/BRIEF.md). Mobile first. */
+
+.time {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+.time__main {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  min-width: 0;
+}
+
+/* ── The head: the period, the way through them, and the three views ─────── */
+
+.time__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.time__period {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.time__step {
+  padding: 2px 4px;
+}
+
+.time__now {
+  font-size: 12px;
+  padding: 2px 8px;
+}
+
+.time__now:disabled {
+  color: var(--color-neutral-600);
+}
+
+/* ── The strip of cards: what each part of the period came to ─────────────── */
+
+.time__cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.time__card {
+  flex: 1 1 30%;
+  min-width: 0;
+  padding: 10px 12px;
+  gap: 6px;
+  /* The frame's cards are the page's own colour; today's takes the accent tint. */
+  background: transparent;
+}
+
+.time__card.is-today {
+  background: var(--color-accent-100);
+}
+
+.time__card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.time__card-name {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 16px;
+}
+
+.time__card-total {
+  font-family: var(--font-heading);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.time__card-bar {
+  display: flex;
+  height: 8px;
+  gap: 1px;
+}
+
+.time__card-share {
+  flex: none;
+}
+
+/* What the fullest part of the period had and this one did not. */
+.time__card-rest {
+  flex: 1;
+  border: 1px dashed var(--color-neutral-400);
+}
+
+.time__card-note {
+  font-size: 11px;
+  color: var(--color-neutral-700);
+  /* Two lines' room whatever the line says, so that a longer caption on one
+     day does not move the table under the strip. */
+  min-height: 34px;
+  overflow: hidden;
+}
+
+/* ── The entries ──────────────────────────────────────────────────────────── */
+
+/* The columns are given their widths rather than taken from what is in them,
+   so that they do not move while she edits: a long note must not squeeze the
+   Client column, and the running entry's trailing dash must not widen When.
+   The widths are frame 2b's own. */
+.time__table {
+  table-layout: fixed;
+  /* A month at a time the date comes with the weekday, so When needs the room
+     and What gives it up; the two always come to the same width. */
+  --time-when: 66.59px;
+  --time-what: 248.98px;
+}
+
+.time[data-view='month'] .time__table {
+  --time-when: 88px;
+  --time-what: 227.57px;
+}
+
+.time__table th:nth-child(1) {
+  width: var(--time-when);
+}
+
+.time__table th:nth-child(2) {
+  width: 115.81px;
+}
+
+.time__table th:nth-child(3) {
+  width: var(--time-what);
+}
+
+.time__table th:nth-child(4) {
+  width: 53px;
+}
+
+.time__row {
+  cursor: pointer;
+}
+
+.time__row.is-open {
+  background: var(--color-accent-100);
+}
+
+.time__when {
+  font-family: var(--font-heading);
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.time__work-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The Client's colour, as every line that has to say whose work it is wears it. */
+.time__rule {
+  flex: none;
+  width: 3px;
+  height: 22px;
+}
+
+.time__names {
+  min-width: 0;
+  line-height: 1.2;
+  font-size: 13px;
+}
+
+.time__project {
+  display: block;
+  font-size: 11px;
+  color: var(--color-neutral-700);
+}
+
+.time__what {
+  font-size: 13px;
+}
+
+.time__unsaid,
+.time__flag-word {
+  color: var(--color-neutral-600);
+  font-size: 11px;
+}
+
+/* The frame's "tap to confirm", where the frame writes it: the flag beside the
+   note is the control that puts the suggested Client on the entry. */
+.time__confirm {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 11px;
+  color: var(--color-accent);
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.time__confirm:hover {
+  color: var(--color-accent-700);
+  text-decoration-style: solid;
+}
+
+.time__hours-column,
+.time__hours {
+  text-align: right;
+}
+
+.time__hours {
+  font-family: var(--font-heading);
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.time__edit {
+  text-align: right;
+}
+
+.time__edit-button {
+  font-size: 12px;
+  padding: 2px 6px;
+}
+
+.time__none {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-neutral-700);
+}
+
+/* ── The flag under the table, and the place to add an entry by hand ──────── */
+
+.time__flag {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--color-neutral-700);
+}
+
+.time__add {
+  display: flex;
+  gap: 8px;
+}
+
+.time__add-note {
+  max-width: 360px;
+}
+
+/* ── One entry, open for changing ─────────────────────────────────────────── */
+
+.time__editor-row td {
+  padding: 0 var(--space-2);
+  background: var(--color-accent-100);
+}
+
+.time__new {
+  padding: 0 var(--space-2);
+  background: var(--color-accent-100);
+}
+
+.time__editor {
+  /* A fieldset for its grouping, without a fieldset's own box. */
+  margin: 0;
+  border: 0;
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  padding: 12px 0;
+}
+
+.time__fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px;
+}
+
+.time__field {
+  display: grid;
+  /* The column may shrink: a Project with a long name is cut short inside its
+     field rather than pushing the field over the one beside it. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 3px;
+  min-width: 0;
+}
+
+.time__field label,
+.time__label {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-neutral-700);
+}
+
+.time__field input[type='time'],
+.time__field input[type='date'] {
+  width: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.time__field--note {
+  flex: 1 1 220px;
+}
+
+.time__field--work {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+/* The work picker outside the bar: a field among the fields beside it, and
+   not the bar's own row (timer.css sizes it for frame 3a). */
+.time .picker--field {
+  max-width: none;
+  align-self: auto;
+  display: block;
+}
+
+.time .picker--field .timer__pick {
+  min-height: 36px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.time .picker--field .timer__work {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.time__still {
+  margin: 0;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  color: var(--color-neutral-700);
+}
+
+.time__billable {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.time__billable input {
+  accent-color: var(--color-accent);
+  width: 15px;
+  height: 15px;
+}
+
+/* Why a change will not do, beside the fields it is about and not in a notice. */
+.time__refusal {
+  margin: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--color-accent-700);
+  font-size: 12px;
+  color: var(--color-accent-800);
+  background: var(--color-bg);
+}
+
+.time__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.time__save {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.time__save:hover {
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+
+.time__remove {
+  margin-left: auto;
+  color: var(--color-neutral-700);
+}
+
+.time__sheet {
+  padding: 8px 18px 18px;
+  display: grid;
+  gap: 8px;
+}
+
+/* ── Beside the timesheet: the period's figures, and where hours will go ──── */
+
+.time__aside {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+.time__summary,
+.time__sync {
+  padding: 12px 14px;
+  gap: 8px;
+}
+
+.time__figures {
+  display: flex;
+  gap: 18px;
+  margin: 0;
+}
+
+.time__figures dt {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-neutral-700);
+}
+
+.time__figures dd {
+  margin: 0;
+}
+
+.time__figure {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.time__summary-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--color-neutral-800);
+}
+
+.time__targets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Drawn and plainly not wired: nothing has been sent anywhere. */
+.time__target {
+  font-size: 10px;
+  cursor: not-allowed;
+}
+
+.time__send {
+  align-self: flex-start;
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+.time__coming {
+  align-self: flex-start;
+  font-size: 10px;
+}
+
+[data-not-wired] {
+  opacity: 0.55;
+}
+
+/* ── A phone: one column, and an entry in two lines ───────────────────────── */
+
+@media (max-width: 899px) {
+  .time__table thead {
+    display: none;
+  }
+
+  .time__table,
+  .time__table tbody {
+    display: block;
+  }
+
+  .time__row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'when work hours'
+      'what what edit';
+    align-items: center;
+    column-gap: 10px;
+    row-gap: 2px;
+    padding: 8px 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent);
+  }
+
+  .time__row td {
+    display: block;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+  }
+
+  .time__when {
+    grid-area: when;
+  }
+
+  .time__row td:nth-child(2) {
+    grid-area: work;
+  }
+
+  .time__what {
+    grid-area: what;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .time__hours {
+    grid-area: hours;
+  }
+
+  .time__edit {
+    grid-area: edit;
+  }
+
+  /* One line for the work: the Client and the Project side by side. */
+  .time__names {
+    display: flex;
+    gap: 6px;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .time__project {
+    display: inline;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .time__editor-row {
+    display: none;
+  }
+}
+
+/* ── Desktop: frame 2b's two columns ──────────────────────────────────────── */
+
+@media (min-width: 900px) {
+  .time {
+    grid-template-columns: minmax(0, 1fr) 400px;
+    gap: 28px;
+  }
+
+  .time__main {
+    gap: 14px;
+  }
+
+  .time .screen__title {
+    font-size: 32px;
+    margin: 0;
+  }
+
+  .time__cards {
+    flex-wrap: nowrap;
+    gap: 10px;
+  }
+
+  /* The count and the sentence on one line, as the frame sets them. */
+  .time__flag {
+    flex-wrap: nowrap;
+  }
+
+  .time__card {
+    flex: 1 1 0;
+  }
+
+  .time__sheet {
+    display: none;
+  }
+}

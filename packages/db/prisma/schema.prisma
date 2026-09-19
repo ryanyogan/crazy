@@ -154,6 +154,11 @@ model TimeEntry {
   startedAt DateTime
   endedAt   DateTime?
   createdAt DateTime
+  /// Who Crazy thinks these hours were for, where the entry names no Client.
+  /// Plain columns and no relation: a suggestion is a guess about a row, not a
+  /// link between two, and it is read beside the Clients the screen already has.
+  suggestedClientId  String?
+  suggestedProjectId String?
 
   @@index([userId, startedAt])
   @@map("time_entry")

@@ -120,6 +120,8 @@ interface EntrySeed {
   until: string | null
   project: string | null
   note: string
+  /** Who Crazy thinks the hours were for, where the entry names no Client (frame 2b). */
+  suggest?: string
 }
 
 // Frame 2b's timesheet, then the rest of the month: Meridian at 28.0h, Quill at
@@ -140,6 +142,7 @@ const ENTRIES: EntrySeed[] = [
     until: '08:30',
     project: null,
     note: 'Inbox, proposal tweak',
+    suggest: 'quill',
   },
   {
     key: 'tue-wires',
@@ -156,6 +159,7 @@ const ENTRIES: EntrySeed[] = [
     until: '14:40',
     project: null,
     note: 'Call · no notes',
+    suggest: 'quill',
   },
   {
     key: 'tue-interviews',
@@ -437,6 +441,10 @@ export function cori(input: SeedInput) {
       billable: client !== null,
       startedAt,
       endedAt: entry.until === null ? (stillRunning ? null : now) : past(day, entry.until),
+      // Frame 2b flags the two spells she tracked to Internal and says it
+      // thinks both were Quill's; one tap on the Time screen confirms it.
+      suggestedClientId: entry.suggest ? id('client', entry.suggest) : null,
+      suggestedProjectId: null,
       createdAt: startedAt,
     }
   })

@@ -131,6 +131,15 @@ interface WorkPickerProps {
   onOpen: (open: boolean) => void
   /** Idle, the choice is this bar's own state; running, nothing is handed back. */
   onChoose: (work: TimerWork) => void
+  /**
+   * Where the control is drawn. The bar is frames 3a and 3b; `field` is the
+   * same control inside a form — the Time screen's row editor — where it is a
+   * field like the ones beside it and the trigger has no elapsed figure to
+   * stand against (ticket 20).
+   */
+  place?: 'bar' | 'field'
+  /** What the trigger is called, where "the work being timed" is not what it is. */
+  label?: string
 }
 
 /**
@@ -146,6 +155,8 @@ export function WorkPicker({
   open,
   onOpen,
   onChoose,
+  place = 'bar',
+  label,
 }: WorkPickerProps) {
   const command = useCommand()
   const wide = useWide()
@@ -321,7 +332,7 @@ export function WorkPicker({
   return (
     // Tabbing out of the dropdown is leaving it; the sheet holds focus itself.
     <div
-      className="timer__picker"
+      className={place === 'bar' ? 'timer__picker' : 'timer__picker picker--field'}
       ref={wrapper}
       onBlur={(event) => {
         if (!open || !wide) return
@@ -334,7 +345,11 @@ export function WorkPicker({
         className="input timer__pick"
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={`Work being timed: ${work}. Choose other work`}
+        aria-label={
+          label
+            ? `${label}: ${work}. Choose other work`
+            : `Work being timed: ${work}. Choose other work`
+        }
         onClick={() => onOpen(!open)}
       >
         <span className="timer__rule" aria-hidden="true" />

@@ -81,6 +81,14 @@ export const COPY: [from: string, to: string][] = [
   // Project is called Admin; that it is not billable follows from its having
   // no Client, which is what the Internal group it sits under already says.
   ['Admin · not billable', 'Admin'],
+  // Frame 2b's timesheet flags the two spells tracked to Internal as needing a
+  // project. In the glossary they need a **Client**: Internal is the absence of
+  // a Client, and a Client with no Project is a perfectly good One-off. The
+  // words are the app's and the frame is drawn saying them, so that the table's
+  // columns fall where the frame's own layout puts them.
+  ['2 entries need a project', '2 entries need a Client'],
+  ['project? likely Quill', 'Client? likely Quill &amp; Co'],
+  ['I think both were Quill; tap to confirm.', 'I think both were Quill &amp; Co; tap to confirm.'],
 ]
 
 export interface View {
@@ -318,6 +326,39 @@ const BELOW_THE_WEEK =
  * full bar is drawn and the header keeps away.
  */
 
+const BOTH_DESTINATIONS =
+  'The Invoices destination. Frame 2b is one page for Time and Invoices and marks both in the accent; the Shell has a screen for each, so only the one the user is on is marked'
+
+const STILL_RUNNING =
+  "What says the first entry is still running: the dash after 09:00, the word under the note, and Wednesday's caption. The shot is taken with the timer stopped, because a running entry puts the Shell's compact header over every screen (ticket 27) and frame 2b draws none — the only way to see this screen at the frame's pinned moment (ticket 17's Comments). The hours the entry came to are the same either way and are compared"
+
+const RAIL_FOOT_2B =
+  'The foot of the rail. Frame 2b puts the accounting targets there ("Synced to · QuickBooks · 09:00"); the Shell follows frame 1a on every screen (Live, then the user), and the targets are the Time screen\'s own, where the app draws them — plainly not wired, because Crazy has sent nothing anywhere'
+
+const THE_INVOICES_HALF =
+  "The right-hand column. Frame 2b is one page for Time and Invoices — its rail marks both destinations — and the Shell has a screen for each. The Invoices column is ticket 21's; until then the column holds what the Time screen itself can say: the period's figures, and where the hours are meant to go"
+
+const PERIOD_NAV =
+  'The way between periods. Frame 2b draws none: it shows week 38 and no way to reach week 37. A timesheet that cannot go back to last week is no use at month-end, so the app puts previous, "this week" and next between the heading and the views (derived, docs/BRIEF.md)'
+
+const CONFIRM_IS_A_CONTROL =
+  "The flag beside a note that names no Client. The frame draws it as grey text; in the app it is the one-tap Confirm the frame's own sentence promises, so it wears the accent and an underline. Its words are the app's in both (COPY)"
+
+const THE_ADD_FIELD =
+  'What the field to add an entry says. Frame 2b promises to read "2h Meridian synthesis yesterday afternoon" into hours; Crazy does not parse a sentence, and a field that looked as if it did would be faked. The field takes the new entry\'s note and Add opens the row for its times. The field, the button and their box are compared'
+
+const DAY_CARD_FIGURES_WHY =
+  "A day card's figure, bar and line. Frame 2b's daily totals do not add up to the entries the frame itself lists — Monday's two rows come to 6:00 and its card says 7:45, Wednesday's to 2:02 against 3:10 — and its bars are hand-drawn percentages; Thursday and Friday are captioned from a calendar and an invoice cycle that are not this screen's. The app counts Cori's real entries, draws each day against the fullest one, and says what the day holds. The cards themselves, their boxes and their day names are compared. A debt for the designer"
+
+/** The five day cards' innards: the figure, the bar and the line under it. */
+const DAY_CARD_FIGURES: Mask[] = [0, 1, 2, 3, 4].flatMap((index) => {
+  const x = 196 + index * 107.6
+  return [
+    { x: x + 34, y: 88, width: 58, height: 29, why: DAY_CARD_FIGURES_WHY },
+    { x: x + 10, y: 117, width: 79, height: 56, why: DAY_CARD_FIGURES_WHY },
+  ]
+})
+
 /**
  * Frame 3a draws the timer bar on its own, at the width of the screen beside
  * the rail, and draws its idle and running states as separate cards. Each is
@@ -554,6 +595,49 @@ export const TARGETS: Target[] = [
         { x: 250, y: 200, width: 126, height: 330, why: PICKER_FIGURES },
       ],
     },
+  },
+  {
+    frame: '2b',
+    title: 'Time · the timesheet',
+    route: '/time',
+    persona: 'cori',
+    now: CORIS_MORNING,
+    // Frame 2b draws no time header, so the timer is stopped for the shot (see
+    // the note above). Its timesheet draws the entry as still running, so the
+    // three places that say so are masked with that reason.
+    timer: 'idle',
+    desktop: {
+      regions: {
+        rail: { x: 0, y: 0, width: 168, height: 820 },
+        head: { x: 196, y: 22, width: 528, height: 43 },
+        // The cards are blueprints: measured with their corner marks, 6px
+        // beyond the box.
+        'day cards': { x: 190, y: 73, width: 540, height: 113 },
+        entries: { x: 196, y: 194, width: 528, height: 375 },
+        flag: { x: 196, y: 583, width: 528, height: 40 },
+        'add an entry': { x: 196, y: 637, width: 528, height: 36 },
+      },
+      masks: [
+        { x: 16, y: 196, width: 140, height: 28, why: BOTH_DESTINATIONS },
+        { x: 16, y: 232, width: 140, height: 96, why: RAIL_CIRCLES },
+        { x: 8, y: 690, width: 152, height: 130, why: RAIL_FOOT_2B },
+        { x: 724, y: 0, width: 456, height: 820, why: THE_INVOICES_HALF },
+        { x: 396, y: 28, width: 130, height: 34, why: PERIOD_NAV },
+        ...DAY_CARD_FIGURES,
+        { x: 246, y: 242, width: 16, height: 22, why: STILL_RUNNING },
+        { x: 384, y: 236, width: 240, height: 38, why: STILL_RUNNING },
+        { x: 505, y: 292, width: 120, height: 22, why: CONFIRM_IS_A_CONTROL },
+        { x: 461, y: 379, width: 120, height: 22, why: CONFIRM_IS_A_CONTROL },
+        { x: 200, y: 643, width: 352, height: 24, why: THE_ADD_FIELD },
+      ],
+    },
+    /*
+     * No phone frame: the Time screen's 390px layout is derived — one column,
+     * each entry a compact two-line row, and the editor in the bottom sheet
+     * rather than inside a row. Listed as derived in docs/BRIEF.md and
+     * screenshotted, never compared.
+     */
+    phone: null,
   },
 ]
 

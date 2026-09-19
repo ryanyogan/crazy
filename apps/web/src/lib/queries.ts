@@ -1,4 +1,11 @@
-import { type MetricRange, type Patch, apply, bornElsewhere, namesUnknownWork } from '@crazy/shared'
+import {
+  type MetricRange,
+  type Patch,
+  type TimeView,
+  apply,
+  bornElsewhere,
+  namesUnknownWork,
+} from '@crazy/shared'
 import { type QueryClient, queryOptions } from '@tanstack/react-query'
 import {
   getCircles,
@@ -6,6 +13,7 @@ import {
   getMetrics,
   getProjects,
   getShell,
+  getTime,
   getTimer,
   getToday,
   getWeek,
@@ -25,6 +33,22 @@ export const todayQuery = queryOptions({ queryKey: ['today'], queryFn: () => get
  * are the same rows (ticket 27).
  */
 export const timerQuery = queryOptions({ queryKey: ['timer'], queryFn: () => getTimer() })
+
+/**
+ * One period of the timesheet. The period is part of the key, so moving from
+ * this week to last and back is a cache hit the second time, and a patch is
+ * laid over every period a tab has read (`applyToCache`).
+ */
+export const TIME_KEY = ['time'] as const
+
+export const timeQuery = (view: TimeView, on?: string) =>
+  queryOptions({
+    queryKey: [...TIME_KEY, view, on ?? 'now'] as const,
+    queryFn: () => getTime({ data: { view, on } }),
+  })
+
+/** What one of those periods holds, as `apply` takes it (`Applicable`). */
+type TimeCache = Awaited<ReturnType<typeof getTime>>
 
 export const weekQuery = queryOptions({ queryKey: ['week'], queryFn: () => getWeek() })
 
@@ -55,6 +79,12 @@ export function applyToCache(queryClient: QueryClient, ops: Patch['ops']): void 
   // belongs to no card; what the Projects screen shows change is the Signal.
   queryClient.setQueryData(projectsQuery.queryKey, (projects) => projects && apply(projects, ops))
   queryClient.setQueryData(integrationsQuery.queryKey, (held) => held && apply(held, ops))
+  // Every period of the timesheet this tab has read: an entry edited while the
+  // Time screen is on last week belongs to last week, and a period that does
+  // not hold the row is left exactly as it was.
+  queryClient.setQueriesData<TimeCache>({ queryKey: TIME_KEY }, (held) =>
+    held ? apply(held, ops) : held,
+  )
   // The Shell lists Time and Invoices only while the Billing module is on.
   queryClient.setQueryData(shellQuery.queryKey, (shell) => shell && apply(shell, ops))
   // A Connection made on another device comes with Clerk's word, which no patch carries.

@@ -3,12 +3,20 @@ import {
   readCircles,
   readMetrics,
   readProjects,
+  readTime,
   readTimerAndPicker,
   readToday,
   readWeek,
 } from '@crazy/db'
-import { type CommandResult, SERVER_ONLY, command, initials, metricRange } from '@crazy/shared'
-import { redirect } from '@tanstack/react-router'
+import {
+  type CommandResult,
+  SERVER_ONLY,
+  command,
+  initials,
+  metricRange,
+  timeView,
+} from '@crazy/shared'
+import { notFound, redirect } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { env } from 'cloudflare:workers'
 import { z } from 'zod'
@@ -79,6 +87,34 @@ export const getTimer = createServerFn().handler(async () => {
     timeZone,
   }
 })
+
+/**
+ * The Time screen's read model: one period of the timesheet. Which period is
+ * the URL's, so it is validated here as well as there — a server function is a
+ * door — and it arrives as the view and the local day the period is anchored
+ * on, never as a pair of moments a browser worked out.
+ */
+export const getTime = createServerFn()
+  .validator(z.object({ view: timeView, on: z.string().optional() }))
+  .handler(async ({ data }) => {
+    const userId = await viewerId()
+    if (!userId) throw redirect({ to: '/sign-in' })
+
+    const { timeZone, billing } = await settingsFor(userId)
+    // Part of the Billing module: with it off there is no such screen.
+    if (!billing) throw notFound()
+    const now = requestNow(timeZone)
+    const seq = await coordinatorFor(userId).lastSeq()
+    return {
+      // The period's rows sit under `time`, which is the name `apply` lays a
+      // Time entry operation over (`Applicable`), so a patch reaches this cache
+      // the same way it reaches the timer's.
+      time: await readTime(createReadDb(env.DB), userId, now, timeZone, data.view, data.on),
+      seq,
+      now: now.toISOString(),
+      timeZone,
+    }
+  })
 
 /** The Week screen's read model: the week the moment of this request falls in. */
 export const getWeek = createServerFn().handler(async () => {

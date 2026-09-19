@@ -1,9 +1,10 @@
 import { z } from 'zod'
-import { addDays, startOfDay } from './clock'
+import { addDays, clockTime, startOfDay } from './clock'
 import { LIFECYCLE_LIMITS } from './integrations'
 import { timeZone } from './settings'
 import { type DayEvent, LAST_HOUR, hoursIfSlottedAt, meetingHolds } from './timeline'
 import { type Signal, formatHour } from './today'
+import { type TimeRead, changeTimeRow, insertTimeRow, removeTimeRow } from './time'
 import {
   type ProjectFacts,
   type TimeEntryFacts,
@@ -12,6 +13,7 @@ import {
   addProject,
   changeEntry,
   nameEntry,
+  removeEntry,
 } from './timer'
 import {
   OPEN_TODO_STATES,
@@ -132,6 +134,47 @@ export const command = z.discriminatedUnion('type', [
   // than meaning "the running one", so that editing a stopped entry is the
   // same command when the Time screen comes to ask for it (ticket 20).
   z.object({ type: z.literal('timer.setNote'), entryId: id, note: z.string().trim().max(500) }),
+  // The Time screen's three ways of putting the record right (ticket 20). They
+  // are Time entry commands rather than timer ones: the timer is the control,
+  // and these are about the record it left behind (CONTEXT.md, "Time entry").
+  //
+  // Editing names only what changed. The Client and the Project are named as a
+  // pair — the picker hands back both — so that a Client can never be set onto
+  // a Project that contradicts it; `workFor` decides them as it does for a
+  // start. Billable follows from having a Client unless the command says
+  // otherwise, and then it sticks. The running entry may have its start, its
+  // work, its note and its billable flag edited, but it is not given an end
+  // here: ending it is `timer.stop`, which decides the end at its own moment.
+  z.object({
+    type: z.literal('timeEntry.edit'),
+    entryId: id,
+    startedAt: z.iso.datetime().optional(),
+    endedAt: z.iso.datetime().optional(),
+    clientId: id.nullable().optional(),
+    projectId: id.nullable().optional(),
+    note: z.string().trim().max(500).optional(),
+    billable: z.boolean().optional(),
+  }),
+  // Work she forgot to time. The browser names the entry, as `todo.add` names
+  // its Todo. An entry added by hand has both ends: a manual entry never makes
+  // a second running timer.
+  z.object({
+    type: z.literal('timeEntry.add'),
+    id,
+    startedAt: z.iso.datetime(),
+    endedAt: z.iso.datetime(),
+    clientId: id.nullable().optional(),
+    projectId: id.nullable().optional(),
+    note: z.string().trim().max(500).optional(),
+    billable: z.boolean().optional(),
+  }),
+  // One tap on the Client Crazy thinks the hours were for. What is applied is
+  // the entry's own suggestion, not anything the browser sends, so a stale
+  // screen cannot bill the wrong Client.
+  z.object({ type: z.literal('timeEntry.confirmSuggestion'), entryId: id }),
+  // A mistaken entry, taken out. Only an entry that has ended: the running one
+  // is stopped first, so that removing hours is never also stopping a timer.
+  z.object({ type: z.literal('timeEntry.remove'), entryId: id }),
   // A Project made where the work is chosen, so that naming one is not a trip
   // to another screen. The browser names it, as `todo.add` names its Todo. A
   // Client is optional and must be the user's; a Project with none is their own.
@@ -187,23 +230,41 @@ export type NewTodo = z.infer<typeof newTodo>
 export const signalChange = z.object({ todoId: z.string().nullable() }).partial()
 export type SignalChange = z.infer<typeof signalChange>
 
-/** A Time entry as it is born: started, unended, and for whatever work was chosen. */
+/**
+ * A Time entry as it is born: started, and for whatever work was chosen. A
+ * timer's entry has no end until it is stopped; one added by hand on the Time
+ * screen is born with both, so that a manual entry never becomes a second
+ * running timer.
+ */
 export const newTimeEntry = z.object({
   id,
   clientId: id.nullable(),
   projectId: id.nullable(),
-  /** The Todo the timer was started from; always null until ticket 19. */
+  /** The Todo the timer was started from; null for an entry added by hand. */
   todoId: id.nullable(),
   note: z.string(),
   billable: z.boolean(),
   startedAt: z.iso.datetime(),
+  /** Null is the running timer: the one Time entry with no end. */
+  endedAt: z.iso.datetime().nullable(),
   createdAt: z.iso.datetime(),
 })
 export type NewTimeEntry = z.infer<typeof newTimeEntry>
 
-/** What a command may change about a Time entry: its end, and its note. */
+/**
+ * What a command may change about a Time entry: when it began and ended, the
+ * work it was for, its note and whether it is billed. What is not named is left
+ * as it was, so an edit of the note cannot quietly move the hours.
+ */
 export const timeEntryChange = z
-  .object({ endedAt: z.iso.datetime().nullable(), note: z.string() })
+  .object({
+    startedAt: z.iso.datetime(),
+    endedAt: z.iso.datetime().nullable(),
+    note: z.string(),
+    billable: z.boolean(),
+    clientId: id.nullable(),
+    projectId: id.nullable(),
+  })
   .partial()
 export type TimeEntryChange = z.infer<typeof timeEntryChange>
 
@@ -253,6 +314,9 @@ export const op = z.discriminatedUnion('type', [
   z.object({ type: z.literal('connection.set'), id, set: z.object({ defaultSide: side }) }),
   z.object({ type: z.literal('timeEntry.insert'), entry: newTimeEntry }),
   z.object({ type: z.literal('timeEntry.set'), id, set: timeEntryChange }),
+  // A Time entry taken out altogether. Hours that were never worked are worse
+  // than no record at all, so a mistaken entry goes rather than being marked.
+  z.object({ type: z.literal('timeEntry.delete'), id }),
   z.object({ type: z.literal('project.insert'), project: newProject }),
 ])
 export type Op = z.infer<typeof op>
@@ -302,6 +366,12 @@ export interface ConnectionFacts {
 export interface CommandState {
   /** Which day it is on the user's wall clock: the day a Slot falls on. */
   day: string
+  /**
+   * The user's zone, for the one rule that has to say a time out loud: an
+   * overlap is refused by naming the hours it clashed with. Absent, the refusal
+   * names the entry without its clock times rather than naming the wrong ones.
+   */
+  timeZone?: string
   todos: readonly TodoFacts[]
   signals: readonly SignalFacts[]
   /** The day's calendar, so that a command cannot displace a meeting; empty unless `needsTheDay`. */
@@ -402,12 +472,44 @@ export function needsConnections(input: Command): boolean {
  * is the Time entry with no end: there is nowhere else to look for it.
  */
 export function needsTheTimer(input: Command): boolean {
-  return input.type.startsWith('timer.')
+  return input.type.startsWith('timer.') || input.type.startsWith('timeEntry.')
 }
 
 /** The Time entry ids a command names, beyond the running one. */
 export function timeEntriesNamed(input: Command): string[] {
-  return input.type === 'timer.setNote' ? [input.entryId] : []
+  switch (input.type) {
+    case 'timer.setNote':
+    case 'timeEntry.edit':
+    case 'timeEntry.confirmSuggestion':
+    case 'timeEntry.remove':
+      return [input.entryId]
+    case 'timeEntry.add':
+      return [input.id]
+    default:
+      return []
+  }
+}
+
+/**
+ * The span a command would have a Time entry occupy, which every other entry of
+ * the user's has to keep out of. It is decided from the command and the entry
+ * as it stands, because an edit that moves only one end leaves the other where
+ * it was; the running entry's span runs to `now`, since that is how much of the
+ * day it has taken so far. A command that moves no hours has no span.
+ */
+export function spanNamed(
+  input: Command,
+  entry: TimeEntryFacts | undefined,
+  now: Date,
+): { from: Date; to: Date } | null {
+  if (input.type === 'timeEntry.add') {
+    return { from: new Date(input.startedAt), to: new Date(input.endedAt) }
+  }
+  if (input.type !== 'timeEntry.edit' || !entry) return null
+  if (input.startedAt === undefined && input.endedAt === undefined) return null
+  const from = new Date(input.startedAt ?? entry.startedAt)
+  const ended = input.endedAt ?? entry.endedAt
+  return { from, to: ended === null ? now : new Date(ended) }
 }
 
 /**
@@ -422,7 +524,14 @@ export function workNamed(
   switch (input.type) {
     case 'timer.start':
     case 'timer.switch':
+    case 'timeEntry.add':
       return { clientId: input.clientId ?? null, projectId: input.projectId ?? null }
+    // An edit names work only when it says so: an edit of the note alone leaves
+    // the Client and the Project exactly where they were.
+    case 'timeEntry.edit':
+      return namesWork(input)
+        ? { clientId: input.clientId ?? null, projectId: input.projectId ?? null }
+        : null
     case 'project.add':
       return { clientId: input.clientId ?? null, projectId: input.id }
     default:
@@ -551,6 +660,59 @@ const BILLING_OFF = 'The timer belongs to the Billing module, which is off.'
 
 /** A timer command decided against nothing knows nothing; it must not guess. */
 const NO_ENTRIES = 'The timer needs the Time entries of the user it is for.'
+
+/** The Time entry a command names is not the user's, or is no longer there. */
+const NOT_YOURS = 'That Time entry is not one of yours.'
+
+/** Whether an edit names the work at all: a note edit leaves the Client alone. */
+function namesWork(input: { clientId?: string | null; projectId?: string | null }): boolean {
+  return 'clientId' in input || 'projectId' in input
+}
+
+/**
+ * Whether an entry billed for is billable, once a command has had its say.
+ * Work for a Client is billable and the user's own never is — but a contractor
+ * who has said "not this one" has said it, so a flag named in the command
+ * overrides the default and stays through later edits that do not name it.
+ */
+function billableFor(
+  input: { billable?: boolean },
+  clientId: string | null,
+  changed: boolean,
+): boolean | undefined {
+  if (input.billable !== undefined) return input.billable
+  return changed ? clientId !== null : undefined
+}
+
+/** "09:00–10:42 Meridian Health": the entry an edit would have run over. */
+function sayEntry(entry: TimeEntryFacts, now: Date, zone: string | undefined): string {
+  const who = entry.clientName ?? null
+  if (zone === undefined) return who ? `an entry for ${who}` : 'another entry'
+  const from = clockTime(new Date(entry.startedAt), zone)
+  const to = clockTime(entry.endedAt === null ? now : new Date(entry.endedAt), zone)
+  return `${from}–${to}${who ? ` ${who}` : ''}`
+}
+
+/**
+ * The entry a span would run over, if any. A user's hours may not overlap: two
+ * entries at once would bill one hour twice (CONTEXT.md, "Time entry"), and the
+ * running entry counts against the same rule, its span reaching to `now`. Two
+ * entries that merely touch — one ending where the next begins — do not
+ * overlap, which is what a switch leaves behind.
+ */
+function overlapping(
+  entries: readonly TimeEntryFacts[],
+  span: { from: Date; to: Date },
+  exceptId: string,
+  now: Date,
+): TimeEntryFacts | undefined {
+  return entries.find((each) => {
+    if (each.id === exceptId) return false
+    const from = new Date(each.startedAt).getTime()
+    const to = each.endedAt === null ? now.getTime() : new Date(each.endedAt).getTime()
+    return from < span.to.getTime() && to > span.from.getTime()
+  })
+}
 
 /**
  * The Todo a timer is started from, or why it cannot be started from it. Only
@@ -937,6 +1099,7 @@ export function decide(state: CommandState, input: Command, now: Date): Decision
               // their own never is, which is how the seed reads it too.
               billable: work.clientId !== null,
               startedAt: at,
+              endedAt: null,
               createdAt: at,
             },
           },
@@ -992,6 +1155,7 @@ export function decide(state: CommandState, input: Command, now: Date): Decision
               note: '',
               billable: work.clientId !== null,
               startedAt: at,
+              endedAt: null,
               createdAt: at,
             },
           },
@@ -1018,8 +1182,143 @@ export function decide(state: CommandState, input: Command, now: Date): Decision
       // Only the user's own entries are ever loaded, so one that is not there
       // is either gone or somebody else's; neither is the user's to word.
       const entry = entries.find((each) => each.id === input.entryId)
-      if (!entry) return refuse('That Time entry is not one of yours.')
+      if (!entry) return refuse(NOT_YOURS)
       return { ok: true, ops: [{ type: 'timeEntry.set', id: entry.id, set: { note: input.note } }] }
+    }
+
+    // Putting the record right on the Time screen (spec, stories 99 and 102).
+    // Everything the rule cares about is the same as a timer's: whose the entry
+    // is, whose the work is, and that no two spells of hers overlap.
+    case 'timeEntry.edit': {
+      if (!state.billing) return refuse(BILLING_OFF)
+      const entries = state.timeEntries
+      if (!entries) return refuse(NO_ENTRIES)
+      const entry = entries.find((each) => each.id === input.entryId)
+      if (!entry) return refuse(NOT_YOURS)
+      // Ending the running entry is `timer.stop`, which decides the end at its
+      // own moment; naming one here would let a browser's clock bill an hour.
+      if (entry.endedAt === null && input.endedAt !== undefined) {
+        return refuse('That timer is still running. Stop it to give it an end.')
+      }
+
+      const set: TimeEntryChange = {}
+      if (input.startedAt !== undefined) set.startedAt = input.startedAt
+      if (input.endedAt !== undefined) set.endedAt = input.endedAt
+      if (input.note !== undefined) set.note = input.note
+
+      const span = spanNamed(input, entry, now)
+      if (span) {
+        if (span.to <= span.from) return refuse('An entry has to end after it began.')
+        // Hours in the future are hours nobody has worked yet.
+        if (entry.endedAt !== null && span.to > now) {
+          return refuse('An entry cannot end in the future.')
+        }
+        if (span.from > now) return refuse('An entry cannot begin in the future.')
+        const clash = overlapping(entries, span, entry.id, now)
+        if (clash) return refuse(`That overlaps ${sayEntry(clash, now, state.timeZone)}.`)
+      }
+
+      const changed = namesWork(input)
+      let clientId = entry.clientId
+      if (changed) {
+        const work = workFor(state, input)
+        if (!work.ok) return refuse(work.reason)
+        clientId = work.clientId
+        set.clientId = work.clientId
+        set.projectId = work.projectId
+      }
+      const billable = billableFor(input, clientId, changed)
+      if (billable !== undefined) set.billable = billable
+
+      // Nothing named is nothing to do, which is what a row left as it was means.
+      if (Object.keys(set).length === 0) return { ok: true, ops: [] }
+      return { ok: true, ops: [{ type: 'timeEntry.set', id: entry.id, set }] }
+    }
+
+    // Work she forgot to time (spec, story 100).
+    case 'timeEntry.add': {
+      if (!state.billing) return refuse(BILLING_OFF)
+      const entries = state.timeEntries
+      if (!entries) return refuse(NO_ENTRIES)
+      if (entries.some((each) => each.id === input.id)) {
+        return refuse('That Time entry already exists.')
+      }
+      const span = { from: new Date(input.startedAt), to: new Date(input.endedAt) }
+      if (span.to <= span.from) return refuse('An entry has to end after it began.')
+      if (span.to > now) return refuse('An entry cannot end in the future.')
+      const clash = overlapping(entries, span, input.id, now)
+      if (clash) return refuse(`That overlaps ${sayEntry(clash, now, state.timeZone)}.`)
+
+      const work = workFor(state, input)
+      if (!work.ok) return refuse(work.reason)
+      return {
+        ok: true,
+        ops: [
+          {
+            type: 'timeEntry.insert',
+            entry: {
+              id: input.id,
+              clientId: work.clientId,
+              projectId: work.projectId,
+              // An entry added by hand was not started from a Todo: nothing
+              // was under way, it is being written down afterwards.
+              todoId: null,
+              note: input.note ?? '',
+              billable: input.billable ?? work.clientId !== null,
+              startedAt: input.startedAt,
+              endedAt: input.endedAt,
+              createdAt: at,
+            },
+          },
+        ],
+      }
+    }
+
+    // One tap on the Client Crazy thinks the hours were for (spec, story 101).
+    case 'timeEntry.confirmSuggestion': {
+      if (!state.billing) return refuse(BILLING_OFF)
+      const entries = state.timeEntries
+      if (!entries) return refuse(NO_ENTRIES)
+      const entry = entries.find((each) => each.id === input.entryId)
+      if (!entry) return refuse(NOT_YOURS)
+      const clientId = entry.suggestedClientId ?? null
+      // Nothing is guessed here: what is applied is the entry's own suggestion,
+      // so a stale screen cannot bill hours to a Client it merely remembers.
+      if (clientId === null) return refuse('Crazy has no Client to suggest for that entry.')
+      const work = workFor(state, {
+        clientId,
+        projectId: entry.suggestedProjectId ?? null,
+      })
+      if (!work.ok) return refuse(work.reason)
+      return {
+        ok: true,
+        ops: [
+          {
+            type: 'timeEntry.set',
+            id: entry.id,
+            set: {
+              clientId: work.clientId,
+              projectId: work.projectId,
+              // Confirmed hours are for a Client, so they are billable: the
+              // default follows the Client, as it does everywhere else.
+              billable: true,
+            },
+          },
+        ],
+      }
+    }
+
+    // A mistaken entry, taken out (beyond the ticket's checklist; see Comments).
+    case 'timeEntry.remove': {
+      if (!state.billing) return refuse(BILLING_OFF)
+      const entries = state.timeEntries
+      if (!entries) return refuse(NO_ENTRIES)
+      const entry = entries.find((each) => each.id === input.entryId)
+      if (!entry) return refuse(NOT_YOURS)
+      if (entry.endedAt === null) {
+        return refuse('That timer is still running. Stop it before removing the entry.')
+      }
+      return { ok: true, ops: [{ type: 'timeEntry.delete', id: entry.id }] }
     }
 
     // A Project named where the work is chosen. Only the two things a person
@@ -1089,6 +1388,10 @@ export interface Applicable {
   timer?: TodayTimer | null
   /** What the picker offers, beside them: every Client and Project the user has. */
   picker?: TimerPicker | null
+  /** One period of the timesheet, where a state holds one: the Time screen's. */
+  time?: TimeRead | null
+  /** The zone its days are read in; a state that holds a period says which. */
+  timeZone?: string
 }
 
 /**
@@ -1106,6 +1409,7 @@ export function apply<S extends Applicable>(state: S, ops: readonly Op[]): S {
   let billing = state.billing
   let timer = state.timer
   let picker = state.picker
+  let time = state.time
   for (const each of ops) {
     switch (each.type) {
       case 'todo.set':
@@ -1161,18 +1465,26 @@ export function apply<S extends Applicable>(state: S, ops: readonly Op[]): S {
       // carries the Client's id, never its name. Applied twice — once as the
       // answer to the command, once over the socket — it says the same thing.
       case 'timeEntry.insert': {
+        if (time) time = insertTimeRow(time, each.entry, state.timeZone ?? 'UTC')
         if (!timer) break
         const entry = nameEntry(timer, each.entry, picker)
         if (!entry) break
         timer = {
           ...timer,
-          running: entry,
+          // An entry added by hand is born with both ends, and is nobody's
+          // running timer: only one with no end takes the bar.
+          running: entry.endedAt === null ? entry : timer.running,
           today: [entry, ...timer.today.filter((held) => held.id !== entry.id)],
         }
         break
       }
       case 'timeEntry.set':
-        if (timer) timer = changeEntry(timer, each.id, each.set)
+        if (timer) timer = changeEntry(timer, each.id, each.set, picker)
+        if (time) time = changeTimeRow(time, each.id, each.set)
+        break
+      case 'timeEntry.delete':
+        if (timer) timer = removeEntry(timer, each.id)
+        if (time) time = removeTimeRow(time, each.id)
         break
       // A Project named in the picker joins it at once, so that the switch
       // that follows can be worded and chosen without reading the day again.
@@ -1187,7 +1499,8 @@ export function apply<S extends Applicable>(state: S, ops: readonly Op[]): S {
     billing === state.billing &&
     connections === state.connections &&
     timer === state.timer &&
-    picker === state.picker
+    picker === state.picker &&
+    time === state.time
   ) {
     return state
   }
@@ -1201,6 +1514,7 @@ export function apply<S extends Applicable>(state: S, ops: readonly Op[]): S {
     ...(connections === state.connections ? {} : { connections }),
     ...(timer === state.timer ? {} : { timer }),
     ...(picker === state.picker ? {} : { picker }),
+    ...(time === state.time ? {} : { time }),
   } as S
 }
 
@@ -1271,6 +1585,7 @@ function rowTouched(each: Op): string {
     case 'timeEntry.insert':
       return `timeEntry:${each.entry.id}`
     case 'timeEntry.set':
+    case 'timeEntry.delete':
       return `timeEntry:${each.id}`
     case 'project.insert':
       return `project:${each.project.id}`

@@ -27,6 +27,18 @@ export function clientShade(clientId: string | null, clients: readonly ClientWee
   return order === undefined || order === null ? INTERNAL_SHADE : SHADES[order % SHADES.length]!
 }
 
+/**
+ * The same colour, where the Clients come as a plain ordered list rather than
+ * as a week's figures: the Time screen's rows and day cards. The order is the
+ * list's own, which the read model gives in the order the Clients were taken
+ * on, so a Client's colour is the same here as on the Today screen.
+ */
+export function timeShade(clientId: string | null, clients: readonly { id: string }[]): string {
+  if (clientId === null) return INTERNAL_SHADE
+  const order = clients.findIndex((each) => each.id === clientId)
+  return order === -1 ? INTERNAL_SHADE : SHADES[order % SHADES.length]!
+}
+
 /** The three letters that stand for a Client on a line with no room for a name. */
 export function clientCode(clientId: string | null, clients: readonly ClientWeek[]): string {
   return clients.find((each) => each.clientId === clientId)?.code ?? INTERNAL_CODE

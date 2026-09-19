@@ -1,4 +1,5 @@
 import { expect, it } from 'vite-plus/test'
+import { localTimeToInstant } from './clock'
 import {
   type Command,
   type CommandState,
@@ -978,6 +979,7 @@ const running = (id = 'entry/wed'): TimeEntryFacts => ({
   clientId: MERIDIAN,
   projectId: DISCOVERY,
   todoId: null,
+  startedAt: '2025-09-17T14:00:00.000Z',
   endedAt: null,
 })
 
@@ -1005,6 +1007,7 @@ it('starts the timer: a Time entry with no end, begun at the moment of the comma
           note: '',
           billable: true,
           startedAt: now.toISOString(),
+          endedAt: null,
           createdAt: now.toISOString(),
         },
       },
@@ -1177,6 +1180,7 @@ it('ends the running entry and begins the next at the same instant', () => {
           note: '',
           billable: false,
           startedAt: now.toISOString(),
+          endedAt: null,
           createdAt: now.toISOString(),
         },
       },
@@ -1216,6 +1220,7 @@ it('settles the Client and the Project against each other, in all four combinati
     clientId: MERIDIAN,
     projectId: null,
     todoId: null,
+    startedAt: '2025-09-17T14:00:00.000Z',
     endedAt: null,
   }
   const cases: {
@@ -1368,6 +1373,7 @@ it('starts a timer on a Todo: the entry names it, and the Todo is under way and 
           note: '',
           billable: true,
           startedAt: now.toISOString(),
+          endedAt: null,
           createdAt: now.toISOString(),
         },
       },
@@ -1395,6 +1401,7 @@ it('starts a Todo that is part of nothing larger on the work the bar already had
       note: '',
       billable: true,
       startedAt: now.toISOString(),
+      endedAt: null,
       createdAt: now.toISOString(),
     },
   })
@@ -1433,6 +1440,7 @@ it('presses start on a Todo while one runs: the entries split at the same instan
           note: '',
           billable: true,
           startedAt: now.toISOString(),
+          endedAt: null,
           createdAt: now.toISOString(),
         },
       },
@@ -1473,4 +1481,292 @@ it('starts no timer from a Todo with the Billing module off', () => {
       },
     ],
   })
+})
+
+// ── The Time screen: putting the record right ───────────────────────────────
+// The same Wednesday, 10:42 on Cori's wall clock. Her morning, as frame 2b's
+// timesheet has it: 09:00–10:42 on Meridian's synthesis, and 08:10–08:30
+// tracked to Internal with Quill suggested.
+
+const CHECKOUT = 'project/checkout'
+const ZONE = 'America/Chicago'
+
+const ended = (
+  id: string,
+  from: string,
+  until: string,
+  fields: Partial<TimeEntryFacts> = {},
+): TimeEntryFacts => ({
+  id,
+  clientId: MERIDIAN,
+  clientName: 'Meridian Health',
+  projectId: DISCOVERY,
+  todoId: null,
+  startedAt: localTimeToInstant(`2025-09-17T${from}`, ZONE)!.toISOString(),
+  endedAt: localTimeToInstant(`2025-09-17T${until}`, ZONE)!.toISOString(),
+  ...fields,
+})
+
+/** The world a Time entry command is decided against: her entries, and whose work is whose. */
+function sheet(entries: TimeEntryFacts[], fields: Partial<CommandState> = {}): CommandState {
+  return {
+    ...timing(entries, fields),
+    timeZone: ZONE,
+    projects: [
+      { id: DISCOVERY, clientId: MERIDIAN },
+      { id: CHECKOUT, clientId: QUILL },
+    ],
+    clients: [{ id: MERIDIAN }, { id: QUILL }],
+  }
+}
+
+const at = (local: string) => localTimeToInstant(`2025-09-17T${local}`, ZONE)!.toISOString()
+
+/** Cori's moment: 10:42 on her wall clock, where the morning's hours are past. */
+const morning = new Date(at('10:42'))
+
+it('moves an entry to the hours it was really worked', () => {
+  const state = sheet([ended('entry/mon', '09:00', '10:00')])
+
+  expect(
+    decide(state, { type: 'timeEntry.edit', entryId: 'entry/mon', endedAt: at('10:30') }, morning),
+  ).toEqual({
+    ok: true,
+    ops: [{ type: 'timeEntry.set', id: 'entry/mon', set: { endedAt: at('10:30') } }],
+  })
+})
+
+it('refuses hours that run over another entry, and says which', () => {
+  const state = sheet([
+    ended('entry/one', '09:00', '10:00'),
+    ended('entry/two', '10:00', '10:42', { clientId: null, clientName: null, projectId: null }),
+  ])
+
+  expect(
+    decide(state, { type: 'timeEntry.edit', entryId: 'entry/one', endedAt: at('10:20') }, morning),
+  ).toEqual({ ok: false, reason: 'That overlaps 10:00–10:42.' })
+
+  // Ending exactly where the next begins is what a switch leaves behind, and
+  // is not an overlap.
+  expect(
+    decide(state, { type: 'timeEntry.edit', entryId: 'entry/one', endedAt: at('10:00') }, morning)
+      .ok,
+  ).toBe(true)
+})
+
+it('refuses hours that run over the running entry, whose span reaches now', () => {
+  const state = sheet([
+    ended('entry/morning', '08:10', '08:30'),
+    { ...running('entry/wed'), startedAt: at('09:00'), clientName: 'Meridian Health' },
+  ])
+
+  expect(
+    decide(
+      state,
+      { type: 'timeEntry.edit', entryId: 'entry/morning', endedAt: at('09:30') },
+      morning,
+    ),
+  ).toEqual({ ok: false, reason: 'That overlaps 09:00–10:42 Meridian Health.' })
+})
+
+it('refuses an entry that ends before it began, or in the future', () => {
+  const state = sheet([ended('entry/mon', '09:00', '10:00')])
+
+  expect(
+    decide(
+      state,
+      { type: 'timeEntry.edit', entryId: 'entry/mon', startedAt: at('11:00') },
+      morning,
+    ),
+  ).toEqual({ ok: false, reason: 'An entry has to end after it began.' })
+
+  expect(
+    decide(state, { type: 'timeEntry.edit', entryId: 'entry/mon', endedAt: at('12:00') }, morning),
+  ).toEqual({ ok: false, reason: 'An entry cannot end in the future.' })
+})
+
+it("takes an edited entry's Client from its Project, and refuses one that contradicts it", () => {
+  const state = sheet([ended('entry/mon', '09:00', '10:00')])
+
+  expect(
+    decide(state, { type: 'timeEntry.edit', entryId: 'entry/mon', projectId: CHECKOUT }, morning),
+  ).toEqual({
+    ok: true,
+    ops: [
+      {
+        type: 'timeEntry.set',
+        id: 'entry/mon',
+        set: { clientId: QUILL, projectId: CHECKOUT, billable: true },
+      },
+    ],
+  })
+
+  expect(
+    decide(
+      state,
+      { type: 'timeEntry.edit', entryId: 'entry/mon', clientId: MERIDIAN, projectId: CHECKOUT },
+      morning,
+    ),
+  ).toEqual({ ok: false, reason: "That Client is not the Project's Client." })
+})
+
+it('lets billable override the Client, and follows the Client where it does not', () => {
+  const state = sheet([ended('entry/mon', '09:00', '10:00')])
+
+  // Moved to nobody's work: her own is not billed.
+  expect(
+    decide(
+      state,
+      { type: 'timeEntry.edit', entryId: 'entry/mon', clientId: null, projectId: null },
+      morning,
+    ),
+  ).toEqual({
+    ok: true,
+    ops: [
+      {
+        type: 'timeEntry.set',
+        id: 'entry/mon',
+        set: { clientId: null, projectId: null, billable: false },
+      },
+    ],
+  })
+
+  // A favour for a Client: said once, and it sticks.
+  expect(
+    decide(state, { type: 'timeEntry.edit', entryId: 'entry/mon', billable: false }, morning),
+  ).toEqual({
+    ok: true,
+    ops: [{ type: 'timeEntry.set', id: 'entry/mon', set: { billable: false } }],
+  })
+  // And an edit that says nothing about it leaves it alone.
+  expect(
+    decide(state, { type: 'timeEntry.edit', entryId: 'entry/mon', note: 'Interviews' }, morning),
+  ).toEqual({
+    ok: true,
+    ops: [{ type: 'timeEntry.set', id: 'entry/mon', set: { note: 'Interviews' } }],
+  })
+})
+
+it("will not give the running entry an end: stopping is the timer's", () => {
+  const state = sheet([{ ...running('entry/wed'), startedAt: at('09:00') }])
+
+  expect(
+    decide(state, { type: 'timeEntry.edit', entryId: 'entry/wed', endedAt: at('10:00') }, morning),
+  ).toEqual({ ok: false, reason: 'That timer is still running. Stop it to give it an end.' })
+
+  // Its start, its work and its note are hers to put right.
+  expect(
+    decide(
+      state,
+      { type: 'timeEntry.edit', entryId: 'entry/wed', startedAt: at('08:55') },
+      morning,
+    ),
+  ).toEqual({
+    ok: true,
+    ops: [{ type: 'timeEntry.set', id: 'entry/wed', set: { startedAt: at('08:55') } }],
+  })
+})
+
+it('adds work she forgot to time, with both ends and no Todo', () => {
+  const state = sheet([ended('entry/mon', '09:00', '10:00')])
+
+  expect(
+    decide(
+      state,
+      {
+        type: 'timeEntry.add',
+        id: 'entry/new',
+        startedAt: at('10:00'),
+        endedAt: at('10:30'),
+        projectId: CHECKOUT,
+        note: 'Call with Quill',
+      },
+      morning,
+    ),
+  ).toEqual({
+    ok: true,
+    ops: [
+      {
+        type: 'timeEntry.insert',
+        entry: {
+          id: 'entry/new',
+          clientId: QUILL,
+          projectId: CHECKOUT,
+          todoId: null,
+          note: 'Call with Quill',
+          billable: true,
+          startedAt: at('10:00'),
+          endedAt: at('10:30'),
+          createdAt: morning.toISOString(),
+        },
+      },
+    ],
+  })
+
+  // An entry added by hand keeps out of the hours already spoken for.
+  expect(
+    decide(
+      state,
+      { type: 'timeEntry.add', id: 'entry/new', startedAt: at('09:30'), endedAt: at('10:30') },
+      morning,
+    ),
+  ).toEqual({ ok: false, reason: 'That overlaps 09:00–10:00 Meridian Health.' })
+})
+
+it('confirms the Client Crazy suggested, and refuses where it suggested none', () => {
+  const untagged = ended('entry/inbox', '08:10', '08:30', {
+    clientId: null,
+    clientName: null,
+    projectId: null,
+    suggestedClientId: QUILL,
+    suggestedProjectId: CHECKOUT,
+  })
+  const state = sheet([untagged])
+
+  expect(
+    decide(state, { type: 'timeEntry.confirmSuggestion', entryId: 'entry/inbox' }, morning),
+  ).toEqual({
+    ok: true,
+    ops: [
+      {
+        type: 'timeEntry.set',
+        id: 'entry/inbox',
+        set: { clientId: QUILL, projectId: CHECKOUT, billable: true },
+      },
+    ],
+  })
+
+  expect(
+    decide(
+      sheet([{ ...untagged, suggestedClientId: null, suggestedProjectId: null }]),
+      { type: 'timeEntry.confirmSuggestion', entryId: 'entry/inbox' },
+      morning,
+    ),
+  ).toEqual({ ok: false, reason: 'Crazy has no Client to suggest for that entry.' })
+})
+
+it('removes a mistaken entry, once the timer on it has been stopped', () => {
+  expect(
+    decide(
+      sheet([ended('entry/mon', '09:00', '10:00')]),
+      { type: 'timeEntry.remove', entryId: 'entry/mon' },
+      morning,
+    ),
+  ).toEqual({ ok: true, ops: [{ type: 'timeEntry.delete', id: 'entry/mon' }] })
+
+  expect(
+    decide(
+      sheet([{ ...running('entry/wed'), startedAt: at('09:00') }]),
+      { type: 'timeEntry.remove', entryId: 'entry/wed' },
+      morning,
+    ),
+  ).toEqual({
+    ok: false,
+    reason: 'That timer is still running. Stop it before removing the entry.',
+  })
+
+  // Only the user's own are ever loaded, so one that is not there is not theirs.
+  expect(
+    decide(sheet([]), { type: 'timeEntry.remove', entryId: 'entry/someone-else' }, morning),
+  ).toEqual({ ok: false, reason: 'That Time entry is not one of yours.' })
 })

@@ -43,7 +43,14 @@ found while off, the rail gains and loses Time and Invoices on the switch, `/tim
     fifth destination, and the three below it are masked because frame 2a omits Circles and the
     Shell keeps it (which this ticket's own decision already recorded). Frame 2a's phone card is
     screenshotted and not compared, and why is written beside the target and in `docs/BRIEF.md`.
-    **What is still open here: 2b, 2c and 4a, which are the tickets that draw those screens, and
+    **Ticket 20 added frame 2b at 1180px** (0.00% in every region: rail, head, day cards,
+    entries, flag and the place to add an entry), so the Billing-on rail is now compared against
+    a second frame. Frame 2b marks both Time and Invoices in the accent, because it is one page
+    for the two; the Shell has a screen for each, so only the one the user is on is marked and
+    that row is masked with the reason. Its rail foot is masked too: 2b puts the accounting
+    targets there and the Shell follows frame 1a (Live, then the user). Frame 2b's phone card is
+    not drawn at all, so the Time screen's 390px layout is derived and listed in `docs/BRIEF.md`.
+    **What is still open here: 2c and 4a, which are the tickets that draw those screens, and
     the phone tab bar with the Billing module on, which no compared frame reaches.**
 - [x] *At most one Time entry per user has no end, enforced at the command seam* — done in ticket
   17: `decide` refuses `timer.start` while an entry with no end exists, with a reason, and the
