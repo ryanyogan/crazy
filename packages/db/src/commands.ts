@@ -7,9 +7,14 @@ import {
   type Op,
   type SignalFacts,
   type TodoFacts,
+  type ProjectFacts,
+  type TimeEntryFacts,
   needsConnections,
   needsEveryOpenTodo,
   needsTheDay,
+  needsTheTimer,
+  timeEntriesNamed,
+  workNamed,
   side,
   signalKind,
   signalsNamed,
@@ -142,12 +147,44 @@ export async function loadCommandState(
       ).map((row): ConnectionFacts => ({ ...row, defaultSide: side.parse(row.defaultSide) }))
     : []
 
+  // A timer command is decided against the running Time entry — the one with no
+  // end — and any entry it names by id. Only the user's own are ever loaded, so
+  // an entry that is not here is not theirs to change.
+  const entryIds = timeEntriesNamed(command)
+  const timeEntries = needsTheTimer(command)
+    ? (
+        await db.timeEntry.findMany({
+          where: { userId, OR: [{ endedAt: null }, { id: { in: entryIds } }] },
+          select: { id: true, clientId: true, projectId: true, endedAt: true },
+        })
+      ).map((row): TimeEntryFacts => ({ ...row, endedAt: row.endedAt?.toISOString() ?? null }))
+    : undefined
+
+  // The work a timer names: the Project decides the Client, so the Project's
+  // own row has to be read before a start can be decided.
+  const work = workNamed(command)
+  const [projects, clients] = await Promise.all([
+    work?.projectId
+      ? db.project.findMany({
+          where: { userId, id: work.projectId },
+          select: { id: true, clientId: true },
+        })
+      : ([] as ProjectFacts[]),
+    work?.clientId
+      ? db.client.findMany({ where: { userId, id: work.clientId }, select: { id: true } })
+      : [],
+  ])
+
   return {
     day,
     todos,
     signals,
     events,
     connections,
+    billing: settings?.billing ?? SETTINGS_DEFAULTS.billing,
+    timeEntries,
+    projects,
+    clients,
     settings: {
       timeZone,
       sentBackDays: settings?.sentBackDays ?? SETTINGS_DEFAULTS.sentBackDays,
@@ -244,6 +281,29 @@ export async function persistOps(db: Db, userId: string, ops: readonly Op[]): Pr
       }
       case 'connection.set':
         await db.connection.updateMany({ where: { id: op.id, userId }, data: op.set })
+        break
+      case 'timeEntry.insert': {
+        const { startedAt, createdAt, ...rest } = op.entry
+        // The partial unique index on the entries with no end is the backstop
+        // under the rule `decide` holds: a second running entry cannot land.
+        await db.timeEntry.create({
+          data: {
+            ...rest,
+            userId,
+            startedAt: new Date(startedAt),
+            endedAt: null,
+            createdAt: new Date(createdAt),
+          },
+        })
+        break
+      }
+      case 'timeEntry.set': {
+        const { endedAt, ...rest } = op.set
+        await db.timeEntry.updateMany({
+          where: { id: op.id, userId },
+          data: { ...rest, endedAt: toDate(endedAt) },
+        })
+      }
     }
   }
 }

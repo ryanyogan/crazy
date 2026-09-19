@@ -1,4 +1,4 @@
-import type { Browser } from 'playwright'
+import type { Browser, Page } from 'playwright'
 import type { Picture } from './compare.ts'
 import { toPicture } from './frame.ts'
 
@@ -13,14 +13,29 @@ const PINNED_NOW_HEADER = 'x-crazy-now'
  * replaced with the persona's content, laid over the frame's moment. The route
  * exists on the dev server only (apps/web/src/routes/dev/seed.ts).
  */
-export async function seedApp(origin: string, persona: string, now: string): Promise<void> {
-  const response = await fetch(new URL(`/dev/seed?persona=${persona}`, origin), {
+export async function seedApp(
+  origin: string,
+  persona: string,
+  now: string,
+  /** `idle` seeds a persona's running Time entry already ended (frame 3a, idle). */
+  timer?: 'idle',
+): Promise<void> {
+  const url = new URL(`/dev/seed?persona=${persona}`, origin)
+  if (timer) url.searchParams.set('timer', timer)
+  const response = await fetch(url, {
     method: 'POST',
     headers: { cookie: `${PINNED_NOW_COOKIE}=${now}` },
   })
   if (!response.ok) {
     throw new Error(`Seeding ${persona} answered ${response.status}: ${await response.text()}`)
   }
+}
+
+/** Where the part sits on the page, and how much of the page below it the frame reaches. */
+async function clipFor(tab: Page, part: Part) {
+  const box = await tab.locator(part.selector).boundingBox()
+  if (!box) throw new Error(`Nothing on the page matches ${part.selector}`)
+  return { x: box.x, y: box.y, width: box.width, height: part.height }
 }
 
 export interface Shot {
@@ -32,12 +47,21 @@ export interface Shot {
   overflow: number
 }
 
+/** One piece of a screen, where a frame draws that piece rather than the whole of it. */
+export interface Part {
+  /** The element the frame is of, in the running app. */
+  selector: string
+  /** The frame's own height: what the app is cropped to, so the two can be compared. */
+  height: number
+}
+
 export async function shootRoute(
   browser: Browser,
   origin: string,
   route: string,
   now: string,
   viewport: { width: number; height: number },
+  part?: Part,
 ): Promise<Shot> {
   const context = await browser.newContext({
     viewport,
@@ -79,7 +103,11 @@ export async function shootRoute(
     const overflow = await tab.evaluate(
       () => document.documentElement.scrollHeight - window.innerHeight,
     )
-    const png = await tab.screenshot()
+    // A frame that draws one piece of a screen is compared with that piece where
+    // it sits, cropped to the frame's own height: the frames' last line is often
+    // a note about the mockup rather than anything the app says, and a target
+    // masks that band with its reason.
+    const png = await tab.screenshot(part ? { clip: await clipFor(tab, part) } : undefined)
     return { picture: toPicture(png), png, servedAt, overflow: Math.max(0, overflow) }
   } finally {
     await context.close()

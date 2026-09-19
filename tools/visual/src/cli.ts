@@ -15,6 +15,8 @@ import { DESKTOP, PERSONAS, PHONE, TARGETS, type Target, UNDRAWN, type Width } f
 const REPO = join(import.meta.dirname, '../../..')
 /** The phone viewport for a route no phone frame gives a height to. */
 const PHONE_HEIGHT = 844
+/** Tall enough to hold the whole of a screen a frame draws one part of. */
+const PART_VIEWPORT = 900
 
 const { values: options, positionals } = parseArgs({
   allowPositionals: true,
@@ -59,9 +61,25 @@ async function compareAt(target: Target, width: Width): Promise<Result> {
   const view = width === DESKTOP ? target.desktop : target.phone!
   const now = options.now ?? target.now
   const page = await canvasPage(PERSONAS[target.persona])
-  const frame = await drawFrame(browser, page, target.frame, width)
+  // A frame that draws one part of a screen is drawn at that part's width, and
+  // the app is cropped to where the part sits; the rest is drawn whole.
+  const { part } = target
+  const frame = await drawFrame(
+    browser,
+    page,
+    target.option ?? target.frame,
+    part?.width ?? width,
+    target.card,
+  )
   const { height } = frame.picture
-  const app = await shootRoute(browser, origin, target.route, now, { width, height })
+  const app = await shootRoute(
+    browser,
+    origin,
+    target.route,
+    now,
+    { width, height: part ? PART_VIEWPORT : height },
+    part && { selector: part.selector, height },
+  )
   const { whole, regions, diff } = compare(frame.picture, app.picture, view.regions, view.masks)
 
   const stem = `${target.frame}-${width}`
@@ -122,8 +140,12 @@ try {
   await mkdir(out, { recursive: true })
 
   for (const target of targets) {
-    await seedApp(origin, target.persona, options.now ?? target.now)
+    await seedApp(origin, target.persona, options.now ?? target.now, target.timer)
     for (const width of [DESKTOP, PHONE] as const) {
+      // A frame of one part of a screen is drawn at one width; the phone's
+      // timer is frame 3b's, and the screen around it is compared by its own
+      // target, so there is nothing to shoot a second time here.
+      if (width === PHONE && target.part) continue
       const result =
         width === PHONE && !target.phone
           ? await derivedAt(target.title, target.route, options.now ?? target.now)

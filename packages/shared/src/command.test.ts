@@ -1,6 +1,7 @@
 import { expect, it } from 'vite-plus/test'
 import {
   type Command,
+  type CommandState,
   type Op,
   SNOOZE_CHOICES,
   SNOOZE_MINUTES,
@@ -10,8 +11,10 @@ import {
   decide,
   hourChoice,
   namesAnotherDay,
+  namesUnknownWork,
 } from './command'
 import type { DayEvent, HourWording } from './timeline'
+import type { TimeEntryFacts, TimerEntry, TodayTimer } from './timer'
 import { type Signal, type Today, viewToday } from './today'
 import type { Source, TodayTodo } from './todo'
 
@@ -65,7 +68,16 @@ function mention(id: string, fields: Partial<Signal> = {}): Signal {
 }
 
 function day(todos: TodayTodo[], signals: Signal[] = []): Today {
-  return { day: '2025-09-17', brief: null, todos, events: [], hours: [], signals, sentBack: 0 }
+  return {
+    day: '2025-09-17',
+    brief: null,
+    todos,
+    events: [],
+    hours: [],
+    signals,
+    sentBack: 0,
+    timer: null,
+  }
 }
 
 /** Decides a command against the day and, when it is accepted, applies what it decided. */
@@ -934,4 +946,186 @@ it('offers only snoozes the command seam accepts', () => {
     expect(choice.minutes).toBeLessThanOrEqual(SNOOZE_MINUTES.max)
     expect(command.safeParse(snooze('spike', choice.minutes)).success).toBe(true)
   }
+})
+
+// ── The timer ───────────────────────────────────────────────────────────────
+// Cori's moment: the same Wednesday, 10:42 on her wall clock, 1h 42m into
+// Meridian's synthesis (frame 3a).
+
+const MERIDIAN = 'client/meridian'
+const DISCOVERY = 'project/discovery'
+
+/** The world a timer command is decided against: who is running, and whose work is whose. */
+function timing(entries: TimeEntryFacts[], fields: Partial<CommandState> = {}): CommandState {
+  return {
+    day: '2025-09-17',
+    todos: [],
+    signals: [],
+    events: [],
+    billing: true,
+    timeEntries: entries,
+    projects: [{ id: DISCOVERY, clientId: MERIDIAN }],
+    clients: [{ id: MERIDIAN }],
+    ...fields,
+  }
+}
+
+const running = (id = 'entry/wed'): TimeEntryFacts => ({
+  id,
+  clientId: MERIDIAN,
+  projectId: DISCOVERY,
+  endedAt: null,
+})
+
+const startTimer = (fields: Partial<Extract<Command, { type: 'timer.start' }>> = {}): Command => ({
+  type: 'timer.start',
+  id: 'entry/new',
+  clientId: MERIDIAN,
+  projectId: DISCOVERY,
+  ...fields,
+})
+
+it('starts the timer: a Time entry with no end, begun at the moment of the command', () => {
+  const decision = decide(timing([]), startTimer(), now)
+
+  expect(decision).toEqual({
+    ok: true,
+    ops: [
+      {
+        type: 'timeEntry.insert',
+        entry: {
+          id: 'entry/new',
+          clientId: MERIDIAN,
+          projectId: DISCOVERY,
+          todoId: null,
+          note: '',
+          billable: true,
+          startedAt: now.toISOString(),
+          createdAt: now.toISOString(),
+        },
+      },
+    ],
+  })
+})
+
+it('refuses to start a second timer while one runs, rather than stopping it quietly', () => {
+  const decision = decide(timing([running()]), startTimer(), now)
+
+  expect(decision).toEqual({
+    ok: false,
+    reason: 'A timer is already running. Stop it before starting another.',
+  })
+})
+
+it('tracks work for no Client as Internal, and does not call it billable', () => {
+  const decision = decide(timing([]), startTimer({ clientId: null, projectId: null }), now)
+
+  expect(decision.ok && decision.ops[0]).toMatchObject({
+    type: 'timeEntry.insert',
+    entry: { clientId: null, projectId: null, billable: false },
+  })
+})
+
+it('takes the Client from the Project, and refuses a Client that contradicts it', () => {
+  const fromProject = decide(timing([]), startTimer({ clientId: null }), now)
+  expect(fromProject.ok && fromProject.ops[0]).toMatchObject({
+    entry: { clientId: MERIDIAN, projectId: DISCOVERY },
+  })
+
+  const contradicting = decide(timing([]), startTimer({ clientId: 'client/quill' }), now)
+  expect(contradicting).toEqual({
+    ok: false,
+    reason: "That Client is not the Project's Client.",
+  })
+})
+
+it('stops the running timer at the moment of the command', () => {
+  const decision = decide(timing([running()]), { type: 'timer.stop' }, now)
+
+  expect(decision).toEqual({
+    ok: true,
+    ops: [{ type: 'timeEntry.set', id: 'entry/wed', set: { endedAt: now.toISOString() } }],
+  })
+})
+
+it('refuses to stop when nothing is running, rather than inventing an entry to end', () => {
+  const stopped: TimeEntryFacts = { ...running(), endedAt: '2025-09-17T15:00:00.000Z' }
+
+  expect(decide(timing([stopped]), { type: 'timer.stop' }, now)).toEqual({
+    ok: false,
+    reason: 'No timer is running.',
+  })
+})
+
+it("words the running entry, and refuses to word an entry that is not the user's", () => {
+  const state = timing([running()])
+  const note = (entryId: string): Command => ({
+    type: 'timer.setNote',
+    entryId,
+    note: 'Interviews 4–7',
+  })
+
+  expect(decide(state, note('entry/wed'), now)).toEqual({
+    ok: true,
+    ops: [{ type: 'timeEntry.set', id: 'entry/wed', set: { note: 'Interviews 4–7' } }],
+  })
+  expect(decide(state, note('entry/somebody-elses'), now)).toEqual({
+    ok: false,
+    reason: 'That Time entry is not one of yours.',
+  })
+})
+
+it('refuses every timer command with the Billing module off: there is no timer', () => {
+  const off = timing([running()], { billing: false })
+  const commands: Command[] = [
+    startTimer(),
+    { type: 'timer.stop' },
+    { type: 'timer.setNote', entryId: 'entry/wed', note: 'anything' },
+  ]
+
+  for (const input of commands) {
+    expect(decide(off, input, now)).toEqual({
+      ok: false,
+      reason: 'The timer belongs to the Billing module, which is off.',
+    })
+  }
+})
+
+it('lays a started and stopped timer over the bar the browser is showing', () => {
+  const was: TimerEntry = {
+    id: 'entry/tue',
+    clientId: MERIDIAN,
+    clientName: 'Meridian Health',
+    projectId: DISCOVERY,
+    projectName: 'Discovery research',
+    note: 'Interviews 2–3',
+    billable: true,
+    startedAt: '2025-09-16T14:00:00.000Z',
+    endedAt: '2025-09-16T17:00:00.000Z',
+  }
+  const bar: TodayTimer = { running: null, last: was, today: [] }
+
+  const started = decide(timing([]), startTimer(), now)
+  const afterStart = apply({ timer: bar }, started.ok ? started.ops : [])
+  expect(afterStart.timer?.running).toMatchObject({
+    id: 'entry/new',
+    // The patch carries ids; the names come from what the browser already held.
+    clientName: 'Meridian Health',
+    projectName: 'Discovery research',
+    endedAt: null,
+  })
+
+  const stopped = decide(timing([running('entry/new')]), { type: 'timer.stop' }, now)
+  const afterStop = apply(afterStart, stopped.ok ? stopped.ops : [])
+  expect(afterStop.timer?.running).toBe(null)
+  expect(afterStop.timer?.last).toMatchObject({ id: 'entry/new', endedAt: now.toISOString() })
+})
+
+it('reads the day again when a patch starts a timer on work this browser cannot name', () => {
+  const bar: TodayTimer = { running: null, last: null, today: [] }
+  const ops = decide(timing([]), startTimer(), now)
+
+  expect(ops.ok && namesUnknownWork({ timer: bar }, ops.ops)).toBe(true)
+  // With the Billing module off there is no bar to catch up, and nothing to read.
+  expect(ops.ok && namesUnknownWork({ timer: null }, ops.ops)).toBe(false)
 })

@@ -12,5 +12,5 @@ export function createDb(d1: D1): Db {
   return createClient(d1)
 }
 
-export { type SeedInput, seedPersona } from './seed'
+export { type SeedInput, type SeedTimer, seedPersona } from './seed'
 export { loadCommandState, persistOps } from './commands'

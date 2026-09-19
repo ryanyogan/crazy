@@ -1,4 +1,4 @@
-import { type MetricRange, type Patch, apply, bornElsewhere } from '@crazy/shared'
+import { type MetricRange, type Patch, apply, bornElsewhere, namesUnknownWork } from '@crazy/shared'
 import { type QueryClient, queryOptions } from '@tanstack/react-query'
 import {
   getCircles,
@@ -37,7 +37,8 @@ export const metricsQuery = (range: MetricRange) =>
 
 /** Lays operations over every cached read model that holds the rows they name. */
 export function applyToCache(queryClient: QueryClient, ops: Patch['ops']): void {
-  queryClient.setQueryData(todayQuery.queryKey, (today) => today && apply(today, ops))
+  const today = queryClient.getQueryData(todayQuery.queryKey)
+  queryClient.setQueryData(todayQuery.queryKey, (held) => held && apply(held, ops))
   // A Todo made here is a One-off with no Project, so it joins the list and
   // belongs to no card; what the Projects screen shows change is the Signal.
   queryClient.setQueryData(projectsQuery.queryKey, (projects) => projects && apply(projects, ops))
@@ -46,4 +47,7 @@ export function applyToCache(queryClient: QueryClient, ops: Patch['ops']): void 
   queryClient.setQueryData(shellQuery.queryKey, (shell) => shell && apply(shell, ops))
   // A Connection made on another device comes with Clerk's word, which no patch carries.
   if (bornElsewhere(ops)) void queryClient.invalidateQueries(integrationsQuery)
+  // A timer started on another device names its Client and Project by id, and
+  // the names live in rows the patch does not carry: the day is read again.
+  if (today && namesUnknownWork(today, ops)) void queryClient.invalidateQueries(todayQuery)
 }

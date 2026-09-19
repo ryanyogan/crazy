@@ -40,9 +40,15 @@ export const provisionInput = z.object({
 })
 export type ProvisionInput = z.infer<typeof provisionInput>
 
-/** Development only: the persona to lay over a user, and the moment to lay it over. */
+/**
+ * Development only: the persona to lay over a user, and the moment to lay it
+ * over. A persona whose world has a timer running in it can be seeded with that
+ * Time entry already ended, which is the only way to see the idle bar at a
+ * pinned moment (`pnpm visual`, frame 3a).
+ */
 export const reseedInput = z.object({
   persona: z.enum(PERSONAS),
   now: z.iso.datetime(),
+  timer: z.enum(['running', 'idle']).optional(),
 })
 export type ReseedInput = z.infer<typeof reseedInput>

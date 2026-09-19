@@ -26,8 +26,11 @@ export const Route = createFileRoute('/dev/seed')({
 
         const { timeZone } = await settingsFor(userId)
         const now = requestNow(timeZone).toISOString()
-        await coordinatorFor(userId).reseed({ persona: persona as Persona, now })
-        return Response.json({ persona, userId, now })
+        // `?timer=idle` seeds a persona's running Time entry already ended, so
+        // that the idle timer bar can be seen at a pinned moment (frame 3a).
+        const timer = new URL(request.url).searchParams.get('timer') === 'idle' ? 'idle' : undefined
+        await coordinatorFor(userId).reseed({ persona: persona as Persona, now, timer })
+        return Response.json({ persona, userId, now, timer: timer ?? 'running' })
       },
     },
   },

@@ -1,6 +1,7 @@
 import { type TodayTodo, dayLine, firstName, greeting, viewToday, wallClock } from '@crazy/shared'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
+import { TimerBar } from '#/features/timer/TimerBar'
 import { shellQuery, todayQuery } from '#/lib/queries'
 import { AddTodo } from './AddTodo'
 import { DayTimeline } from './DayTimeline'
@@ -26,52 +27,57 @@ export function TodayScreen() {
   const [dragging, setDragging] = useState<TodayTodo | null>(null)
 
   return (
-    <div className="screen today">
-      <header className="today__head">
-        <div>
-          <div className="today__dayline">
-            {dayLine(now, today.timeZone)} · status refreshed on the hour
+    <>
+      {/* The bar sits across the top of the screen, where frame 2a draws it, and
+          only for a user who bills for their time. */}
+      {today.timer && <TimerBar timer={today.timer} readAt={today.now} timeZone={today.timeZone} />}
+      <div className={shell.billing ? 'screen today today--billing' : 'screen today'}>
+        <header className="today__head">
+          <div>
+            <div className="today__dayline">
+              {dayLine(now, today.timeZone)} · status refreshed on the hour
+            </div>
+            <h1 className="screen__title">{greeting(hour, firstName(shell.name))}</h1>
+            {today.brief && (
+              <>
+                <p className="today__brief today__brief--long">{today.brief.body}</p>
+                <p className="today__brief today__brief--short">{today.brief.bodyShort}</p>
+              </>
+            )}
           </div>
-          <h1 className="screen__title">{greeting(hour, firstName(shell.name))}</h1>
-          {today.brief && (
-            <>
-              <p className="today__brief today__brief--long">{today.brief.body}</p>
-              <p className="today__brief today__brief--short">{today.brief.bodyShort}</p>
-            </>
-          )}
-        </div>
-        {view.takeOnNow && <TakeOnNowCard takeOnNow={view.takeOnNow} timeZone={today.timeZone} />}
-      </header>
+          {view.takeOnNow && <TakeOnNowCard takeOnNow={view.takeOnNow} timeZone={today.timeZone} />}
+        </header>
 
-      <div className="today__body">
-        <DayTimeline
-          timeline={view.timeline}
-          todos={view.stack.length}
-          meetings={view.meetings}
-          events={today.events}
-          dragging={dragging}
-          now={now}
-        />
-        <aside className="today__side">
-          <PriorityStack
-            stack={view.stack}
-            done={view.done}
-            carriedOver={view.carriedOver}
-            sentBack={today.sentBack}
-            snoozed={view.snoozed}
-            timeZone={today.timeZone}
-            hours={view.timeline.map((hour) => hour.hour)}
+        <div className="today__body">
+          <DayTimeline
+            timeline={view.timeline}
+            todos={view.stack.length}
+            meetings={view.meetings}
             events={today.events}
-            now={now}
-            onDrag={setDragging}
-          />
-          <Mentions
-            mentions={today.signals.filter((signal) => signal.kind === 'mention')}
+            dragging={dragging}
             now={now}
           />
-          <AddTodo />
-        </aside>
+          <aside className="today__side">
+            <PriorityStack
+              stack={view.stack}
+              done={view.done}
+              carriedOver={view.carriedOver}
+              sentBack={today.sentBack}
+              snoozed={view.snoozed}
+              timeZone={today.timeZone}
+              hours={view.timeline.map((hour) => hour.hour)}
+              events={today.events}
+              now={now}
+              onDrag={setDragging}
+            />
+            <Mentions
+              mentions={today.signals.filter((signal) => signal.kind === 'mention')}
+              now={now}
+            />
+            <AddTodo />
+          </aside>
+        </div>
       </div>
-    </div>
+    </>
   )
 }

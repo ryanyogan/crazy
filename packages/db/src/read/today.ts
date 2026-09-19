@@ -13,6 +13,7 @@ import {
   writtenFor,
 } from '@crazy/shared'
 import type { ReadDb } from '../client'
+import { readTimer } from './timer'
 
 /**
  * The day's calendar, as the timeline and the Slot commands read it: meetings
@@ -51,19 +52,22 @@ export async function readDayEvents(
 
 /**
  * A user's day as D1 holds it at one moment. What the Today screen makes of it
- * (the Priority stack, the Take on now, the timeline) is `viewToday`'s to derive.
+ * (the Priority stack, the Take on now, the timeline) is `viewToday`'s to
+ * derive. The timer comes with it only for a user whose Billing module is on:
+ * with it off there is no timer, and the bar does not render.
  */
 export async function readToday(
   db: ReadDb,
   userId: string,
   now: Date,
   timeZone: string,
+  billing = false,
 ): Promise<Today> {
   const { day } = wallClock(now, timeZone)
   const dayStart = startOfDay(day, timeZone)
   const dayEnd = startOfDay(addDays(day, 1), timeZone)
 
-  const [brief, todos, sentBack, events, hours, signals] = await Promise.all([
+  const [brief, todos, sentBack, events, hours, signals, timer] = await Promise.all([
     db.brief.findUnique({
       where: { userId_kind_day: { userId, kind: 'daily', day } },
       select: { body: true, bodyShort: true },
@@ -82,6 +86,7 @@ export async function readToday(
     readDayEvents(db, userId, day, timeZone),
     db.timelineHour.findMany({ where: { userId, day }, orderBy: { hour: 'asc' } }),
     db.signal.findMany({ where: { userId, kind: 'mention' }, orderBy: { at: 'desc' } }),
+    billing ? readTimer(db, userId, now, timeZone) : null,
   ])
 
   return {
@@ -141,5 +146,6 @@ export async function readToday(
       todoId: row.todoId,
     })),
     sentBack,
+    timer,
   }
 }

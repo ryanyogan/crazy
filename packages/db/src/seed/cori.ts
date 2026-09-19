@@ -319,6 +319,10 @@ const BRIEF = {
 
 export function cori(input: SeedInput) {
   const { userId, now, timeZone } = input
+  // Her world has a timer running in it (frame 3a, running). Seeded idle, that
+  // one Time entry is given an end at the moment everything is laid over, which
+  // is the only way to see the idle bar at a pinned moment.
+  const stillRunning = input.timer !== 'idle'
   const today = wallClock(now, timeZone).day
   const id = (kind: string, key: string) => `${userId}/${kind}/${key}`
   /** A wall-clock time on a day, never later than the moment seeded over: nothing is tracked in the future. */
@@ -375,17 +379,18 @@ export function cori(input: SeedInput) {
     const day = workdayBack(entry.workdaysAgo)
     const client = clientOf(entry.project)
     const startedAt = past(day, entry.from)
+    const runs = entry.until === null
     return {
       id: id('entry', entry.key),
       userId,
       clientId: client ? id('client', client) : null,
       projectId: entry.project ? id('project', entry.project) : null,
-      todoId: entry.until === null ? id('todo', 'synthesis') : null,
+      todoId: runs ? id('todo', 'synthesis') : null,
       note: entry.note,
       // Work for a Client is billable until she says otherwise; her own never is.
       billable: client !== null,
       startedAt,
-      endedAt: entry.until === null ? null : past(day, entry.until),
+      endedAt: entry.until === null ? (stillRunning ? null : now) : past(day, entry.until),
       createdAt: startedAt,
     }
   })

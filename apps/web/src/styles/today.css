@@ -122,6 +122,37 @@
 }
 
 /*
+ * With the Billing module on the timer's square Start/Stop is the screen's one
+ * solid accent fill (frame 3a), so the Take on now card gives its up and takes
+ * the tint instead. Frame 2a drops the card altogether and puts the stack in
+ * its place; where it finally sits beside the timer is ticket 19's to settle.
+ */
+.today--billing .ton {
+  background: var(--color-accent-100);
+  border-color: var(--color-accent-300);
+  color: var(--color-text);
+}
+
+.today--billing .ton__kicker,
+.today--billing .ton__meta {
+  opacity: 1;
+  color: var(--color-neutral-700);
+}
+
+/* Both buttons are hairline-framed here: the accent fill has gone to the timer. */
+.today--billing .ton__start,
+.today--billing .ton__start:hover,
+.today--billing .ton__swap {
+  background: transparent;
+  border-color: var(--color-divider);
+  color: var(--color-text);
+}
+
+.today--billing .ton .btn:focus-visible {
+  outline-color: var(--color-accent);
+}
+
+/*
  * Started: no frame draws this, so it takes the running timer bar's treatment
  * from frame 3a — the accent tint and the accent hairline — without the picker,
  * because with the Billing module off there is no timer and no Client to pick.

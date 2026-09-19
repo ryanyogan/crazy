@@ -4,19 +4,19 @@
 
 **Blocked by:** 15 — Integrations screen: Account, Connections, Realtime and lifecycle settings
 
-**Status:** in progress — two boxes open
+**Status:** in progress — one box open
 
 - [x] The Billing module setting is a command and is optimistic
 - [ ] Both Shell variants match their frames at 1180px and 390px
 - [x] Time and Invoices routes are unreachable, not merely hidden, with the module off
 - [x] Client holds rate, rounding, payment terms and cadence; a Project may override the rate
-- [ ] At most one Time entry per user has no end, enforced at the command seam
+- [x] At most one Time entry per user has no end, enforced at the command seam — `decide` refuses `timer.start` while one runs (ticket 17); the partial unique index stays as the backstop
 - [x] Seeding Cori reproduces the second sample user's Clients, Projects and hours
 - [x] The placement of the on/off control is listed as derived
 
 ## Comments
 
-### 2026-09-19 — most of it built; two boxes left open
+### 2026-09-19 — most of it built; two boxes left open (one closed by ticket 17)
 
 **Built.** `billing.set` at the seam, optimistic over the Shell's cache and the Integrations
 screen's, so the rail changes at once. `/time` and `/invoices` throw `notFound()` from their loaders
@@ -35,11 +35,12 @@ found while off, the rail gains and loses Time and Invoices on the switch, `/tim
 **Open.**
 - [ ] *Both Shell variants match their frames at 1180px and 390px* — the Shell already switched on
   `billing` (ticket 01); the Cori frames (2a–2c, 3a, 3b, 4a) still have no targets in
-  `tools/visual/src/targets.ts`, and the harness has no `cori` persona (the frames call her
-  "Jo Okafor"). Add both, run `pnpm visual` once, and look at the rail and the phone tab bar.
-- [ ] *At most one Time entry per user has no end, enforced at the command seam* — held today by
-  the partial unique index `time_entry_userId_running_key`; there is no timer command yet to hold
-  it at the seam. It belongs with `timer.start` in ticket 17.
+  `tools/visual/src/targets.ts`. Ticket 17 added the `cori` persona (the frames call her
+  "Jo Okafor") and targets for frame 3a; 2a–2c, 3b and 4a still have none. Add them, run
+  `pnpm visual` once, and look at the rail and the phone tab bar.
+- [x] *At most one Time entry per user has no end, enforced at the command seam* — done in ticket
+  17: `decide` refuses `timer.start` while an entry with no end exists, with a reason, and the
+  partial unique index `time_entry_userId_running_key` stays as the backstop under it.
 
 **Decisions taken.** Rates are cents per hour on the Client, overridable per Project; Bramble's
 retainer is stored as $180/h over a 20h budget, and its $200 overage rate is left to ticket 21.

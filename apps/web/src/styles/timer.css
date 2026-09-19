@@ -1,0 +1,192 @@
+/* The timer bar, frame 3a — with the Billing module on it takes the place of
+   the segmented picker frame 2a draws. Mobile first: the phone bar is the card
+   frame 3b draws, the desktop bar is frame 3a's strip across the top of the
+   screen. Measurements are the frames'.
+
+   One DOM serves both widths, and the two frames put the square on either side
+   of the count: frame 3b leads with the figure, frame 3a with the control. The
+   order each frame draws is the `order` each rule carries. */
+
+.timer {
+  padding: 14px 18px 0;
+}
+
+.timer__bar {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px 10px;
+  align-items: center;
+  padding: 16px;
+  border: 1px solid var(--color-divider);
+}
+
+/* Running, the bar takes the accent tint and the accent hairline. */
+.timer--running .timer__bar {
+  border-color: var(--color-accent-300);
+  background: var(--color-accent-100);
+}
+
+.timer__elapsed {
+  order: 1;
+  margin: 0;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 48px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  /* Nothing is being counted: the figure stands back. */
+  color: var(--color-neutral-400);
+}
+
+.timer--running .timer__elapsed {
+  color: var(--color-text);
+}
+
+.timer__seconds {
+  font-size: 20px;
+  color: var(--color-accent-700);
+}
+
+/* The one solid accent object on the screen with the Billing module on: the
+   thing to press next. Square, as both frames draw it. */
+.timer__control {
+  order: 2;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+}
+
+.timer__stop {
+  width: 16px;
+  height: 16px;
+  background: var(--color-bg);
+}
+
+.timer__pick {
+  order: 3;
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  font: inherit;
+  font-size: 14px;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+}
+
+.timer--running .timer__pick {
+  background: var(--color-bg);
+}
+
+/* The Client's colour bar, as every row that names work wears one. */
+.timer__rule {
+  flex: none;
+  width: 3px;
+  height: 18px;
+  background: var(--color-accent-700);
+}
+
+.timer__work {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.15;
+}
+
+.timer__client {
+  font-weight: 500;
+}
+
+.timer__project {
+  color: var(--color-neutral-700);
+}
+
+.timer__meta {
+  order: 4;
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: center;
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-neutral-700);
+}
+
+.timer__total {
+  font-size: 10px;
+}
+
+.timer__note {
+  order: 5;
+  grid-column: 1 / -1;
+  min-height: 40px;
+  font-size: 13px;
+  background: transparent;
+}
+
+/* ── Desktop: frame 3a's strip ────────────────────────────────────────────── */
+
+@media (min-width: 900px) {
+  .timer {
+    padding: 0;
+  }
+
+  /* Across the width of the screen, so it has no card's edges of its own —
+     only a hairline onto the screen below it, as frame 2a draws it. */
+  .timer__bar {
+    grid-template-columns: auto auto 1fr auto;
+    gap: 6px;
+    column-gap: 16px;
+    padding: 12px 20px;
+    border: 0;
+    border-bottom: 1px solid var(--color-divider);
+  }
+
+  .timer--running .timer__bar {
+    border-bottom-color: var(--color-accent-300);
+  }
+
+  .timer__bar > .corner {
+    display: none;
+  }
+
+  .timer__control {
+    order: 1;
+    width: 40px;
+    height: 40px;
+  }
+
+  .timer__stop {
+    width: 12px;
+    height: 12px;
+  }
+
+  .timer__elapsed {
+    order: 2;
+    font-size: 30px;
+  }
+
+  .timer__seconds {
+    font-size: 16px;
+  }
+
+  .timer__pick {
+    grid-column: auto;
+    max-width: 420px;
+    min-height: 36px;
+  }
+
+  .timer__meta {
+    grid-column: auto;
+    justify-content: flex-end;
+  }
+
+  .timer__note {
+    max-width: 420px;
+    min-height: 30px;
+    padding: 4px 10px;
+  }
+}

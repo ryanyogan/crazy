@@ -7,12 +7,21 @@ import { ryan } from './ryan'
 // generated data will live, so the screens do not change when those arrive.
 // It writes, so only the Coordinator may run it (ADR 0002).
 
+/**
+ * Whether a persona's world is seeded with their timer running, as the mockups
+ * draw it, or with that Time entry already ended. The idle bar cannot be seen
+ * any other way at a pinned moment: stopping it would stamp the real clock.
+ */
+export type SeedTimer = 'running' | 'idle'
+
 export interface SeedInput {
   persona: Persona
   userId: string
   /** The moment the mockups' "now" is laid over: their Wednesday 08:41 becomes this day. */
   now: Date
   timeZone: string
+  /** Development only; 'running' when nothing says otherwise. */
+  timer?: SeedTimer
 }
 
 const PERSONA_SEEDS = { ryan, cori } satisfies Record<Persona, unknown>

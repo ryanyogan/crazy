@@ -194,8 +194,10 @@ export class Coordinator extends CoordinatorHost<Env> {
    */
   async reseed(input: ReseedInput): Promise<void> {
     await this.awake('request')
-    const { persona, now } = reseedInput.parse(input)
-    await this.inTurn(() => reseedUser(createDb(this.env.DB), this.name, persona, new Date(now)))
+    const { persona, now, timer } = reseedInput.parse(input)
+    await this.inTurn(() =>
+      reseedUser(createDb(this.env.DB), this.name, persona, new Date(now), timer),
+    )
     // No patch can say "everything changed": open tabs read again.
     this.toEverySocket(this.say({ type: 'refetch', seq: this.patches.last() }))
   }

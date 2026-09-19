@@ -23,6 +23,16 @@ export const PERSONAS = {
       ['>MO<', '>RY<'],
     ],
   },
+  // The second mockup's sample user, who bills three Clients for her time. She
+  // is the same demo user with her world laid over, so the app says the demo
+  // user's name where the frames say hers.
+  cori: {
+    replaces: [
+      ['Jo Okafor', 'Ryan Yogan'],
+      ['Jo', 'Ryan'],
+      ['>JO<', '>RY<'],
+    ],
+  },
 } satisfies Record<string, Persona>
 
 /** The wordmark reads CRAZY where the frames read TODAY (docs/BRIEF.md). */
@@ -65,14 +75,31 @@ export interface View {
   masks: Mask[]
 }
 
+/**
+ * A frame that draws one piece of a screen rather than the whole of it. The
+ * frame's card is that wide, and the app is compared with the element where it
+ * actually sits, cropped to the frame's own height.
+ */
+export interface Part {
+  selector: string
+  width: number
+}
+
 export interface Target {
-  /** The option's id on the canvas, which is also what a developer names: "1a". */
+  /** What a developer names: usually the option's id on the canvas, "1a". */
   frame: string
+  /** The option on the canvas, where several targets share one: frame 3a's two states. */
+  option?: string
+  /** Which card of that option, where it draws more than one at a width. */
+  card?: number
   title: string
   route: string
   persona: keyof typeof PERSONAS
   /** The moment the frame shows, on the persona's wall clock. */
   now: string
+  /** Seeded with the persona's timer already stopped: the only way to see the idle bar. */
+  timer?: 'idle'
+  part?: Part
   desktop: View
   /** Null where no phone frame is drawn: the phone layout is derived. */
   phone: View | null
@@ -183,6 +210,40 @@ const PROJECT_CARD: Mask[] = [
 const FOCUS_BARS =
   'The bars of "Focus hours by hour of day". Frame 1f gives each bar a percentage height inside a grid row of automatic height, which resolves to nothing, so the frame draws ten labels and no bars at all. The app puts the bar in a row of its own so the percentage has something to be a percentage of, and draws them; the hour labels underneath keep the frame\'s baseline to the pixel and are compared. A debt for the designer: it goes when the frame draws its own bars'
 
+/** Wednesday 17 Sep 2025, 10:42: 1h 42m into Meridian's synthesis in the second mockup. */
+const CORIS_MORNING = '2025-09-17T10:42'
+
+/** The timer bar is as wide as the screen beside the rail: 1180 less the rail's 168. */
+const TIMER_BAR = 1012
+
+const SEEDED_FIGURES =
+  "The bar's own figures. Frame 3a is drawn on its own beside the timesheet frames and quotes hours that are not in any of them (today 1h 28m, Meridian today 2h 05m, last stopped 08:55, and a running entry 17 seconds past the minute). The app counts what Cori's seeded Time entries actually come to at the pinned moment, which is what makes the numbers real. A debt for the designer: 3a and 2b cannot both be right"
+
+const SEEDED_NOTE =
+  "The words inside the note field. The frame draws it empty, showing its placeholder; the Time entry Cori has running is seeded with the note frame 2b's timesheet gives it, so the field shows that instead. The field itself is compared"
+
+/**
+ * Frame 3a draws the timer bar on its own, at the width of the screen beside
+ * the rail, and draws its idle and running states as separate cards. Each is
+ * compared with the bar where it sits at the top of the Today screen.
+ */
+function timerBar(frame: string, title: string, card: number, masks: Mask[]): Target {
+  return {
+    frame,
+    option: '3a',
+    card,
+    title,
+    route: '/',
+    persona: 'cori',
+    now: CORIS_MORNING,
+    ...(card === 0 ? { timer: 'idle' as const } : {}),
+    part: { selector: '.timer__bar', width: TIMER_BAR },
+    desktop: { regions: {}, masks },
+    // The phone timer is frame 3b's, which the bottom sheet comes with (ticket 18).
+    phone: null,
+  }
+}
+
 export const TARGETS: Target[] = [
   {
     frame: '1a',
@@ -271,6 +332,28 @@ export const TARGETS: Target[] = [
     [{ x: 212, y: 262, width: 329, height: 132, why: FOCUS_BARS }],
   ),
   drawn('1g', 'Integrations', '/integrations', 680),
+  timerBar('3a', 'Today · timer idle', 0, [
+    {
+      x: 0,
+      y: 64,
+      width: TIMER_BAR,
+      height: 23,
+      why: 'The frame\'s last line — "idle · dropdown preselects the most likely project from your calendar and last entry" — is a note about the mockup, not anything the bar says, so the app\'s bar ends above it and the screen below shows through the band',
+    },
+    { x: 690, y: 20, width: 306, height: 24, why: SEEDED_FIGURES },
+  ]),
+  timerBar('3a-running', 'Today · timer running', 1, [
+    {
+      x: 440,
+      y: 58,
+      width: 340,
+      height: 30,
+      why: 'The sentence beside the note field — "Changing the dropdown while running splits the entry at now." — is a note about the mockup, and describes the switch, which is ticket 18\'s',
+    },
+    { x: 690, y: 20, width: 306, height: 24, why: SEEDED_FIGURES },
+    { x: 140, y: 22, width: 28, height: 24, why: SEEDED_FIGURES },
+    { x: 26, y: 60, width: 410, height: 26, why: SEEDED_NOTE },
+  ]),
 ]
 
 /** Routes no frame draws at any width. Screenshotted on a phone, never compared. */

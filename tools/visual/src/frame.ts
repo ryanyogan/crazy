@@ -4,7 +4,7 @@ import { dirname, join, normalize } from 'node:path'
 import type { Browser } from 'playwright'
 import { PNG } from 'pngjs'
 import type { Picture } from './compare.ts'
-import { COPY, type Persona, WORDMARK, type Width } from './targets.ts'
+import { COPY, type Persona, WORDMARK } from './targets.ts'
 import { canvasValues, expand } from './template.ts'
 
 // Draws one option of the frozen canvas on its own, at the size it is drawn,
@@ -72,13 +72,16 @@ export interface DrawnFrame {
 
 /**
  * The card of `option` drawn at `width`, without the canvas's own border and
- * shadow around it, so its edges are the edges of a viewport.
+ * shadow around it, so its edges are the edges of a viewport. An option that
+ * draws several states at one width — frame 3a draws the timer idle, running
+ * and with its picker open — names which of them by `card`.
  */
 export async function drawFrame(
   browser: Browser,
   page: string,
   option: string,
-  width: Width,
+  width: number,
+  card = 0,
 ): Promise<DrawnFrame> {
   const context = await browser.newContext({
     viewport: { width, height: 900 },
@@ -109,19 +112,23 @@ export async function drawFrame(
     const tab = await context.newPage()
     await tab.goto(`${ORIGIN}/`)
     const height = await tab.evaluate(
-      ({ option, width }) => {
-        const cards = [...document.querySelectorAll<HTMLElement>(`[id="${option}"] .dv-card`)]
-        const card = cards.find((each) => each.style.width === `${width}px`)
-        if (!card) return null
-        card.style.border = '0'
-        card.style.boxShadow = 'none'
-        card.style.maxWidth = 'none'
-        document.body.replaceChildren(card)
-        return card.getBoundingClientRect().height
+      ({ option, width, card }) => {
+        const drawn = [...document.querySelectorAll<HTMLElement>(`[id="${option}"] .dv-card`)]
+        const wanted = drawn.filter((each) => each.style.width === `${width}px`)[card]
+        if (!wanted) return null
+        wanted.style.border = '0'
+        wanted.style.boxShadow = 'none'
+        wanted.style.maxWidth = 'none'
+        document.body.replaceChildren(wanted)
+        // A card whose content does not land on whole pixels is taken to the
+        // nearest: a viewport is a whole number of rows.
+        return Math.round(wanted.getBoundingClientRect().height)
       },
-      { option, width },
+      { option, width, card },
     )
-    if (height === null) throw new Error(`Frame ${option} has no card drawn at ${width}px`)
+    if (height === null) {
+      throw new Error(`Frame ${option} has no card ${card} drawn at ${width}px`)
+    }
 
     await tab.setViewportSize({ width, height })
     await tab.evaluate(() => document.fonts.ready)

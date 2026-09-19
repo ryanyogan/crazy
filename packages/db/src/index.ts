@@ -10,6 +10,7 @@ export * from './read/integrations'
 export * from './read/metrics'
 export * from './read/projects'
 export * from './read/shell'
+export * from './read/timer'
 export * from './read/today'
 export * from './read/week'
 

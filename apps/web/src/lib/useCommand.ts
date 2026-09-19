@@ -2,6 +2,7 @@ import {
   type Command,
   type CommandState,
   type Patch,
+  type TodayTimer,
   covers,
   decide,
   signalsNamed,
@@ -11,10 +12,43 @@ import { sendCommand } from '#/server/functions'
 import { browserNow } from './clock'
 import { liveFor } from './live'
 import { notify } from './notices'
-import { applyToCache, integrationsQuery, projectsQuery, todayQuery } from './queries'
+import { applyToCache, integrationsQuery, projectsQuery, shellQuery, todayQuery } from './queries'
 
 /** The Coordinator said no. Its reason is written for the user. */
 class CommandRefused extends Error {}
+
+/**
+ * What this browser knows of the user's Time entries, and of the Clients and
+ * Projects they name. The cache holds today's entries and the last one, which
+ * is enough to decide a start from the preselection — all the bar can start
+ * until the picker arrives. The Coordinator decides against every row in D1, so
+ * a start this guess allows and the truth refuses is simply put back.
+ */
+function timerFacts(timer: TodayTimer | null | undefined): Partial<CommandState> {
+  if (!timer) return {}
+  const entries = [
+    ...new Map(
+      [timer.running, timer.last, ...timer.today]
+        .filter((entry) => entry !== null)
+        .map((entry) => [entry.id, entry] as const),
+    ).values(),
+  ]
+
+  return {
+    timeEntries: entries.map(({ id, clientId, projectId, endedAt }) => ({
+      id,
+      clientId,
+      projectId,
+      endedAt,
+    })),
+    projects: entries
+      .filter((entry) => entry.projectId !== null)
+      .map((entry) => ({ id: entry.projectId as string, clientId: entry.clientId })),
+    clients: entries
+      .filter((entry) => entry.clientId !== null)
+      .map((entry) => ({ id: entry.clientId as string })),
+  }
+}
 
 /**
  * The state the command is decided against, gathered from whatever this browser
@@ -29,6 +63,7 @@ function commandState(queryClient: QueryClient, command: Command): CommandState 
   const today = queryClient.getQueryData(todayQuery.queryKey)
   const projects = queryClient.getQueryData(projectsQuery.queryKey)
   const integrations = queryClient.getQueryData(integrationsQuery.queryKey)
+  const shell = queryClient.getQueryData(shellQuery.queryKey)
   const named = signalsNamed(command)
   // A command that names no Signal is decided against the day if it has been
   // read, and otherwise against whatever the Projects screen read.
@@ -46,6 +81,9 @@ function commandState(queryClient: QueryClient, command: Command): CommandState 
     // Today's cache holds one.
     events: rows && 'events' in rows ? rows.events : [],
     connections: integrations?.connections ?? [],
+    // The timer is the Billing module's, and only the Today cache holds it.
+    billing: shell?.billing ?? false,
+    ...timerFacts(today?.timer),
   }
 }
 
