@@ -18,8 +18,8 @@
     {
       "binding": "DB",
       "database_name": "crazy",
-      // Replace after `wrangler d1 create crazy`. Must match apps/core.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      // The `crazy` database on Cloudflare. Must match apps/core.
+      "database_id": "c8e2a6ab-356a-4f60-a195-8eb1c8265c9a",
       "migrations_dir": "../../packages/db/migrations",
     },
   ],
