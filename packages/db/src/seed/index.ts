@@ -25,6 +25,7 @@ export async function seedPersona(db: Db, input: SeedInput): Promise<void> {
   const { userId } = input
   const rows = PERSONA_SEEDS[input.persona](input)
 
+  await db.metricSnapshot.deleteMany({ where: { userId } })
   await db.signal.deleteMany({ where: { userId } })
   await db.weekDayLine.deleteMany({ where: { userId } })
   await db.weekDayNote.deleteMany({ where: { userId } })
@@ -55,4 +56,6 @@ export async function seedPersona(db: Db, input: SeedInput): Promise<void> {
   await db.weekDayLine.createMany({ data: rows.weekDayLines })
   await db.timelineHour.createMany({ data: rows.timelineHours })
   await db.signal.createMany({ data: rows.signals })
+  // What Crazy modelled for the Metrics screen, beside the figures it counts.
+  await db.metricSnapshot.createMany({ data: rows.metricSnapshots })
 }

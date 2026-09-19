@@ -1,6 +1,13 @@
-import { type Patch, apply, bornElsewhere } from '@crazy/shared'
+import { type MetricRange, type Patch, apply, bornElsewhere } from '@crazy/shared'
 import { type QueryClient, queryOptions } from '@tanstack/react-query'
-import { getCircles, getIntegrations, getShell, getToday, getWeek } from '#/server/functions'
+import {
+  getCircles,
+  getIntegrations,
+  getMetrics,
+  getShell,
+  getToday,
+  getWeek,
+} from '#/server/functions'
 
 // One query per read model. Loaders `ensureQueryData` these during SSR and
 // screens read them with `useSuspenseQuery`, so the cache is the only source.
@@ -17,6 +24,13 @@ export const integrationsQuery = queryOptions({
   queryKey: ['integrations'],
   queryFn: () => getIntegrations(),
 })
+
+/** One query per range, so switching range is a cache hit the second time. */
+export const metricsQuery = (range: MetricRange) =>
+  queryOptions({
+    queryKey: ['metrics', range],
+    queryFn: () => getMetrics({ data: { range } }),
+  })
 
 /** Lays operations over every cached read model that holds the rows they name. */
 export function applyToCache(queryClient: QueryClient, ops: Patch['ops']): void {

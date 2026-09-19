@@ -1,0 +1,236 @@
+/* The Metrics screen, frame 1f. Measurements are the frame's: one column on a
+   phone (derived — no phone frame is drawn), the desktop frame from 900px. */
+
+.metrics {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  align-content: start;
+}
+
+.metrics__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.metrics .screen__title {
+  margin: 0;
+}
+
+/* The one solid accent fill this screen chooses: the range it is showing. */
+.metrics__range {
+  flex: none;
+}
+
+/* Said when Crazy has not modelled a range, rather than drawing an empty one. */
+.metrics__unmodelled {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-neutral-700);
+}
+
+/* ── The headline figures ─────────────────────────────────────────────────── */
+
+.metrics__tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* ── The three charts ─────────────────────────────────────────────────────── */
+
+.metrics__charts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+
+.metrics__chart {
+  padding: 14px 16px;
+}
+
+.metrics__chart-title {
+  margin: 0;
+  font-family: var(--font-body);
+  font-weight: 400;
+  line-height: inherit;
+}
+
+.metrics__plot {
+  margin-top: 8px;
+}
+
+.metrics__note {
+  margin: 0;
+}
+
+/* Hours of finished work by the hour of day. The bar sits in a row of its own,
+   so its height is a share of the plot above the labels rather than of the
+   whole card, and every label keeps the baseline the frame gives it. */
+.hours {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 4px;
+  height: 150px;
+  align-items: end;
+}
+
+.hours__column {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 4px;
+  height: 100%;
+}
+
+.hours__bar {
+  align-self: end;
+  background: var(--color-accent-300);
+}
+
+/* The hour the user finishes most in, said by being the one solid bar. */
+.hours__bar--peak {
+  background: var(--color-accent);
+}
+
+.hours__label {
+  font-family: var(--font-heading);
+  font-size: 10px;
+  text-align: center;
+  color: var(--color-neutral-700);
+}
+
+/* A stack of bars with what they count beside them: backlog ageing, and where
+   the Todos came from. Each bar is a hairline track with a fill inside it. */
+.rows {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.rows__row {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) 28px;
+  gap: 8px;
+  align-items: center;
+}
+
+.rows--sources .rows__row {
+  grid-template-columns: 56px minmax(0, 1fr) 34px;
+}
+
+.rows__label {
+  color: var(--color-neutral-700);
+}
+
+.rows__chip {
+  justify-self: start;
+}
+
+.rows__track {
+  position: relative;
+  height: 14px;
+  border: 1px solid var(--color-divider);
+}
+
+.rows__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+}
+
+.rows__fill--recent {
+  background: var(--color-accent-500);
+}
+
+.rows__fill--settling {
+  background: var(--color-accent-400);
+}
+
+.rows__fill--old {
+  background: var(--color-accent-300);
+}
+
+/* The band about to archive is grey: it is leaving, not waiting. */
+.rows__fill--archiving {
+  background: var(--color-neutral-400);
+}
+
+.rows__fill--source {
+  background: var(--color-accent-500);
+}
+
+.rows__count {
+  font-family: var(--font-heading);
+  text-align: right;
+}
+
+/* ── The last thirty days ─────────────────────────────────────────────────── */
+
+.metrics__days {
+  display: grid;
+  gap: 10px;
+}
+
+.heat {
+  display: grid;
+  grid-template-columns: repeat(30, minmax(0, 1fr));
+  gap: 2px;
+  height: 34px;
+}
+
+.heat__day {
+  border: 1px solid var(--color-divider);
+}
+
+.heat__day--1 {
+  background: var(--color-accent-200);
+}
+
+.heat__day--2 {
+  background: var(--color-accent-300);
+}
+
+.heat__day--3 {
+  background: var(--color-accent-500);
+}
+
+.heat__day--4 {
+  background: var(--color-accent-700);
+}
+
+.metrics__caption {
+  margin: 0;
+  font-size: 11px;
+  color: var(--color-neutral-700);
+}
+
+/* ── Desktop ──────────────────────────────────────────────────────────────── */
+
+@media (min-width: 900px) {
+  .metrics {
+    gap: 20px;
+  }
+
+  /* The frame heads this screen smaller than the Today screen. */
+  .metrics .screen__title {
+    font-size: 32px;
+  }
+
+  .metrics__tiles {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .metrics__charts {
+    grid-template-columns: 1.3fr 1fr 1fr;
+    gap: 20px;
+  }
+
+  .heat {
+    gap: 3px;
+  }
+}

@@ -1,8 +1,9 @@
-import { createReadDb, readCircles, readToday, readWeek } from '@crazy/db'
-import { type CommandResult, SERVER_ONLY, command, initials } from '@crazy/shared'
+import { createReadDb, readCircles, readMetrics, readToday, readWeek } from '@crazy/db'
+import { type CommandResult, SERVER_ONLY, command, initials, metricRange } from '@crazy/shared'
 import { redirect } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { env } from 'cloudflare:workers'
+import { z } from 'zod'
 import { requestNow } from './clock'
 import { coordinatorFor } from './coordinator'
 import { integrationsFor } from './integrations'
@@ -77,6 +78,21 @@ export const getIntegrations = createServerFn().handler(async () => {
   const { timeZone } = await settingsFor(userId)
   return integrationsFor(userId, requestNow(timeZone), timeZone)
 })
+
+/**
+ * The Metrics screen's read model, for one range. The range comes off the URL,
+ * so it is validated here as well as there: a server function is a door.
+ */
+export const getMetrics = createServerFn()
+  .validator(z.object({ range: metricRange }))
+  .handler(async ({ data }) => {
+    const userId = await viewerId()
+    if (!userId) throw redirect({ to: '/sign-in' })
+
+    const { timeZone } = await settingsFor(userId)
+    const now = requestNow(timeZone)
+    return readMetrics(createReadDb(env.DB), userId, now, timeZone, data.range)
+  })
 
 /**
  * Every change the browser makes. The web app decides nothing and writes

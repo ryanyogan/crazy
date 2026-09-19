@@ -41,6 +41,8 @@ export const COPY: [from: string, to: string][] = [
   // Provider, and frame 1e uses each as the name of the thing.
   ['Four groups this week.', 'Four Circles this week.'],
   ['which tools the work lives in', 'which Providers the work lives in'],
+  // The repo writes British English, here and in the ticket that asked for it.
+  ['Backlog aging', 'Backlog ageing'],
 ]
 
 export interface View {
@@ -151,6 +153,9 @@ const DAY_BARS: Mask[] = [
   })),
 ]
 
+const FOCUS_BARS =
+  'The bars of "Focus hours by hour of day". Frame 1f gives each bar a percentage height inside a grid row of automatic height, which resolves to nothing, so the frame draws ten labels and no bars at all. The app puts the bar in a row of its own so the percentage has something to be a percentage of, and draws them; the hour labels underneath keep the frame\'s baseline to the pixel and are compared. A debt for the designer: it goes when the frame draws its own bars'
+
 export const TARGETS: Target[] = [
   {
     frame: '1a',
@@ -204,7 +209,23 @@ export const TARGETS: Target[] = [
       overlaps: { x: 736, y: 18, width: 424, height: 644 },
     }),
   },
-  drawn('1f', 'Metrics', '/metrics', 720),
+  drawn(
+    '1f',
+    'Metrics',
+    '/metrics',
+    720,
+    {
+      head: { x: 196, y: 22, width: 956, height: 43 },
+      // The six figures and the three charts are blueprints: measured with
+      // their corner marks, 6px beyond the box.
+      'headline figures': { x: 190, y: 79, width: 968, height: 109 },
+      'focus by hour': { x: 190, y: 196, width: 373, height: 262 },
+      'backlog ageing': { x: 571, y: 196, width: 290, height: 262 },
+      'todo sources': { x: 868, y: 196, width: 290, height: 262 },
+      'the last 30 days': { x: 196, y: 471, width: 956, height: 61 },
+    },
+    [{ x: 212, y: 262, width: 329, height: 132, why: FOCUS_BARS }],
+  ),
   drawn('1g', 'Integrations', '/integrations', 680),
 ]
 

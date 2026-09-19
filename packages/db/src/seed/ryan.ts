@@ -1,6 +1,10 @@
 import {
   type CalendarEventKind,
+  COMPLETION_DAYS,
   type Energy,
+  METRIC_RANGES,
+  type MetricHeadline,
+  type MetricRange,
   type ProjectStatus,
   type Side,
   type SourceKind,
@@ -806,6 +810,185 @@ const PROJECTS: {
   },
 ]
 
+/**
+ * The month behind today, which is what the Metrics screen counts. Frame 1f
+ * reads where Ryan's Todos came from and how long his backlog has been sitting,
+ * so both need a real history: the Todos he has already finished, and the ones
+ * still waiting. Nothing generated here goes into `today`, gets a Slot, is
+ * matched to a Circle or is finished inside the week the Week screen shows, so
+ * the Today, Week and Circles screens see exactly what they saw without it.
+ *
+ * `recent` and `older` are Todos that have been finished, in the thirty days
+ * behind today and in the sixty before them. `waiting` is how many of the
+ * backlog's three older bands this Provider holds. The numbers are the
+ * difference between what frame 1f counts and what the persona already has, so
+ * at the frame's Wednesday the thirty days hold 41 Todos from Linear, 27 from
+ * Slack, 12 from Notion, 9 from Google and 33 Ryan typed himself.
+ */
+const HISTORY: {
+  kind: SourceKind | null
+  recent: number
+  older: number
+  waiting: [sevenToThirty: number, thirtyToSixty: number, sixtyToNinety: number]
+  titles: string[]
+}[] = [
+  {
+    kind: 'linear_issue',
+    recent: 36,
+    older: 20,
+    waiting: [3, 2, 2],
+    titles: [
+      'Review a platform pull request',
+      'Triage an edge worker bug',
+      'Size the next cycle',
+      'Close out a session-token issue',
+      'Pair on a flaky test',
+      'Write up a regression',
+      'Land the KV cleanup',
+    ],
+  },
+  {
+    kind: 'slack_message',
+    recent: 24,
+    older: 12,
+    waiting: [2, 1, 1],
+    titles: [
+      'Answer #platform on rate limits',
+      'Unblock Priya in a thread',
+      'Reply in the incident channel',
+      'Follow up on a saved message',
+      'Confirm a release window',
+    ],
+  },
+  {
+    kind: 'notion_page',
+    recent: 9,
+    older: 5,
+    waiting: [2, 1, 1],
+    titles: [
+      'Comment back on the Q4 doc',
+      'Update the platform runbook',
+      'Reply to a doc comment',
+      'Tidy the architecture page',
+    ],
+  },
+  {
+    kind: 'gmail_message',
+    recent: 6,
+    older: 3,
+    waiting: [1, 1, 1],
+    titles: ['Answer the vendor email', 'File the hosting invoice', 'Reply to the landlord'],
+  },
+  {
+    kind: null,
+    recent: 6,
+    older: 5,
+    waiting: [1, 0, 1],
+    titles: [
+      'Tidy the week notes',
+      'Plan tomorrow',
+      'Chase the bike service',
+      'Read the incident review',
+    ],
+  },
+]
+
+/**
+ * How many days ago each waiting Todo was last touched, band by band: the
+ * 7–30, 30–60 and 60–90 day bands of frame 1f's backlog ageing. The oldest is
+ * 78 days, so it is twelve days from the ninety-day archive period — which is
+ * what Crazy says under the card.
+ */
+const WAITING_DAYS: [number[], number[], number[]] = [
+  [8, 10, 12, 14, 17, 20, 23, 26, 29],
+  [32, 38, 44, 50, 56],
+  [61, 63, 67, 70, 74, 78],
+]
+
+const HISTORY_MINUTES = [30, 45, 60, 15, 90, 20]
+const HISTORY_FINISHED_AT = ['09:40', '11:20', '13:15', '15:05', '16:50']
+
+/**
+ * What Crazy modelled for each range of the Metrics screen: the six headline
+ * figures frame 1f draws, the hours it reckons went into each hour of the day,
+ * and the line it writes under each card it did not compute. Generated, like
+ * the Brief — the figures the screen can count are not here.
+ */
+const MODELLED: Record<
+  MetricRange,
+  {
+    headlines: Record<MetricHeadline, [value: string, note: string]>
+    focusByHour: number[]
+    notes: { focus_by_hour: string; backlog_ageing: string; todo_sources: string }
+  }
+> = {
+  week: {
+    headlines: {
+      completion: ['88%', '+6 vs last week'],
+      carry_over: ['14%', '−3 vs last week'],
+      focus_hours: ['14.5', 'this week · 21 avg'],
+      median_age: ['0.9d', 'backlog 9.8d'],
+      take_on_streak: ['11', 'days'],
+      response_debt: ['3', 'mentions > 24h'],
+    },
+    focusByHour: [0.7, 2.1, 3.1, 1.1, 1.2, 2.3, 0.9, 1.9, 0.8, 0.4],
+    notes: {
+      focus_by_hour: 'Peak 10:00, as it is most weeks. Your 09–11 is held for it.',
+      backlog_ageing: '6 items cross 90 days on 29 Sep and archive.',
+      todo_sources: 'Mentions answered within 24h: 94%.',
+    },
+  },
+  '30d': {
+    headlines: {
+      completion: ['82%', '+6 vs last 30d'],
+      carry_over: ['18%', '−4 vs last 30d'],
+      focus_hours: ['14.5', 'this week · 21 avg'],
+      median_age: ['1.3d', 'backlog 9.8d'],
+      take_on_streak: ['11', 'days'],
+      response_debt: ['3', 'mentions > 24h'],
+    },
+    focusByHour: [4.4, 13.6, 20, 7, 8, 14.8, 6, 12.4, 5.6, 3.6],
+    notes: {
+      focus_by_hour: 'Peak 10:00. I schedule deep-focus items into 09–11 because of this.',
+      backlog_ageing: '6 items cross 90 days on 29 Sep and archive.',
+      todo_sources: 'Mentions answered within 24h: 91%.',
+    },
+  },
+  quarter: {
+    headlines: {
+      completion: ['79%', '+2 vs last quarter'],
+      carry_over: ['21%', '−1 vs last quarter'],
+      focus_hours: ['21.4', 'a week · 19 last quarter'],
+      median_age: ['1.6d', 'backlog 14.2d'],
+      take_on_streak: ['11', 'days · best 18'],
+      response_debt: ['3', 'mentions > 24h'],
+    },
+    focusByHour: [13.5, 40.2, 59, 21.4, 24.6, 44.1, 18.3, 36.8, 16.9, 10.8],
+    notes: {
+      focus_by_hour:
+        'Peak 10:00 all quarter. I schedule deep-focus items into 09–11 because of it.',
+      backlog_ageing: '6 items cross 90 days on 29 Sep and archive.',
+      todo_sources: 'Mentions answered within 24h: 89%.',
+    },
+  },
+}
+
+/** The first hour of the day frame 1f's chart draws; there are ten of them. */
+const FIRST_FOCUS_HOUR = 8
+
+/**
+ * How much of each day's plan Ryan finished, over the thirty days behind today,
+ * oldest first — the strip under the screen. Modelled, because until the
+ * Rollover keeps a record of itself nothing knows what a past day's plan was.
+ */
+const COMPLETION_SHARES = [
+  0.67, 0.9, 0.4, 0.86, 0.95, 0.2, 0, 0.6, 0.92, 0.88, 0.7, 0.45, 0, 0, 0.94, 0.9, 0.62, 0.85, 0.5,
+  0.96, 0.88, 0.92, 0.72, 0.9, 0.86, 0.94, 0.89, 0.66, 0.91, 0.44,
+]
+
+const COMPLETION_NOTE =
+  'Last 30 days · darker = more of the day\'s plan completed · 11-day streak of clearing the "take on now" item'
+
 const BRIEF = {
   body: "You've got a lighter morning than usual: two meetings, both after 11. I'd take the Cloudflare session spike first while you're fresh; Priya pinged you about it twice in #platform yesterday. Three items carried over from Tuesday. I moved the August expense report back to the backlog since nobody touched it for a day.",
   bodyShort:
@@ -1028,6 +1211,93 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
     }
   }
 
+  // ── The month behind today, which is what the Metrics screen counts ───────
+  // Every finished Todo here was finished before this week began, and none of
+  // them is in `today`, holds a Slot or is matched to a Circle, so the Today,
+  // Week and Circles screens read exactly what they read without them.
+  const historyFrom = Math.max(back(monday) + 1, 1)
+  const HISTORY_UNTIL = 29
+
+  /** The finished Todos, taken a Provider at a time so a day holds a mix. */
+  const finished: { kind: SourceKind | null; title: string; older: boolean }[] = []
+  for (const older of [false, true]) {
+    const left = HISTORY.map((source) => (older ? source.older : source.recent))
+    for (let round = 0; left.some((count) => count > 0); round += 1) {
+      HISTORY.forEach((source, index) => {
+        if ((left[index] ?? 0) <= 0) return
+        left[index] = (left[index] ?? 0) - 1
+        finished.push({
+          kind: source.kind,
+          title: source.titles[round % source.titles.length]!,
+          older,
+        })
+      })
+    }
+  }
+
+  /** `count` days ago, spread over `from`…`until` days ago, oldest first. */
+  const overDays = (count: number, from: number, until: number) =>
+    Array.from({ length: count }, (_, index) =>
+      count < 2 ? until : until - Math.round((index * (until - from)) / (count - 1)),
+    )
+
+  const layFinished = (entries: typeof finished, days: number[], prefix: string) => {
+    entries.forEach((entry, index) => {
+      const daysAgo = days[index]!
+      const key = `${prefix}-${index}`
+      const finishedAt = past(daysAgo, HISTORY_FINISHED_AT[index % HISTORY_FINISHED_AT.length]!)
+      todos.push({
+        id: id('todo', key),
+        userId,
+        title: entry.title,
+        state: 'done',
+        estimateMinutes: HISTORY_MINUTES[index % HISTORY_MINUTES.length]!,
+        carryCount: 0,
+        sourceConnectionId: entry.kind ? id('connection', SOURCE_KINDS[entry.kind].provider) : null,
+        sourceKind: entry.kind,
+        sourceItemId: entry.kind ? key : null,
+        createdAt: past(daysAgo, '08:30'),
+        touchedAt: finishedAt,
+        doneAt: finishedAt,
+      })
+    })
+  }
+  const recentlyFinished = finished.filter((entry) => !entry.older)
+  const longFinished = finished.filter((entry) => entry.older)
+  layFinished(
+    recentlyFinished,
+    overDays(recentlyFinished.length, historyFrom, HISTORY_UNTIL),
+    'history',
+  )
+  layFinished(longFinished, overDays(longFinished.length, 31, 88), 'older')
+
+  // What is still waiting, in the three older bands of the backlog's ageing.
+  WAITING_DAYS.forEach((days, band) => {
+    const kinds = HISTORY.flatMap((source) =>
+      Array.from({ length: source.waiting[band] ?? 0 }, () => source.kind),
+    )
+    days.forEach((daysAgo, index) => {
+      const kind = kinds[index] ?? null
+      const source = HISTORY.find((each) => each.kind === kind)!
+      const key = `waiting-${band}-${index}`
+      // Never touched since the day it arrived, which is what ageing measures.
+      const touched = past(daysAgo, '09:15')
+      todos.push({
+        id: id('todo', key),
+        userId,
+        title: source.titles[index % source.titles.length]!,
+        state: 'backlog',
+        estimateMinutes: HISTORY_MINUTES[index % HISTORY_MINUTES.length]!,
+        carryCount: 0,
+        sourceConnectionId: kind ? id('connection', SOURCE_KINDS[kind].provider) : null,
+        sourceKind: kind,
+        sourceItemId: kind ? key : null,
+        createdAt: touched,
+        touchedAt: touched,
+      })
+    })
+  })
+
   // Crazy matched these this morning, with the rest of the day's planning. An
   // Overlap belongs to the week Crazy last matched it in, so laying the persona
   // over any weekday — a Monday included — still fills the Circles screen.
@@ -1164,6 +1434,58 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
     createdAt: past(0, '08:00'),
   }))
 
+  // What Crazy modelled for the Metrics screen, written this morning with the
+  // Brief and for today, so a day it has not looked shows no modelled figure.
+  const metricSnapshots: Prisma.MetricSnapshotCreateManyInput[] = []
+  const snapshot = (
+    range: MetricRange,
+    kind: 'headline' | 'series' | 'note',
+    figure: string,
+    position: number,
+    value: string,
+    extra: { label?: string; note?: string } = {},
+  ) => {
+    metricSnapshots.push({
+      id: id('metric', `${range}-${kind}-${figure}-${position}`),
+      userId,
+      range,
+      day: today,
+      kind,
+      figure,
+      position,
+      label: extra.label ?? null,
+      value,
+      note: extra.note ?? null,
+      createdAt: past(0, '06:00'),
+    })
+  }
+
+  for (const range of METRIC_RANGES) {
+    const modelled = MODELLED[range]
+    for (const [figure, [value, note]] of Object.entries(modelled.headlines) as [
+      MetricHeadline,
+      [string, string],
+    ][]) {
+      snapshot(range, 'headline', figure, 0, value, { note })
+    }
+    modelled.focusByHour.forEach((hours, index) => {
+      snapshot(range, 'series', 'focus_by_hour', index, String(hours), {
+        label: String(FIRST_FOCUS_HOUR + index).padStart(2, '0'),
+      })
+    })
+    for (const [figure, text] of Object.entries(modelled.notes)) {
+      snapshot(range, 'note', figure, 0, text)
+    }
+  }
+  // The strip under the screen is thirty days whatever range is chosen, so it
+  // is written once, at the range whose length it is.
+  COMPLETION_SHARES.slice(-COMPLETION_DAYS).forEach((share, index) => {
+    snapshot('30d', 'series', 'completion_days', index, String(share), {
+      label: addDays(today, index - (COMPLETION_DAYS - 1)),
+    })
+  })
+  snapshot('30d', 'note', 'completion_days', 0, COMPLETION_NOTE)
+
   const signals: Prisma.SignalCreateManyInput[] = MENTIONS.map((mention) => ({
     id: id('signal', mention.key),
     userId,
@@ -1194,5 +1516,6 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
     calendarEvents,
     timelineHours,
     signals,
+    metricSnapshots,
   }
 }

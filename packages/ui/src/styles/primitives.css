@@ -9,6 +9,26 @@
   padding: 1px 6px;
 }
 
+/* ── Stat tile ────────────────────────────────────────────────────────────────
+   One figure and what it is called. Frame 1f draws six of them in a row. */
+
+.stat {
+  gap: 2px;
+  padding: 12px 14px;
+}
+
+.stat__value {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 34px;
+  line-height: 1;
+}
+
+.stat__note {
+  font-size: 11px;
+  color: var(--color-neutral-700);
+}
+
 /* ── Timeline ─────────────────────────────────────────────────────────────────
    A phone draws the hours as a strip of cells; from 900px they are rows under
    their hour. The same elements serve both, so how an hour is drawn is a pair

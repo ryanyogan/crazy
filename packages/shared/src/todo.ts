@@ -19,6 +19,20 @@ export const PROVIDERS = ['google', 'slack', 'linear', 'notion', 'github'] as co
 export const provider = z.enum(PROVIDERS)
 export type Provider = z.infer<typeof provider>
 
+/**
+ * What each Provider is called, and the chip that stands for it where a line
+ * has room for two letters. A Provider can hold several kinds of Source —
+ * Gmail and Calendar are both Google — so this is coarser than `SOURCE_KINDS`,
+ * and it is the grain the Metrics screen and frame 1g both count in.
+ */
+export const PROVIDER_LABELS = {
+  google: { chip: 'GM', name: 'Google' },
+  slack: { chip: 'SL', name: 'Slack' },
+  linear: { chip: 'LN', name: 'Linear' },
+  notion: { chip: 'NO', name: 'Notion' },
+  github: { chip: 'GH', name: 'GitHub' },
+} as const satisfies Record<Provider, { chip: string; name: string }>
+
 export const CONNECTION_STATUSES = ['connected', 'reauth'] as const
 export const connectionStatus = z.enum(CONNECTION_STATUSES)
 export type ConnectionStatus = z.infer<typeof connectionStatus>
@@ -71,6 +85,13 @@ export const sourceKind = z.enum(
   Object.keys(SOURCE_KINDS) as [keyof typeof SOURCE_KINDS, ...(keyof typeof SOURCE_KINDS)[]],
 )
 export type SourceKind = z.infer<typeof sourceKind>
+
+/** The kinds of Source that arrive through one Provider. */
+export function sourceKindsOf(provider: Provider): SourceKind[] {
+  return Object.entries(SOURCE_KINDS)
+    .filter(([, kind]) => kind.provider === provider)
+    .map(([name]) => sourceKind.parse(name))
+}
 
 /** The Provider item a Todo was made from, or a Signal is. */
 export const source = z.object({

@@ -202,6 +202,11 @@ model Todo {
   @@index([userId, state, stackPosition])
   // The Week read model, and Today's done-today: a user's Todos finished in a span.
   @@index([userId, state, doneAt])
+  // Metrics, "Backlog ageing": how long a user's backlog Todos have sat
+  // untouched, which is the same clock the archive period runs on.
+  @@index([userId, state, touchedAt])
+  // Metrics, "Where your todos come from": a user's Todos that arrived in a range.
+  @@index([userId, createdAt])
   // One Source, one open Todo.
   @@unique([userId, sourceConnectionId, sourceItemId], where: raw("state IN ('backlog', 'today')"))
   @@map("todo")
@@ -329,6 +334,38 @@ model Signal {
   // The Today and Projects read models: a user's Signals of a kind, newest first.
   @@index([userId, kind, at])
   @@map("signal")
+}
+
+/// What Crazy modelled for one range of the Metrics screen, and the commentary
+/// it wrote beside the figures the screen counts for itself. Generated numbers
+/// and generated text, stored where generated data lives — the same standing as
+/// the Brief, and written for a day the way a Week brief is written for a week.
+///
+/// A figure the screen can count from Todos is never stored here: the backlog's
+/// ageing and where a range's Todos came from are counted when it is read.
+model MetricSnapshot {
+  id        String   @id
+  userId    String
+  range     String // METRIC_RANGES
+  /// The local day it was modelled for; the screen reads today's and nothing else.
+  day       String
+  kind      String // METRIC_KINDS: a headline figure, a series, or a line of prose
+  /// Which figure, series or note, within its kind.
+  figure    String
+  /// Its place in a series — a bar, a day of the strip; 0 for a lone figure.
+  position  Int
+  /// What the bar or the day is called: "10", "2025-09-17".
+  label     String?
+  /// The figure as the screen reads it out: "82%", "20", "0.75".
+  value     String
+  /// The line under a headline figure: "+6 vs last 30d".
+  note      String?
+  createdAt DateTime
+
+  @@unique([userId, range, day, kind, figure, position])
+  // The Metrics read model: everything modelled for one range on one day.
+  @@index([userId, range, day])
+  @@map("metric_snapshot")
 }
 
 /// What Crazy wrote for a user: the Brief each morning, the Week brief each week.
