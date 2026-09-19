@@ -8,8 +8,11 @@ import {
   type UserSettings,
   command,
   decide,
+  addDays,
   provisionInput,
   reseedInput,
+  startOfDay,
+  wallClock,
 } from '@crazy/shared'
 import { type Clock, systemClock } from '../clock'
 import { provisionUser, reseedUser } from '../provision'
@@ -25,8 +28,8 @@ import { type WakeCause, WakeLog } from './wakes'
  *
  * It provisions, seeds, commits commands and tells the user's open sockets what
  * it committed. The sockets hibernate: an idle tab costs nothing, and each time
- * something does wake the Coordinator it notes when and why. The schedules
- * arrive with later tickets.
+ * something does wake the Coordinator it notes when and why. Its one schedule
+ * so far is the Rollover, at the user's next local midnight.
  */
 
 export class Coordinator extends CoordinatorHost<Env> {
@@ -35,10 +38,53 @@ export class Coordinator extends CoordinatorHost<Env> {
   private readonly patches = new PatchLog(this.ctx.storage.sql)
   private readonly wakes = new WakeLog(this.ctx.storage.sql)
 
+  private rolloverChecked = false
+
   /** Every way in starts here: the SDK is started, and a wake is noted if this is one. */
   private async awake(cause: WakeCause): Promise<void> {
     await this.ready()
     this.wakes.note(cause, this.clock())
+    // Once in an instance's life: a user from before there was a Rollover has none waiting.
+    if (!this.rolloverChecked) {
+      this.rolloverChecked = true
+      if ((await this.dueAt('rollover')) === null) await this.scheduleRollover()
+    }
+  }
+
+  /**
+   * The Rollover waits for the user's next local midnight, by their time zone as
+   * D1 has it now. A user with no settings yet has no midnight: provisioning
+   * them is what schedules their first.
+   */
+  private async scheduleRollover(): Promise<void> {
+    const settings = await createDb(this.env.DB).userSettings.findUnique({
+      where: { userId: this.name },
+      select: { timeZone: true },
+    })
+    if (!settings) return
+    const { day } = wallClock(this.clock(), settings.timeZone)
+    await this.callOnceAt(startOfDay(addDays(day, 1), settings.timeZone), 'rollover')
+  }
+
+  /** When the Rollover is next due. */
+  async rolloverDueAt(): Promise<string | null> {
+    await this.awake('request')
+    return (await this.dueAt('rollover'))?.toISOString() ?? null
+  }
+
+  /**
+   * Called by the schedule at the user's local midnight. The Rollover is a
+   * command like any change, so its patch reaches open tabs the way any does;
+   * then the next midnight is waited for. A midnight that failed is not retried
+   * at once: the next wake finds nothing waiting and schedules again.
+   */
+  async rollover(): Promise<void> {
+    await this.awake('schedule')
+    try {
+      await this.command({ type: 'rollover' })
+    } finally {
+      await this.scheduleRollover()
+    }
   }
 
   private say(message: ServerMessage): string {
@@ -59,9 +105,11 @@ export class Coordinator extends CoordinatorHost<Env> {
   async provision(input: ProvisionInput): Promise<UserSettings> {
     await this.awake('request')
     // The user is the one this Coordinator is named for, never an argument.
-    return this.inTurn(() =>
+    const settings = await this.inTurn(() =>
       provisionUser(createDb(this.env.DB), this.name, provisionInput.parse(input), this.clock()),
     )
+    if ((await this.dueAt('rollover')) === null) await this.scheduleRollover()
+    return settings
   }
 
   /**
@@ -83,6 +131,10 @@ export class Coordinator extends CoordinatorHost<Env> {
       const patch = this.patches.append(decision.ops)
       // To every socket, the sender's included: a client ignores a sequence number it has applied.
       this.toEverySocket(this.say({ type: 'patch', ...patch }))
+      // Midnight has moved with the time zone, and the Rollover moves with it.
+      if (parsed.type === 'settings.set' && parsed.set.timeZone !== undefined) {
+        await this.scheduleRollover()
+      }
       return { ok: true, patch }
     })
   }

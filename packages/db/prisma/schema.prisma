@@ -30,6 +30,8 @@ model UserSettings {
   sentBackDays Int      @default(1)
   archiveDays  Int      @default(90)
   billing      Boolean  @default(false) // the Billing module
+  /// The local day the Rollover last ran for, so that one midnight is rolled over once.
+  lastRolloverDay String?
   createdAt    DateTime
 
   @@map("user_settings")

@@ -1,5 +1,7 @@
 import { z } from 'zod'
+import { addDays, startOfDay } from './clock'
 import { LIFECYCLE_LIMITS } from './integrations'
+import { timeZone } from './settings'
 import { type DayEvent, LAST_HOUR, hoursIfSlottedAt, meetingHolds } from './timeline'
 import { type Signal, formatHour } from './today'
 import {
@@ -46,6 +48,8 @@ export const lifecycleChange = z
     briefTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
     sentBackDays: z.number().int().min(1).max(LIFECYCLE_LIMITS.sentBackDays),
     archiveDays: z.number().int().min(1).max(LIFECYCLE_LIMITS.archiveDays),
+    /** Where the user's midnight falls, and so when the Rollover runs. */
+    timeZone,
   })
   .partial()
   .refine((set) => Object.keys(set).length > 0, 'Nothing to change')
@@ -75,11 +79,21 @@ export const command = z.discriminatedUnion('type', [
   // now; Swap says not this one, not today.
   z.object({ type: z.literal('todo.start'), todoId: id }),
   z.object({ type: z.literal('todo.swap'), todoId: id }),
+  // The Coordinator's own, at the user's local midnight (`SERVER_ONLY`): each
+  // `today` Todo is carried over or sent back, and the backlog ages.
+  z.object({ type: z.literal('rollover') }),
+  // A Provider says the item a Todo was made from is complete. It is the one
+  // thing about a Source that moves a Todo; nothing else about it has a command.
+  z.object({ type: z.literal('source.completed'), connectionId: id, itemId: id }),
 ])
 export type Command = z.infer<typeof command>
 
 /** Commands a browser may not send: only the server knows what Clerk said. */
-export const SERVER_ONLY: readonly Command['type'][] = ['connection.add']
+export const SERVER_ONLY: readonly Command['type'][] = [
+  'connection.add',
+  'rollover',
+  'source.completed',
+]
 
 /** What a command may change about a Todo. Moments are ISO strings: operations travel as JSON. */
 export const todoChange = z
@@ -87,7 +101,9 @@ export const todoChange = z
     state: todoState,
     touchedAt: z.iso.datetime(),
     snoozedUntil: z.iso.datetime().nullable(),
-    startedAt: z.iso.datetime(),
+    startedAt: z.iso.datetime().nullable(),
+    carryCount: z.number().int().min(0),
+    sentBackAt: z.iso.datetime(),
     /** The user's local day, which is how long a Swap lasts. */
     swappedOnDay: day,
     doneAt: z.iso.datetime().nullable(),
@@ -134,6 +150,8 @@ export const op = z.discriminatedUnion('type', [
     at: z.iso.datetime(),
   }),
   z.object({ type: z.literal('settings.set'), set: lifecycleChange }),
+  // The Rollover has run for this local day, and will not run for it again.
+  z.object({ type: z.literal('rollover.ran'), day }),
   z.object({ type: z.literal('connection.insert'), connection: newConnection }),
   z.object({ type: z.literal('connection.set'), id, set: z.object({ defaultSide: side }) }),
 ])
@@ -154,6 +172,18 @@ export interface TodoFacts {
   swappedOnDay: string | null
   /** The hours it holds a Slot on, on the day the state is of (`needsTheDay`). */
   slotHours: readonly number[]
+  /** The last time the user touched it, which is what the Rollover goes by. */
+  touchedAt: string
+  /** How many Rollovers in a row have carried it over. */
+  carryCount: number
+}
+
+/** What the Rollover needs to know of the user: their midnight, their periods, and the day it last ran for. */
+export interface RolloverFacts {
+  timeZone: string
+  sentBackDays: number
+  archiveDays: number
+  lastRolloverDay: string | null
 }
 
 /** What `decide` needs to know of a Signal. */
@@ -176,6 +206,8 @@ export interface CommandState {
   events: readonly DayEvent[]
   /** The user's Connections; loaded only for a command about one (`needsConnections`). */
   connections?: readonly ConnectionFacts[]
+  /** Loaded only for the Rollover, along with every open Todo (`needsEveryOpenTodo`). */
+  settings?: RolloverFacts
 }
 
 export type Decision = { ok: true; ops: Op[] } | { ok: false; reason: string }
@@ -222,6 +254,18 @@ export function signalsNamed(input: Command): string[] {
  */
 export function needsTheDay(input: Command): boolean {
   return input.type === 'todo.slot' || input.type === 'todo.clearSlot'
+}
+
+/** Whether a command is decided against every open Todo the user has, and their settings: the Rollover. */
+export function needsEveryOpenTodo(input: Command): boolean {
+  return input.type === 'rollover'
+}
+
+/** The Source a command names, whose open Todo it is decided against. */
+export function sourceNamed(input: Command): Pick<Source, 'connectionId' | 'itemId'> | null {
+  return input.type === 'source.completed'
+    ? { connectionId: input.connectionId, itemId: input.itemId }
+    : null
 }
 
 /** Whether a command is about a Connection, and so is decided against the user's Connections. */
@@ -485,6 +529,59 @@ export function decide(state: CommandState, input: Command, now: Date): Decision
       }
     }
 
+    case 'rollover': {
+      const { settings } = state
+      if (!settings) return refuse('The Rollover needs the settings of the user it is for.')
+      // Woken twice for one midnight, it is the same midnight: nothing is carried a second time.
+      if (settings.lastRolloverDay === state.day) return { ok: true, ops: [] }
+      const before = (days: number) =>
+        startOfDay(addDays(state.day, -days), settings.timeZone).toISOString()
+      // The day that has just ended: touched within it is Touched, 23:50 included.
+      const yesterday = before(1)
+      const sentBackBefore = before(settings.sentBackDays)
+      const archiveBefore = before(settings.archiveDays)
+
+      const ops: Op[] = []
+      for (const todo of state.todos) {
+        if (todo.state === 'today') {
+          if (todo.touchedAt >= yesterday) {
+            // Carried over: it stays, and is offered afresh rather than read as under way.
+            ops.push({
+              type: 'todo.set',
+              id: todo.id,
+              set: { carryCount: todo.carryCount + 1, startedAt: null },
+            })
+          } else if (todo.touchedAt < sentBackBefore) {
+            ops.push({
+              type: 'todo.set',
+              id: todo.id,
+              set: { state: 'backlog', carryCount: 0, sentBackAt: at, startedAt: null },
+            })
+          }
+          // Untouched, but for less than the user's period: it waits where it is,
+          // and its run of carried-over days is neither added to nor broken.
+        } else if (todo.state === 'backlog' && todo.touchedAt < archiveBefore) {
+          ops.push({ type: 'todo.set', id: todo.id, set: { state: 'archived' } })
+        }
+      }
+      return { ok: true, ops: [...ops, { type: 'rollover.ran', day: state.day }] }
+    }
+
+    case 'source.completed': {
+      const todo = state.todos.find(
+        (each) =>
+          isOpen(each) &&
+          each.source?.connectionId === input.connectionId &&
+          each.source.itemId === input.itemId,
+      )
+      // No open Todo has that Source: there is nothing of the user's to finish.
+      if (!todo) return { ok: true, ops: [] }
+      return {
+        ok: true,
+        ops: [{ type: 'todo.set', id: todo.id, set: { state: 'done', doneAt: at } }],
+      }
+    }
+
     case 'todo.start': {
       const todo = state.todos.find((each) => each.id === input.todoId)
       if (!todo) return refuse('That Todo no longer exists.')
@@ -599,6 +696,9 @@ export function apply<S extends Applicable>(state: S, ops: readonly Op[]): S {
       // patch does not carry: `bornElsewhere` is how a screen knows to read again.
       case 'connection.insert':
         break
+      // The day has turned over: a tab showing yesterday reads again (`namesAnotherDay`).
+      case 'rollover.ran':
+        break
       case 'connection.set':
         connections = connections?.map((connection) =>
           connection.id === each.id ? { ...connection, ...each.set } : connection,
@@ -632,7 +732,9 @@ export function apply<S extends Applicable>(state: S, ops: readonly Op[]): S {
 export function namesAnotherDay(state: Pick<Applicable, 'day'>, ops: readonly Op[]): boolean {
   const { day } = state
   if (day === undefined) return false
-  return ops.some((each) => each.type === 'slot.set' && each.day !== day)
+  return ops.some(
+    (each) => (each.type === 'slot.set' || each.type === 'rollover.ran') && each.day !== day,
+  )
 }
 
 /** Whether operations bring a Connection a cached screen has never read. */
@@ -655,6 +757,7 @@ function rowTouched(each: Op): string {
     case 'slot.set':
       return `slot:${each.todoId}:${each.day}`
     case 'settings.set':
+    case 'rollover.ran':
       return 'settings'
     case 'connection.insert':
       return `connection:${each.connection.id}`

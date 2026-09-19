@@ -26,7 +26,7 @@ export async function readIntegrations(db: ReadDb, userId: string): Promise<Inte
     db.connection.findMany({ where: { userId }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] }),
     db.userSettings.findUnique({ where: { userId } }),
   ])
-  const { briefTime, sentBackDays, archiveDays } = settings ?? SETTINGS_DEFAULTS
+  const { briefTime, sentBackDays, archiveDays, timeZone } = settings ?? SETTINGS_DEFAULTS
   return {
     connections: rows.map((row) => ({
       id: row.id,
@@ -36,6 +36,6 @@ export async function readIntegrations(db: ReadDb, userId: string): Promise<Inte
       status: connectionStatus.parse(row.status),
       lastSyncAt: row.lastSyncAt?.toISOString() ?? null,
     })),
-    settings: { briefTime, sentBackDays, archiveDays },
+    settings: { briefTime, sentBackDays, archiveDays, timeZone },
   }
 }

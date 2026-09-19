@@ -158,6 +158,9 @@ export const WAKE_WORDS: Record<WakeCause, string> = {
 /** The lifecycle settings a user may change, and the most each may be. */
 export const LIFECYCLE_LIMITS = { sentBackDays: 30, archiveDays: 365 } as const
 
-export type LifecycleSettings = Pick<UserSettings, 'briefTime' | 'sentBackDays' | 'archiveDays'>
+export type LifecycleSettings = Pick<
+  UserSettings,
+  'briefTime' | 'sentBackDays' | 'archiveDays' | 'timeZone'
+>
 
 export const daysLabel = (days: number) => (days === 1 ? '1 day' : `${days} days`)

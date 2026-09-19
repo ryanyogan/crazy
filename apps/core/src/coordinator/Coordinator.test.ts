@@ -494,3 +494,36 @@ it("cannot add another user's Mention", async () => {
   ).toEqual({ ok: false, reason: 'That Signal no longer exists.' })
   expect((await signalRow('user_t', 'Devon'))?.todoId).toBeNull()
 })
+
+it("waits for the user's next local midnight, rolls the day over then, and waits for the next", async () => {
+  const stub = coordinatorFor('user_rollover')
+  let now = new Date('2025-09-17T15:00:00Z') // 10:00 in Chicago
+  await runInDurableObject(stub, (instance) => {
+    ;(instance as unknown as { clock: () => Date }).clock = () => now
+  })
+  await stub.provision({ timeZone: 'America/Chicago' })
+  expect(await stub.rolloverDueAt()).toBe('2025-09-18T05:00:00.000Z')
+
+  now = new Date('2025-09-18T05:00:01Z')
+  await stub.rollover()
+
+  const todos = (
+    await env.DB.prepare(
+      "SELECT state, carryCount, touchedAt, sentBackAt FROM todo WHERE userId = ? AND state IN ('today', 'backlog')",
+    )
+      .bind('user_rollover')
+      .all<{ state: string; carryCount: number; touchedAt: string; sentBackAt: string | null }>()
+  ).results
+  const kept = todos.filter((todo) => todo.state === 'today')
+  const sentBack = todos.filter((todo) => todo.sentBackAt?.startsWith('2025-09-18T05:00:01'))
+  // The persona's morning: Todos slotted today are carried over, the ones last touched yesterday are sent back.
+  expect(kept.length).toBeGreaterThan(0)
+  expect(kept.every((todo) => todo.carryCount >= 1)).toBe(true)
+  expect(sentBack.length).toBeGreaterThan(0)
+  expect(sentBack.every((todo) => todo.state === 'backlog' && todo.carryCount === 0)).toBe(true)
+  expect(await stub.rolloverDueAt()).toBe('2025-09-19T05:00:00.000Z')
+
+  // Midnight moves with the time zone: London's next is 23:00 UTC the same day.
+  await stub.command({ type: 'settings.set', set: { timeZone: 'Europe/London' } })
+  expect(await stub.rolloverDueAt()).toBe('2025-09-18T23:00:00.000Z')
+})

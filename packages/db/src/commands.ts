@@ -8,10 +8,12 @@ import {
   type SignalFacts,
   type TodoFacts,
   needsConnections,
+  needsEveryOpenTodo,
   needsTheDay,
   side,
   signalKind,
   signalsNamed,
+  sourceNamed,
   sourceKind,
   todoState,
   todosNamed,
@@ -70,6 +72,16 @@ export async function loadCommandState(
       state: { in: [...OPEN_TODO_STATES] },
     })
   }
+  const source = sourceNamed(command)
+  if (source) {
+    named.push({
+      sourceConnectionId: source.connectionId,
+      sourceItemId: source.itemId,
+      state: { in: [...OPEN_TODO_STATES] },
+    })
+  }
+  // The Rollover is decided against everything still open: the day, and the backlog that ages.
+  if (needsEveryOpenTodo(command)) named.push({ state: { in: [...OPEN_TODO_STATES] } })
   const todoRows = await db.todo.findMany({
     where: { userId, OR: named },
     select: {
@@ -77,6 +89,8 @@ export async function loadCommandState(
       state: true,
       snoozedUntil: true,
       swappedOnDay: true,
+      touchedAt: true,
+      carryCount: true,
       sourceConnectionId: true,
       sourceKind: true,
       sourceItemId: true,
@@ -103,6 +117,8 @@ export async function loadCommandState(
     state: todoState.parse(row.state),
     snoozedUntil: row.snoozedUntil?.toISOString() ?? null,
     swappedOnDay: row.swappedOnDay,
+    touchedAt: row.touchedAt.toISOString(),
+    carryCount: row.carryCount,
     slotHours: slots.filter((slot) => slot.todoId === row.id).map((slot) => slot.hour),
     source:
       row.sourceConnectionId === null || row.sourceItemId === null || row.sourceKind === null
@@ -126,7 +142,19 @@ export async function loadCommandState(
       ).map((row): ConnectionFacts => ({ ...row, defaultSide: side.parse(row.defaultSide) }))
     : []
 
-  return { day, todos, signals, events, connections }
+  return {
+    day,
+    todos,
+    signals,
+    events,
+    connections,
+    settings: {
+      timeZone,
+      sentBackDays: settings?.sentBackDays ?? SETTINGS_DEFAULTS.sentBackDays,
+      archiveDays: settings?.archiveDays ?? SETTINGS_DEFAULTS.archiveDays,
+      lastRolloverDay: settings?.lastRolloverDay ?? null,
+    },
+  }
 }
 
 /**
@@ -147,7 +175,7 @@ export async function persistOps(db: Db, userId: string, ops: readonly Op[]): Pr
     switch (op.type) {
       case 'todo.set': {
         // `swappedOnDay` is a day, not a moment, and travels as itself.
-        const { doneAt, touchedAt, snoozedUntil, startedAt, ...rest } = op.set
+        const { doneAt, touchedAt, snoozedUntil, startedAt, sentBackAt, ...rest } = op.set
         await db.todo.updateMany({
           where: { id: op.id, userId },
           data: {
@@ -156,6 +184,7 @@ export async function persistOps(db: Db, userId: string, ops: readonly Op[]): Pr
             touchedAt: toDate(touchedAt) ?? undefined,
             snoozedUntil: toDate(snoozedUntil),
             startedAt: toDate(startedAt),
+            sentBackAt: toDate(sentBackAt) ?? undefined,
           },
         })
         break
@@ -201,6 +230,9 @@ export async function persistOps(db: Db, userId: string, ops: readonly Op[]): Pr
       }
       case 'settings.set':
         await db.userSettings.updateMany({ where: { userId }, data: op.set })
+        break
+      case 'rollover.ran':
+        await db.userSettings.updateMany({ where: { userId }, data: { lastRolloverDay: op.day } })
         break
       case 'connection.insert': {
         const { createdAt, ...rest } = op.connection

@@ -52,6 +52,26 @@ export abstract class CoordinatorHost<Env extends Cloudflare.Env> extends Agent<
     return this.socketSpoke(connection, message)
   }
 
+  /**
+   * One schedule per callback: whatever was waiting to call it is cancelled, and
+   * it is called once, at `when`. The SDK keeps schedules in the instance's own
+   * SQLite and wakes it with an alarm, so a sleeping Coordinator costs nothing.
+   */
+  protected async callOnceAt(when: Date, callback: keyof this & string): Promise<void> {
+    for (const held of await this.listSchedules()) {
+      if (held.callback === callback) await this.cancelSchedule(held.id)
+    }
+    await this.schedule(when, callback)
+  }
+
+  /** When `callback` is next due to be called, or null when nothing is waiting to call it. */
+  protected async dueAt(callback: keyof this & string): Promise<Date | null> {
+    const times = (await this.listSchedules())
+      .filter((held) => held.callback === callback)
+      .map((held) => held.time)
+    return times.length === 0 ? null : new Date(Math.min(...times) * 1000)
+  }
+
   /** Sends to every open socket. Waking to send does not keep the sockets from hibernating again. */
   protected toEverySocket(message: string): void {
     this.broadcast(message)

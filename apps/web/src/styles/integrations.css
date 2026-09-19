@@ -206,6 +206,16 @@
   font-size: 12px;
 }
 
+.setting__zone {
+  color: var(--color-neutral-700);
+}
+
+.setting__move {
+  padding: 2px 8px;
+  min-height: 26px;
+  font-size: 12px;
+}
+
 /* Drawn off: the hourly status line is not built, and a switch must not say it is. */
 .switch {
   position: relative;

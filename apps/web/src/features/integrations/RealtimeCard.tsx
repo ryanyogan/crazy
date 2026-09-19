@@ -7,7 +7,9 @@ import {
   clockTime,
   daysLabel,
 } from '@crazy/shared'
-import { Blueprint, NotWired } from '@crazy/ui'
+import { Blueprint, Button, NotWired } from '@crazy/ui'
+import { useQueryClient } from '@tanstack/react-query'
+import { useSyncExternalStore } from 'react'
 import { useLiveStatus } from '#/lib/live'
 import { useCommand } from '#/lib/useCommand'
 
@@ -25,6 +27,17 @@ const ARCHIVE_CHOICES = [30, 60, 90, 180, LIFECYCLE_LIMITS.archiveDays]
 const withHeld = (choices: number[], held: number) =>
   [...new Set([...choices, held])].sort((a, b) => a - b)
 
+const never = () => () => {}
+
+/** The zone this device is in. The server cannot know it, so it renders none and the browser fills it in. */
+function useDeviceTimeZone(): string | null {
+  return useSyncExternalStore(
+    never,
+    () => Intl.DateTimeFormat().resolvedOptions().timeZone,
+    () => null,
+  )
+}
+
 interface RealtimeCardProps {
   realtime: Realtime
   settings: LifecycleSettings
@@ -39,6 +52,14 @@ export function RealtimeCard({ realtime, settings, timeZone }: RealtimeCardProps
   const status = useLiveStatus()
   const command = useCommand()
   const set = (change: LifecycleChange) => command.mutate({ type: 'settings.set', set: change })
+  const queryClient = useQueryClient()
+  const deviceZone = useDeviceTimeZone()
+  // Every screen formats against the zone, so every screen reads again once it has moved.
+  const moveTo = (zone: string) =>
+    command.mutate(
+      { type: 'settings.set', set: { timeZone: zone } },
+      { onSuccess: () => queryClient.invalidateQueries() },
+    )
   const { lastWake, wakesSince } = realtime
 
   return (
@@ -111,6 +132,16 @@ export function RealtimeCard({ realtime, settings, timeZone }: RealtimeCardProps
             ))}
           </select>
         </label>
+        <div className="setting">
+          <span>
+            Midnight in <span className="setting__zone">{settings.timeZone}</span>
+          </span>
+          {deviceZone && deviceZone !== settings.timeZone && (
+            <Button className="setting__move" onClick={() => moveTo(deviceZone)}>
+              Use {deviceZone}
+            </Button>
+          )}
+        </div>
       </div>
     </Blueprint>
   )
