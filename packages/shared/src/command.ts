@@ -65,6 +65,15 @@ export const command = z.discriminatedUnion('type', [
     minutes: z.number().int().min(SNOOZE_MINUTES.min).max(SNOOZE_MINUTES.max),
   }),
   z.object({ type: z.literal('signal.add'), signalId: id, todoId: id }),
+  // Catching up on every Promise at once. The browser names each new Todo, as
+  // `signal.add` does, and the same rule decides each of them.
+  z.object({
+    type: z.literal('signal.addAll'),
+    adds: z
+      .array(z.object({ signalId: id, todoId: id }))
+      .min(1)
+      .max(100),
+  }),
   // Slotting, and moving a Slot, are the same command: the Todo ends up holding
   // the hour named and no other, on the day the user is looking at.
   z.object({ type: z.literal('todo.slot'), todoId: id, hour }),
@@ -235,6 +244,8 @@ export function todosNamed(input: Command): string[] {
       return [input.id]
     case 'signal.add':
       return [input.todoId]
+    case 'signal.addAll':
+      return input.adds.map((add) => add.todoId)
     default:
       return []
   }
@@ -245,6 +256,8 @@ export function signalsNamed(input: Command): string[] {
   switch (input.type) {
     case 'signal.add':
       return [input.signalId]
+    case 'signal.addAll':
+      return input.adds.map((add) => add.signalId)
     default:
       return []
   }
@@ -392,6 +405,77 @@ export function todoTitleFor(
 
 const isOpen = (todo: TodoFacts) => (OPEN_TODO_STATES as readonly TodoState[]).includes(todo.state)
 
+/**
+ * What adding one Signal decides, and the Todo it would make — which the next
+ * Signal in a batch has to be able to see, so that two Promises at the same
+ * Provider item end as one Todo rather than two.
+ */
+type SignalAdd = { ok: true; ops: Op[]; made: TodoFacts | null } | { ok: false; reason: string }
+
+/**
+ * The whole rule for turning one Signal into a Todo. `signal.add` is one of
+ * these and `signal.addAll` is a run of them, so there is one rule and not two.
+ */
+function addOneSignal(
+  todos: readonly TodoFacts[],
+  signal: SignalFacts,
+  todoId: string,
+  at: string,
+): SignalAdd {
+  const { kind } = signal
+  if (kind === 'waiting_on') {
+    return { ok: false, reason: 'A Waiting on never becomes a Todo: it closes when they respond.' }
+  }
+  // Added twice, or on two devices at once: it is a Todo, which is what was asked.
+  if (signal.todoId !== null) return { ok: true, ops: [], made: null }
+  // One Source, one open Todo: the Signal is that Todo's, and nothing new is made.
+  const open = todos.find(
+    (each) => isOpen(each) && each.source !== null && sameSource(each.source, signal.source),
+  )
+  if (open) {
+    // Adding is the user deciding it enters their day, so a Todo waiting in the
+    // backlog comes into it, and that move is a touch. One already in `today` is
+    // left alone: attaching a Signal to it is not a touch (CONTEXT.md, "Touched").
+    const enters: Op[] =
+      open.state === 'backlog'
+        ? [{ type: 'todo.set', id: open.id, set: { state: 'today', touchedAt: at } }]
+        : []
+    return {
+      ok: true,
+      ops: [...enters, { type: 'signal.set', id: signal.id, set: { todoId: open.id } }],
+      made: null,
+    }
+  }
+  if (todos.some((each) => each.id === todoId)) {
+    return { ok: false, reason: 'That Todo already exists.' }
+  }
+  const todo: NewTodo = {
+    id: todoId,
+    title: todoTitleFor({ ...signal, kind }),
+    state: 'today',
+    source: signal.source,
+    createdAt: at,
+    touchedAt: at,
+  }
+  return {
+    ok: true,
+    ops: [
+      { type: 'todo.insert', todo },
+      { type: 'signal.set', id: signal.id, set: { todoId: todo.id } },
+    ],
+    made: {
+      id: todo.id,
+      state: 'today',
+      source: todo.source,
+      snoozedUntil: null,
+      swappedOnDay: null,
+      slotHours: [],
+      touchedAt: at,
+      carryCount: 0,
+    },
+  }
+}
+
 export function decide(state: CommandState, input: Command, now: Date): Decision {
   const at = now.toISOString()
   switch (input.type) {
@@ -437,47 +521,26 @@ export function decide(state: CommandState, input: Command, now: Date): Decision
     case 'signal.add': {
       const signal = state.signals.find((each) => each.id === input.signalId)
       if (!signal) return refuse('That Signal no longer exists.')
-      const { kind } = signal
-      if (kind === 'waiting_on') {
-        return refuse('A Waiting on never becomes a Todo: it closes when they respond.')
+      const decided = addOneSignal(state.todos, signal, input.todoId, at)
+      return decided.ok ? { ok: true, ops: decided.ops } : refuse(decided.reason)
+    }
+
+    case 'signal.addAll': {
+      const ops: Op[] = []
+      // Each Signal is decided against what the ones before it made, so a
+      // Promise whose Source another has just become is that same Todo. A
+      // Signal already added decides nothing, which is how "turn all into
+      // todos" pressed twice makes one Todo apiece and not two.
+      let todos = state.todos
+      for (const { signalId, todoId } of input.adds) {
+        const signal = state.signals.find((each) => each.id === signalId)
+        if (!signal) return refuse('That Signal no longer exists.')
+        const decided = addOneSignal(todos, signal, todoId, at)
+        if (!decided.ok) return refuse(decided.reason)
+        ops.push(...decided.ops)
+        if (decided.made) todos = [...todos, decided.made]
       }
-      // Added twice, or on two devices at once: it is a Todo, which is what was asked.
-      if (signal.todoId !== null) return { ok: true, ops: [] }
-      // One Source, one open Todo: the Signal is that Todo's, and nothing new is made.
-      const open = state.todos.find(
-        (each) => isOpen(each) && each.source !== null && sameSource(each.source, signal.source),
-      )
-      if (open) {
-        // Adding is the user deciding it enters their day, so a Todo waiting in the
-        // backlog comes into it, and that move is a touch. One already in `today` is
-        // left alone: attaching a Mention to it is not a touch (CONTEXT.md, "Touched").
-        const enters: Op[] =
-          open.state === 'backlog'
-            ? [{ type: 'todo.set', id: open.id, set: { state: 'today', touchedAt: at } }]
-            : []
-        return {
-          ok: true,
-          ops: [...enters, { type: 'signal.set', id: signal.id, set: { todoId: open.id } }],
-        }
-      }
-      if (state.todos.some((each) => each.id === input.todoId)) {
-        return refuse('That Todo already exists.')
-      }
-      const todo: NewTodo = {
-        id: input.todoId,
-        title: todoTitleFor({ ...signal, kind }),
-        state: 'today',
-        source: signal.source,
-        createdAt: at,
-        touchedAt: at,
-      }
-      return {
-        ok: true,
-        ops: [
-          { type: 'todo.insert', todo },
-          { type: 'signal.set', id: signal.id, set: { todoId: todo.id } },
-        ],
-      }
+      return { ok: true, ops }
     }
 
     case 'todo.slot': {

@@ -1,0 +1,264 @@
+/* The Projects screen, frame 1d. Measurements are the frame's; no frame draws a
+   phone, so below 900px the two columns fall into one (docs/BRIEF.md). */
+
+.projects {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-content: start;
+}
+
+/* Each card's kicker is a heading here, because it names the card to assistive
+   technology; the frame draws a plain div, so Industry's heading treatment is
+   put back to the body's. */
+.projects .card-kicker {
+  margin: 0;
+  font-family: var(--font-body);
+  font-weight: 400;
+  line-height: inherit;
+}
+
+.projects__main {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  min-width: 0;
+}
+
+.projects__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ── The table ────────────────────────────────────────────────────────────── */
+
+.projects__table {
+  /* A phone has no room for five columns; the row wraps rather than scrolls. */
+  table-layout: auto;
+}
+
+.projects__progress-column {
+  width: 180px;
+}
+
+/* The frame draws the name as plain text. It is a button, because pressing it
+   opens the Project, and it keeps the frame's treatment exactly. */
+.projects__name {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 16px;
+  line-height: inherit;
+  letter-spacing: inherit;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.projects__name:hover {
+  color: var(--color-accent);
+}
+
+.projects__meta {
+  font-size: 11px;
+  color: var(--color-neutral-700);
+}
+
+.projects__progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.projects__bar {
+  position: relative;
+  flex: 1;
+  height: 6px;
+  border: 1px solid var(--color-divider);
+}
+
+.projects__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--color-accent);
+}
+
+.projects__percent {
+  font-family: var(--font-heading);
+  font-size: 12px;
+}
+
+.projects__milestone,
+.projects__today {
+  font-size: 13px;
+}
+
+.projects__today {
+  color: var(--color-neutral-700);
+}
+
+/* ── A Project opened up ──────────────────────────────────────────────────── */
+
+.projects__expanded {
+  padding: 12px 14px;
+}
+
+.projects__columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  font-size: 13px;
+}
+
+.projects__column-title {
+  margin: 0 0 4px;
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 11px;
+  line-height: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--color-neutral-700);
+}
+
+.projects__children,
+.projects__backlog {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.projects__backlog {
+  color: var(--color-neutral-800);
+}
+
+.projects__child {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.projects__child--done {
+  color: var(--color-neutral-700);
+}
+
+/* A mark, not a control: a Todo is ticked on the Today screen and nowhere else. */
+.projects__mark {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  border: 1px solid var(--color-neutral-600);
+}
+
+.projects__mark--done {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+}
+
+/* The one chip the frames draw in the body face rather than condensed, and
+   tighter with it. Every other chip on this screen is the usual one. */
+.projects__child .source-chip {
+  padding: 0 5px;
+  font-family: var(--font-body);
+  font-weight: 400;
+}
+
+.projects__age {
+  color: var(--color-neutral-600);
+}
+
+/* ── Promises, Waiting on and the lifecycle ───────────────────────────────── */
+
+.projects__aside {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+.projects__signals {
+  padding: 12px 14px;
+}
+
+/* The frame hangs each row straight off the card, so the card's own gap falls
+   between them; the list keeps that rhythm now that they are list items. */
+.projects__signal-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.projects__signal {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  align-items: start;
+  padding: 6px 0;
+  border-top: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent);
+  font-size: 12px;
+}
+
+.projects__signal-what {
+  line-height: 1.3;
+}
+
+.projects__signal-who {
+  display: block;
+  color: var(--color-neutral-700);
+}
+
+/* Drawn only once a Promise has been turned into a Todo; the frame has none. */
+.projects__added {
+  margin-top: 4px;
+  font-size: 10px;
+}
+
+.projects__signal-age {
+  white-space: nowrap;
+  color: var(--color-neutral-700);
+}
+
+.projects__signal-age--promise {
+  color: var(--color-accent-700);
+}
+
+.projects__turn-all {
+  justify-self: start;
+  font-size: 12px;
+}
+
+.projects__lifecycle {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-neutral-700);
+}
+
+.projects__none {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-neutral-700);
+}
+
+/* ── Desktop ──────────────────────────────────────────────────────────────── */
+
+@media (min-width: 900px) {
+  .projects {
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 28px;
+  }
+
+  .projects .screen__title {
+    font-size: 32px;
+    margin: 0;
+  }
+}

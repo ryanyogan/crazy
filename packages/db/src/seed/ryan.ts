@@ -640,6 +640,70 @@ const MENTIONS: {
 ]
 
 /**
+ * The Promises and the Waiting on frame 1d draws. A Signal's `daysAgo` is when
+ * it happened at the Provider, which is the age each row shows; the order the
+ * cards list them in is the order Crazy *noticed* them, which is the order
+ * given here — a six-day-old promise can reach Crazy this morning.
+ */
+interface SeedSignal {
+  key: string
+  person: string
+  text: string
+  daysAgo: number
+  source: { kind: SourceKind; item: string; ref?: string }
+}
+
+/** "You said you'd…": what Ryan told someone he would do. */
+const PROMISES: SeedSignal[] = [
+  {
+    key: 'rate-limit-numbers',
+    person: 'Priya',
+    text: 'Send the rate-limit numbers',
+    daysAgo: 2,
+    source: { kind: 'slack_message', item: 'platform-rate-limit-promise' },
+  },
+  {
+    key: 'share-runbook',
+    person: 'Design',
+    text: 'Share the migration runbook',
+    daysAgo: 6,
+    source: { kind: 'notion_page', item: 'auth-runbook-promise' },
+  },
+  {
+    key: 'key-handover',
+    person: 'landlord',
+    text: 'Reply about key handover',
+    daysAgo: 3,
+    source: { kind: 'gmail_message', item: 'landlord-key-handover' },
+  },
+]
+
+/** Waiting on: what somebody owes Ryan. None of these ever becomes a Todo. */
+const WAITING_ON: SeedSignal[] = [
+  {
+    key: 'sam-updated-pr',
+    person: 'Sam',
+    text: 'updated PR after your comments',
+    daysAgo: 2,
+    source: { kind: 'linear_issue', item: 'hal-198-updated', ref: 'HAL-198' },
+  },
+  {
+    key: 'devon-q4-feedback',
+    person: 'Devon',
+    text: 'feedback on Q4 section 1',
+    daysAgo: 1,
+    source: { kind: 'notion_page', item: 'q4-priorities-section-1' },
+  },
+  {
+    key: 'movers-confirm-slot',
+    person: 'Movers',
+    text: 'confirm 1 Oct slot',
+    daysAgo: 2,
+    source: { kind: 'gmail_message', item: 'northside-movers-slot' },
+  },
+]
+
+/**
  * The Circles frame 1e draws. Crazy infers these, so the count of people and
  * the Providers each Circle's work lives in are inferred with them; the Personal
  * Circle has no count, as the frame shows.
@@ -820,23 +884,25 @@ const PROJECTS: {
  *
  * `recent` and `older` are Todos that have been finished, in the thirty days
  * behind today and in the sixty before them. `waiting` is how many of the
- * backlog's three older bands this Provider holds. The numbers are the
- * difference between what frame 1f counts and what the persona already has, so
- * at the frame's Wednesday the thirty days hold 41 Todos from Linear, 27 from
- * Slack, 12 from Notion, 9 from Google and 33 Ryan typed himself.
+ * backlog's older bands this Provider holds. The numbers are the difference
+ * between what frame 1f counts and what the persona already has, so at the
+ * frame's Wednesday the thirty days hold 41 Todos from Linear, 27 from Slack,
+ * 12 from Notion, 9 from Google and 33 Ryan typed himself. The oldest band is
+ * the persona's already: the six One-offs `ARCHIVE_SOON` seeds for frame 1d
+ * are the six that cross ninety days, so nothing is seeded there twice.
  */
 const HISTORY: {
   kind: SourceKind | null
   recent: number
   older: number
-  waiting: [sevenToThirty: number, thirtyToSixty: number, sixtyToNinety: number]
+  waiting: [sevenToThirty: number, thirtyToSixty: number]
   titles: string[]
 }[] = [
   {
     kind: 'linear_issue',
     recent: 36,
     older: 20,
-    waiting: [3, 2, 2],
+    waiting: [3, 2],
     titles: [
       'Review a platform pull request',
       'Triage an edge worker bug',
@@ -851,7 +917,7 @@ const HISTORY: {
     kind: 'slack_message',
     recent: 24,
     older: 12,
-    waiting: [2, 1, 1],
+    waiting: [2, 1],
     titles: [
       'Answer #platform on rate limits',
       'Unblock Priya in a thread',
@@ -864,7 +930,7 @@ const HISTORY: {
     kind: 'notion_page',
     recent: 9,
     older: 5,
-    waiting: [2, 1, 1],
+    waiting: [2, 1],
     titles: [
       'Comment back on the Q4 doc',
       'Update the platform runbook',
@@ -876,14 +942,14 @@ const HISTORY: {
     kind: 'gmail_message',
     recent: 6,
     older: 3,
-    waiting: [1, 1, 1],
+    waiting: [1, 1],
     titles: ['Answer the vendor email', 'File the hosting invoice', 'Reply to the landlord'],
   },
   {
     kind: null,
     recent: 6,
     older: 5,
-    waiting: [1, 0, 1],
+    waiting: [1, 0],
     titles: [
       'Tidy the week notes',
       'Plan tomorrow',
@@ -895,14 +961,14 @@ const HISTORY: {
 
 /**
  * How many days ago each waiting Todo was last touched, band by band: the
- * 7–30, 30–60 and 60–90 day bands of frame 1f's backlog ageing. The oldest is
- * 78 days, so it is twelve days from the ninety-day archive period — which is
- * what Crazy says under the card.
+ * 7–30 and 30–60 day bands of frame 1f's backlog ageing. The 60–90 band is
+ * `ARCHIVE_SOON`, which frame 1d counts: six One-offs at 78 days, twelve days
+ * from the ninety-day archive period — which is what Crazy says under both
+ * cards. Nothing here is older than they are.
  */
-const WAITING_DAYS: [number[], number[], number[]] = [
+const WAITING_DAYS: [number[], number[]] = [
   [8, 10, 12, 14, 17, 20, 23, 26, 29],
   [32, 38, 44, 50, 56],
-  [61, 63, 67, 70, 74, 78],
 ]
 
 const HISTORY_MINUTES = [30, 45, 60, 15, 90, 20]
@@ -988,6 +1054,180 @@ const COMPLETION_SHARES = [
 
 const COMPLETION_NOTE =
   'Last 30 days · darker = more of the day\'s plan completed · 11-day streak of clearing the "take on now" item'
+
+/**
+ * What each Project's Todos add up to on frame 1d, and the history behind
+ * today that makes those figures real. Progress is counted from these rows and
+ * never stored, so the finished work has to exist: "68%" is 25 Todos done of
+ * the 37 the auth migration has ever held.
+ *
+ * The narrative Todos above already count towards `open`, `done` and
+ * `archived`; whatever is still missing is filled from the lists below. Which
+ * of the week's Todos are finished depends on the weekday the persona is laid
+ * over, so the lists are sized for the emptiest case and only as much of each
+ * is used as the totals need — the screen reads as the frame draws it whichever
+ * day that is.
+ */
+interface SeedHistory {
+  /** In `backlog` or `today`: the work still to do. */
+  open: number
+  done: number
+  /** Dropped without being done. It still counts against the Project's progress. */
+  archived: number
+  /** The backlog, oldest added first, each with how long since it was touched. */
+  backlog: { title: string; touchedDaysAgo: number }[]
+  finished: string[]
+  abandoned: string[]
+}
+
+const PROJECT_HISTORY: Record<string, SeedHistory> = {
+  auth: {
+    open: 12,
+    done: 25,
+    archived: 0,
+    // The three the expanded card has room for are the three added earliest.
+    backlog: [
+      { title: 'Write migration runbook', touchedDaysAgo: 4 },
+      { title: 'Load-test edge sessions', touchedDaysAgo: 6 },
+      { title: 'Deprecate legacy cookie path', touchedDaysAgo: 12 },
+      { title: 'Split the auth package out of the worker', touchedDaysAgo: 9 },
+      { title: 'Add a session-expiry banner', touchedDaysAgo: 14 },
+      { title: 'Remove the legacy refresh endpoint', touchedDaysAgo: 16 },
+      { title: 'Write the on-call runbook for auth alerts', touchedDaysAgo: 11 },
+      { title: 'Measure sign-in latency by region', touchedDaysAgo: 18 },
+      { title: 'Trim the session payload', touchedDaysAgo: 21 },
+      { title: 'Retire the staging login domain', touchedDaysAgo: 24 },
+    ],
+    finished: [
+      'Audit the legacy session store',
+      'Map every cookie the app sets',
+      'Spike Durable Object session handles',
+      'Write the migration RFC',
+      'Review the RFC with Priya',
+      'Agree the rollout order with Leadership',
+      'Stand up the staging edge worker',
+      'Move the login route behind a flag',
+      'Port the refresh-token path',
+      'Add session metrics to the dashboard',
+      'Back-fill session ids for existing users',
+      'Retire the old session-table reads',
+      'Fix the logout race on slow networks',
+      'Harden the cookie flags',
+      'Add replay protection to the token',
+      'Write the rollback plan',
+      'Dry-run the rollback on staging',
+      'Load-test the staging edge worker',
+      "Review Priya's PR on the token store",
+      'Document the session-token format',
+      'Cut the internal admin app over',
+      'Sunset the second login domain',
+      'Clear the auth alert backlog',
+      'Tune the session cache lifetime',
+      'Brief support on the new sign-in errors',
+    ],
+    abandoned: [],
+  },
+  onboarding: {
+    open: 5,
+    done: 4,
+    archived: 1,
+    backlog: [
+      { title: 'Polish the welcome illustration', touchedDaysAgo: 5 },
+      { title: 'Write the v2 release note', touchedDaysAgo: 8 },
+      { title: 'Check the flow on a small phone', touchedDaysAgo: 10 },
+      { title: 'Add analytics to step three', touchedDaysAgo: 13 },
+      { title: 'Trim the sign-up form', touchedDaysAgo: 17 },
+    ],
+    finished: [
+      'Agree the v2 flow with Design',
+      'Write the empty-state copy',
+      'Instrument the activation funnel',
+      'Review the first-run checklist',
+    ],
+    abandoned: ['Trial a video welcome'],
+  },
+  q4: {
+    open: 4,
+    done: 2,
+    archived: 2,
+    backlog: [
+      { title: 'Draft Q4 priorities, section 1', touchedDaysAgo: 3 },
+      { title: 'Chase the platform headcount figure', touchedDaysAgo: 7 },
+      { title: 'Summarise what Q3 missed', touchedDaysAgo: 12 },
+      { title: 'Circulate the doc to the leads', touchedDaysAgo: 15 },
+    ],
+    finished: ['Collect last quarter’s numbers', 'Book the Q4 planning session'],
+    abandoned: ['Q4 offsite agenda', 'Rewrite the OKR template'],
+  },
+  move: {
+    open: 7,
+    done: 11,
+    archived: 2,
+    backlog: [
+      { title: 'Pack the study', touchedDaysAgo: 4 },
+      { title: 'Label every box by room', touchedDaysAgo: 6 },
+      { title: 'Return the spare keys', touchedDaysAgo: 9 },
+      { title: 'Book a cleaner for the old flat', touchedDaysAgo: 11 },
+      { title: 'Redirect the post', touchedDaysAgo: 13 },
+      { title: 'Photograph the meter readings', touchedDaysAgo: 16 },
+      { title: 'Sort a recycling run', touchedDaysAgo: 19 },
+    ],
+    finished: [
+      'Give notice on the flat',
+      'Shortlist three movers',
+      'Get quotes from the movers',
+      'Book the lift for move day',
+      'Sort the change-of-address list',
+      'Cancel the old broadband',
+      'Book the new broadband install',
+      'Measure the new kitchen',
+      'Sell the old sofa',
+      'Clear the loft',
+      'Arrange a parking permit',
+    ],
+    abandoned: ['Price a storage unit', 'Look at removals insurance'],
+  },
+  marathon: {
+    open: 3,
+    done: 9,
+    archived: 0,
+    backlog: [
+      { title: 'Plan the taper', touchedDaysAgo: 5 },
+      { title: 'Book travel to the start', touchedDaysAgo: 8 },
+      { title: 'Test the race-day breakfast', touchedDaysAgo: 12 },
+    ],
+    finished: [
+      'Pick a training plan',
+      'Buy new road shoes',
+      'Week 1: base miles',
+      'Week 2: base miles',
+      'Week 3: first tempo run',
+      'Week 4: hill repeats',
+      'Week 5: long run, 14 km',
+      'Week 6: recovery week',
+      'Week 7: threshold session',
+    ],
+    abandoned: [],
+  },
+}
+
+/**
+ * The backlog Todos the archive is about to take, which is what the lifecycle
+ * note on frame 1d counts: six One-offs last touched 78 days ago, so with the
+ * default 90-day archive period they cross it in twelve days. Nothing else in
+ * the seed has waited anywhere near as long, so these are the next to go.
+ */
+const ARCHIVE_SOON = [
+  'File the Q2 expense receipts',
+  'Update the team wiki page',
+  'Read the platform postmortem',
+  'Renew the side-project domain',
+  'Reply to the conference call for papers',
+  'Tidy the downloads folder',
+]
+
+/** How long before it crossed the archive period each of those was last touched. */
+const ARCHIVE_SOON_TOUCHED_DAYS_AGO = 78
 
 const BRIEF = {
   body: "You've got a lighter morning than usual: two meetings, both after 11. I'd take the Cloudflare session spike first while you're fresh; Priya pinged you about it twice in #platform yesterday. Three items carried over from Tuesday. I moved the August expense report back to the backlog since nobody touched it for a day.",
@@ -1168,6 +1408,89 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
         doneAt: done,
       })
     }
+  }
+
+  // The history behind each Project, so frame 1d's progress, open count and
+  // backlog are counted from real Todos. Only as much of each list is used as
+  // the totals still need, because how much of the week is already finished
+  // depends on the weekday the persona is laid over.
+  const heldBy = (projectId: string) => {
+    const have = { open: 0, done: 0, archived: 0 }
+    for (const todo of todos) {
+      if (todo.projectId !== projectId) continue
+      if (todo.state === 'done') have.done += 1
+      else if (todo.state === 'archived') have.archived += 1
+      else have.open += 1
+    }
+    return have
+  }
+  /** The last day before this week: nothing here may land in the week on show. */
+  const beforeThisWeek = back(monday) + 1
+
+  for (const [key, history] of Object.entries(PROJECT_HISTORY)) {
+    const projectId = id('project', key)
+    const have = heldBy(projectId)
+
+    for (const [index, entry] of history.backlog.slice(0, history.open - have.open).entries()) {
+      todos.push({
+        id: id('todo', `${key}-waiting-${index}`),
+        userId,
+        title: entry.title,
+        state: 'backlog',
+        projectId,
+        carryCount: 0,
+        // Added long ago and in this order, which is the order the backlog
+        // reads; last touched whenever it was last picked up, which is the age
+        // the expanded card shows and what decides when it archives.
+        createdAt: past(40 - index, '08:00'),
+        touchedAt: past(entry.touchedDaysAgo, '08:00'),
+      })
+    }
+
+    for (const [index, title] of history.finished.slice(0, history.done - have.done).entries()) {
+      // Finished before this week, so the Week screen's figures are untouched.
+      const doneAt = past(beforeThisWeek + index, '16:00')
+      todos.push({
+        id: id('todo', `${key}-finished-${index}`),
+        userId,
+        title,
+        state: 'done',
+        projectId,
+        carryCount: 0,
+        createdAt: past(beforeThisWeek + index + 30, '09:00'),
+        touchedAt: doneAt,
+        doneAt,
+      })
+    }
+
+    for (const [index, title] of history.abandoned
+      .slice(0, history.archived - have.archived)
+      .entries()) {
+      todos.push({
+        id: id('todo', `${key}-archived-${index}`),
+        userId,
+        title,
+        state: 'archived',
+        projectId,
+        carryCount: 0,
+        createdAt: past(200 + index, '09:00'),
+        touchedAt: past(110 + index, '09:00'),
+      })
+    }
+  }
+
+  // The next Todos the archive will take: One-offs nobody has touched in 78
+  // days, which the lifecycle note counts.
+  for (const [index, title] of ARCHIVE_SOON.entries()) {
+    todos.push({
+      id: id('todo', `archive-soon-${index}`),
+      userId,
+      title,
+      state: 'backlog',
+      carryCount: 0,
+      createdAt: past(ARCHIVE_SOON_TOUCHED_DAYS_AGO + 4, '09:00'),
+      touchedAt: past(ARCHIVE_SOON_TOUCHED_DAYS_AGO, '08:00'),
+    })
   }
 
   const slots: Prisma.SlotCreateManyInput[] = STACK.flatMap((todo) =>
@@ -1500,6 +1823,35 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
     todoId: mention.addedAs ? id('todo', mention.addedAs) : null,
     createdAt: past(mention.daysAgo, mention.time),
   }))
+
+  // The Promises and the Waiting on, as frame 1d lists them. Crazy noticed them
+  // with this morning's planning, a minute apart in the order the cards read;
+  // `at` is when each happened at the Provider, which is the age each row shows.
+  // The id carries the order too, so the lists hold when a seed laid over an
+  // early hour clamps every "noticed" stamp to the same moment.
+  const noticed = (order: number) => past(0, `08:${String(9 - order).padStart(2, '0')}`)
+  for (const [kind, rows] of [
+    ['promise', PROMISES],
+    ['waiting_on', WAITING_ON],
+  ] as const) {
+    for (const [order, signal] of rows.entries()) {
+      signals.push({
+        id: id('signal', `${kind}-${String(order).padStart(2, '0')}-${signal.key}`),
+        userId,
+        kind,
+        person: signal.person,
+        text: signal.text,
+        at: past(signal.daysAgo, '08:00'),
+        connectionId: id('connection', SOURCE_KINDS[signal.source.kind].provider),
+        sourceKind: signal.source.kind,
+        sourceItemId: signal.source.item,
+        sourceRef: signal.source.ref ?? null,
+        // A Waiting on never becomes a Todo, and no Promise has been added yet.
+        todoId: null,
+        createdAt: noticed(order),
+      })
+    }
+  }
 
   return {
     connections,

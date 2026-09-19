@@ -383,6 +383,41 @@ it('refuses to add a Waiting on', () => {
   })
 })
 
+it('turns every Promise that is not already a Todo into one, and leaves the rest alone', () => {
+  const promise = (id: string, text: string, fields: Partial<Signal> = {}) =>
+    mention(id, { kind: 'promise', text, ...fields })
+  const state = day(
+    [todo('runbook', { source: slack('design') })],
+    [
+      // One still to make, one the user added earlier, and one whose Source
+      // already has an open Todo — which is that Todo, not a second one.
+      promise('priya', 'Send the rate-limit numbers'),
+      promise('landlord', 'Reply about key handover', { todoId: 'keys' }),
+      promise('design', 'Share the migration runbook'),
+    ],
+  )
+
+  const { decision, after } = run(state, {
+    type: 'signal.addAll',
+    adds: [
+      { signalId: 'priya', todoId: 'made-1' },
+      { signalId: 'landlord', todoId: 'made-2' },
+      { signalId: 'design', todoId: 'made-3' },
+    ],
+  })
+
+  expect(decision.ok).toBe(true)
+  // One Todo made, for the one Promise that needed one. The added Promise
+  // decides nothing at all, and the third is marked as the Todo it already is.
+  expect(after.todos.map(({ id }) => id)).toEqual(['runbook', 'made-1'])
+  expect(after.signals.map(({ id, todoId }) => [id, todoId])).toEqual([
+    ['priya', 'made-1'],
+    ['landlord', 'keys'],
+    ['design', 'runbook'],
+  ])
+  expect(after.todos[1]).toMatchObject({ title: 'Send the rate-limit numbers', state: 'today' })
+})
+
 it('refuses a Signal it cannot find', () => {
   expect(run(day([]), addSignal('gone', 'new')).decision).toEqual({
     ok: false,

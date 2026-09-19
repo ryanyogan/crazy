@@ -41,6 +41,21 @@ export const COPY: [from: string, to: string][] = [
   // Provider, and frame 1e uses each as the name of the thing.
   ['Four groups this week.', 'Four Circles this week.'],
   ['which tools the work lives in', 'which Providers the work lives in'],
+  // "Item" is one of the words the glossary keeps off a Todo, and frame 1d's
+  // Today column and lifecycle note both use it as the name of the thing.
+  ['>2 items<', '>2 Todos<'],
+  ['>1 item<', '>1 Todo<'],
+  ['6 backlog items archive in 12 days.', '6 backlog Todos archive in 12 days.'],
+  // A Project belongs to one Circle (CONTEXT.md), so no Project is "Platform +
+  // Design"; and the Circle frame 1e names "Platform team" is named that here.
+  ['Platform + Design', 'Platform team'],
+  ['Platform · 12 open', 'Platform team · 12 open'],
+  // Crazy words every age the same way, and this one is two days old.
+  ['since Tue', '2d'],
+  // The frame shortens two of the Todos it lists inside the expanded Project;
+  // the app shows each Todo's own title, which is what frame 1a draws.
+  ['Finish session-token spike', 'Finish Cloudflare session-token spike'],
+  ['Reply to Priya on rate limits', 'Reply to Priya on edge rate limits'],
   // The repo writes British English, here and in the ticket that asked for it.
   ['Backlog aging', 'Backlog ageing'],
 ]
@@ -153,6 +168,18 @@ const DAY_BARS: Mask[] = [
   })),
 ]
 
+const DONE_TODAY =
+  "The foot of the expanded Project: the third row of \"Today's children\", which the frame draws as a Todo completed today (struck through), and the card's bottom edge, which sits 20px higher without it. Seeding a Todo done today would put a done row under frame 1a's Priority stack, which is frozen at 0.00%, so the seed has none and the card draws the two that are open. Every other row of the card agrees with the frame to the pixel. A debt for the designer: the two frames cannot both be right"
+
+const BACKLOG_COUNT =
+  'The backlog count inside the expanded Project. The frame says 12 open, Backlog · 9 and 2 on today, and 9 + 2 is 11: the three numbers cannot all be true. The app counts what it holds — 10 waiting and 2 on today — and honours the open count the table draws. A debt for the designer'
+
+/** What frame 1d draws inside the expanded Project that the app knowingly does not. */
+const PROJECT_CARD: Mask[] = [
+  { x: 190, y: 608, width: 580, height: 44, why: DONE_TODAY },
+  { x: 486, y: 520, width: 80, height: 20, why: BACKLOG_COUNT },
+]
+
 const FOCUS_BARS =
   'The bars of "Focus hours by hour of day". Frame 1f gives each bar a percentage height inside a grid row of automatic height, which resolves to nothing, so the frame draws ten labels and no bars at all. The app puts the bar in a row of its own so the percentage has something to be a percentage of, and draws them; the hour labels underneath keep the frame\'s baseline to the pixel and are compared. A debt for the designer: it goes when the frame draws its own bars'
 
@@ -198,7 +225,24 @@ export const TARGETS: Target[] = [
     },
     DAY_BARS,
   ),
-  drawn('1d', 'Projects', '/projects', 720),
+  {
+    ...drawn('1d', 'Projects', '/projects', 720),
+    // The expanded Project and the two Signal cards are blueprints: measured
+    // with their corner marks, 6px beyond the box.
+    desktop: desktop(
+      720,
+      'undrawn',
+      {
+        heading: { x: 196, y: 22, width: 568, height: 43 },
+        projects: { x: 196, y: 77, width: 568, height: 398 },
+        expanded: { x: 190, y: 481, width: 580, height: 170 },
+        promises: { x: 786, y: 16, width: 372, height: 243 },
+        'waiting on': { x: 786, y: 263, width: 372, height: 169 },
+        lifecycle: { x: 792, y: 442, width: 360, height: 36 },
+      },
+      PROJECT_CARD,
+    ),
+  },
   {
     ...drawn('1e', 'Circles', '/circles', 680),
     // The figure and the Overlap cards are blueprints: measured with their

@@ -1,4 +1,11 @@
-import { createReadDb, readCircles, readMetrics, readToday, readWeek } from '@crazy/db'
+import {
+  createReadDb,
+  readCircles,
+  readMetrics,
+  readProjects,
+  readToday,
+  readWeek,
+} from '@crazy/db'
 import { type CommandResult, SERVER_ONLY, command, initials, metricRange } from '@crazy/shared'
 import { redirect } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
@@ -58,6 +65,25 @@ export const getWeek = createServerFn().handler(async () => {
   const { timeZone } = await settingsFor(userId)
   const now = requestNow(timeZone)
   return readWeek(createReadDb(env.DB), userId, now, timeZone)
+})
+
+/**
+ * The Projects screen's read model. It carries a sequence number like Today's,
+ * because turning a Promise into a Todo is a command and its patch lands here.
+ */
+export const getProjects = createServerFn().handler(async () => {
+  const userId = await viewerId()
+  if (!userId) throw redirect({ to: '/sign-in' })
+
+  const { timeZone } = await settingsFor(userId)
+  const now = requestNow(timeZone)
+  const seq = await coordinatorFor(userId).lastSeq()
+  return {
+    ...(await readProjects(createReadDb(env.DB), userId, now, timeZone)),
+    seq,
+    now: now.toISOString(),
+    timeZone,
+  }
 })
 
 /** The Circles screen's read model, at the moment this request is served. */

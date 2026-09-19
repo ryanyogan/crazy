@@ -24,15 +24,20 @@ beforeAll(async () => {
 it('counts the backlog into the bands frame 1f draws, by how long each has sat', async () => {
   const { backlog, backlogTitle, ageingBars } = await metrics()
 
-  expect(backlogTitle).toBe('Backlog ageing · 34 items')
+  // The two older bands are the frame's own: 5 in 30–60d, and the six One-offs
+  // that cross ninety days, which frame 1d counts too. The two younger ones run
+  // over it, because every Project's backlog is the persona's as well now
+  // (frame 1d) and the frame was drawn before those Todos existed. A debt for
+  // the designer: the two frames cannot both be right about one backlog.
+  expect(backlogTitle).toBe('Backlog ageing · 51 items')
   expect(backlog.buckets.map((bucket) => [bucket.label, bucket.count])).toEqual([
-    ['< 7d', 14],
-    ['7–30d', 9],
+    ['< 7d', 21],
+    ['7–30d', 19],
     ['30–60d', 5],
     ['60–90d', 6],
   ])
   // Every bar is a share of the largest, rounded as the frame rounds it.
-  expect(ageingBars.map((bar) => bar.length)).toEqual(['100%', '64%', '36%', '43%'])
+  expect(ageingBars.map((bar) => bar.length)).toEqual(['100%', '90%', '24%', '29%'])
 })
 
 it('counts where the range’s Todos came from, Providers first and typed-in last', async () => {
@@ -57,7 +62,7 @@ it('counts fewer Todos over a week than over a month, and more over a quarter', 
   expect(month).toBe(122)
   expect(quarter).toBeGreaterThan(month)
   // The backlog is the backlog whatever range is chosen: it is not a span.
-  expect((await metrics('week')).backlog.total).toBe(34)
+  expect((await metrics('week')).backlog.total).toBe(51)
 })
 
 it('reads the figures Crazy modelled for the chosen range, and its thirty-day strip', async () => {
@@ -122,7 +127,7 @@ it('moves a Todo out of the backlog’s ageing the moment it is completed', asyn
   await persistOps(db, user, [
     {
       type: 'todo.set',
-      id: `${user}/todo/waiting-2-5`,
+      id: `${user}/todo/archive-soon-5`,
       set: { state: 'done', doneAt: now.toISOString() },
     },
   ])
