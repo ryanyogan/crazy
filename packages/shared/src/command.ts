@@ -79,6 +79,8 @@ export const command = z.discriminatedUnion('type', [
   // now; Swap says not this one, not today.
   z.object({ type: z.literal('todo.start'), todoId: id }),
   z.object({ type: z.literal('todo.swap'), todoId: id }),
+  // The Billing module, on or off: the Shell gains or loses Time and Invoices.
+  z.object({ type: z.literal('billing.set'), on: z.boolean() }),
   // The Coordinator's own, at the user's local midnight (`SERVER_ONLY`): each
   // `today` Todo is carried over or sent back, and the backlog ages.
   z.object({ type: z.literal('rollover') }),
@@ -150,6 +152,7 @@ export const op = z.discriminatedUnion('type', [
     at: z.iso.datetime(),
   }),
   z.object({ type: z.literal('settings.set'), set: lifecycleChange }),
+  z.object({ type: z.literal('billing.set'), on: z.boolean() }),
   // The Rollover has run for this local day, and will not run for it again.
   z.object({ type: z.literal('rollover.ran'), day }),
   z.object({ type: z.literal('connection.insert'), connection: newConnection }),
@@ -529,6 +532,10 @@ export function decide(state: CommandState, input: Command, now: Date): Decision
       }
     }
 
+    // Nothing the user has is lost by turning it off: Clients and Time entries wait in D1.
+    case 'billing.set':
+      return { ok: true, ops: [{ type: 'billing.set', on: input.on }] }
+
     case 'rollover': {
       const { settings } = state
       if (!settings) return refuse('The Rollover needs the settings of the user it is for.')
@@ -639,6 +646,8 @@ export interface Applicable {
   /** Absent from a read model that holds no Todos: the Integrations screen's. */
   todos?: readonly TodayTodo[]
   settings?: LifecycleChange
+  /** Whether the Billing module is on, where a state says: the Shell's, and the Integrations screen's. */
+  billing?: boolean
   connections?: readonly { id: string; defaultSide: Side }[]
   signals?: readonly { id: string; todoId: string | null }[]
   /** The day these rows are of; a state that does not say which cannot hold Slots. */
@@ -657,6 +666,7 @@ export function apply<S extends Applicable>(state: S, ops: readonly Op[]): S {
   let signals = state.signals
   let settings = state.settings
   let connections = state.connections
+  let billing = state.billing
   for (const each of ops) {
     switch (each.type) {
       case 'todo.set':
@@ -692,6 +702,9 @@ export function apply<S extends Applicable>(state: S, ops: readonly Op[]): S {
       case 'settings.set':
         if (settings) settings = { ...settings, ...each.set }
         break
+      case 'billing.set':
+        if (billing !== undefined) billing = each.on
+        break
       // A Connection born elsewhere has Clerk's word to be read with it, which a
       // patch does not carry: `bornElsewhere` is how a screen knows to read again.
       case 'connection.insert':
@@ -709,6 +722,7 @@ export function apply<S extends Applicable>(state: S, ops: readonly Op[]): S {
     todos === state.todos &&
     signals === state.signals &&
     settings === state.settings &&
+    billing === state.billing &&
     connections === state.connections
   ) {
     return state
@@ -719,6 +733,7 @@ export function apply<S extends Applicable>(state: S, ops: readonly Op[]): S {
     ...(todos === state.todos ? {} : { todos }),
     ...(signals === state.signals ? {} : { signals }),
     ...(settings === state.settings ? {} : { settings }),
+    ...(billing === state.billing ? {} : { billing }),
     ...(connections === state.connections ? {} : { connections }),
   } as S
 }
@@ -759,6 +774,8 @@ function rowTouched(each: Op): string {
     case 'settings.set':
     case 'rollover.ran':
       return 'settings'
+    case 'billing.set':
+      return 'billing'
     case 'connection.insert':
       return `connection:${each.connection.id}`
     case 'connection.set':

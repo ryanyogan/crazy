@@ -4,12 +4,45 @@
 
 **Blocked by:** 15 — Integrations screen: Account, Connections, Realtime and lifecycle settings
 
-**Status:** ready-for-agent
+**Status:** in progress — two boxes open
 
-- [ ] The Billing module setting is a command and is optimistic
+- [x] The Billing module setting is a command and is optimistic
 - [ ] Both Shell variants match their frames at 1180px and 390px
-- [ ] Time and Invoices routes are unreachable, not merely hidden, with the module off
-- [ ] Client holds rate, rounding, payment terms and cadence; a Project may override the rate
+- [x] Time and Invoices routes are unreachable, not merely hidden, with the module off
+- [x] Client holds rate, rounding, payment terms and cadence; a Project may override the rate
 - [ ] At most one Time entry per user has no end, enforced at the command seam
-- [ ] Seeding Cori reproduces the second sample user's Clients, Projects and hours
-- [ ] The placement of the on/off control is listed as derived
+- [x] Seeding Cori reproduces the second sample user's Clients, Projects and hours
+- [x] The placement of the on/off control is listed as derived
+
+## Comments
+
+### 2026-09-19 — most of it built; two boxes left open
+
+**Built.** `billing.set` at the seam, optimistic over the Shell's cache and the Integrations
+screen's, so the rail changes at once. `/time` and `/invoices` throw `notFound()` from their loaders
+with the module off (the old "Billing is off" screen is gone). Migration 0011: `client` (rate,
+rounding, payment terms, cadence, arrangement, budget hours), `time_entry`, and a Project's optional
+Client and rate override. The Cori persona (`packages/db/src/seed/cori.ts`): three Clients with
+frame 2c's terms, five Projects (one with no Client), the five Todos of frame 2a's stack, the Brief,
+and 23 Time entries — frame 2b's timesheet plus the rest of the month, so Meridian stands at 28.0h,
+Quill at 22.5h and Bramble at 17.8h with one entry running. Reseeding a persona sets the Billing
+module to that persona's. The switch is a card under Realtime on the Integrations screen.
+
+**Checked.** `check`, `typecheck`, `test` (247), `build`; a command-seam test for the Shell's
+destinations, a Coordinator test that seeds Cori and counts her world; in a browser: `/time` is Not
+found while off, the rail gains and loses Time and Invoices on the switch, `/time` opens while on.
+
+**Open.**
+- [ ] *Both Shell variants match their frames at 1180px and 390px* — the Shell already switched on
+  `billing` (ticket 01); the Cori frames (2a–2c, 3a, 3b, 4a) still have no targets in
+  `tools/visual/src/targets.ts`, and the harness has no `cori` persona (the frames call her
+  "Jo Okafor"). Add both, run `pnpm visual` once, and look at the rail and the phone tab bar.
+- [ ] *At most one Time entry per user has no end, enforced at the command seam* — held today by
+  the partial unique index `time_entry_userId_running_key`; there is no timer command yet to hold
+  it at the seam. It belongs with `timer.start` in ticket 17.
+
+**Decisions taken.** Rates are cents per hour on the Client, overridable per Project; Bramble's
+retainer is stored as $180/h over a 20h budget, and its $200 overage rate is left to ticket 21.
+Turning the module off deletes nothing. Cori reads the same four Providers as Ryan; her billing
+Providers are ticket 23.
+

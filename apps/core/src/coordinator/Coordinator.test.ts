@@ -527,3 +527,42 @@ it("waits for the user's next local midnight, rolls the day over then, and waits
   await stub.command({ type: 'settings.set', set: { timeZone: 'Europe/London' } })
   expect(await stub.rolloverDueAt()).toBe('2025-09-18T23:00:00.000Z')
 })
+
+it('lays the Cori persona over a user: Clients, Projects with and without one, her hours, and the Billing module on', async () => {
+  const stub = coordinatorFor('user_cori')
+  await stub.provision({ timeZone: 'America/Chicago' })
+  await stub.reseed({ persona: 'cori', now: '2025-09-17T15:42:00.000Z' })
+
+  const one = async <T>(sql: string) => (await env.DB.prepare(sql).bind('user_cori').first<T>())!
+  expect(await one<{ n: number }>('SELECT count(*) AS n FROM client WHERE userId = ?')).toEqual({
+    n: 3,
+  })
+  expect(
+    await one<{ n: number }>(
+      'SELECT count(*) AS n FROM project WHERE userId = ? AND clientId IS NULL',
+    ),
+  ).toEqual({ n: 1 })
+  expect(
+    await one<{ billing: number }>('SELECT billing FROM user_settings WHERE userId = ?'),
+  ).toEqual({
+    billing: 1,
+  })
+  // One timer runs, and the month's hours are the mockups': Meridian 28.0h once the running 1h 42m is counted.
+  expect(
+    await one<{ n: number }>(
+      'SELECT count(*) AS n FROM time_entry WHERE userId = ? AND endedAt IS NULL',
+    ),
+  ).toEqual({ n: 1 })
+  const meridian = await one<{ hours: number }>(
+    `SELECT round(sum((julianday(coalesce(e.endedAt, '2025-09-17T15:42:00.000Z')) - julianday(e.startedAt)) * 24), 1) AS hours
+     FROM time_entry e JOIN client c ON c.id = e.clientId WHERE e.userId = ? AND c.code = 'MER'`,
+  )
+  expect(meridian.hours).toBeCloseTo(28, 0)
+
+  // A second running Time entry is refused by D1 itself, whatever asked for it.
+  await expect(
+    env.DB.prepare(
+      "INSERT INTO time_entry (id, userId, note, billable, startedAt, createdAt) VALUES ('x', 'user_cori', '', 0, '2025-09-17T15:00:00.000Z', '2025-09-17T15:00:00.000Z')",
+    ).run(),
+  ).rejects.toThrow()
+})

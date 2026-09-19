@@ -1,14 +1,12 @@
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { createFileRoute } from '@tanstack/react-router'
-import { BillingOff } from '#/features/screens/BillingOff'
+import { createFileRoute, notFound } from '@tanstack/react-router'
 import { EmptyScreen } from '#/features/screens/EmptyScreen'
 import { shellQuery } from '#/lib/queries'
 
 export const Route = createFileRoute('/_app/time')({
-  component: TimeScreen,
+  // Part of the Billing module: with it off there is no such screen, rather than a hidden one.
+  loader: async ({ context }) => {
+    const shell = await context.queryClient.ensureQueryData(shellQuery)
+    if (!shell.billing) throw notFound()
+  },
+  component: () => <EmptyScreen title="Time" />,
 })
-
-function TimeScreen() {
-  const { data: shell } = useSuspenseQuery(shellQuery)
-  return shell.billing ? <EmptyScreen title="Time" /> : <BillingOff title="Time" />
-}

@@ -145,6 +145,7 @@ export async function integrationsFor(userId: string, now: Date, timeZone: strin
     canConnect: clerk !== null,
     connections: overlayClerk(read.connections, clerk?.accounts ?? null),
     settings: read.settings,
+    billing: read.billing,
     realtime,
     now: now.toISOString(),
     timeZone,

@@ -231,6 +231,9 @@ export async function persistOps(db: Db, userId: string, ops: readonly Op[]): Pr
       case 'settings.set':
         await db.userSettings.updateMany({ where: { userId }, data: op.set })
         break
+      case 'billing.set':
+        await db.userSettings.updateMany({ where: { userId }, data: { billing: op.on } })
+        break
       case 'rollover.ran':
         await db.userSettings.updateMany({ where: { userId }, data: { lastRolloverDay: op.day } })
         break

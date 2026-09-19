@@ -1,5 +1,6 @@
 import type { Persona } from '@crazy/shared'
 import type { Db } from '../client'
+import { cori } from './cori'
 import { ryan } from './ryan'
 
 // The persona seed: the mockups' sample content, stored exactly where real and
@@ -14,7 +15,7 @@ export interface SeedInput {
   timeZone: string
 }
 
-const PERSONA_SEEDS = { ryan } satisfies Record<Persona, unknown>
+const PERSONA_SEEDS = { ryan, cori } satisfies Record<Persona, unknown>
 
 /**
  * Replaces everything the user has with the persona's content. D1 has no
@@ -25,6 +26,7 @@ export async function seedPersona(db: Db, input: SeedInput): Promise<void> {
   const { userId } = input
   const rows = PERSONA_SEEDS[input.persona](input)
 
+  await db.timeEntry.deleteMany({ where: { userId } })
   await db.metricSnapshot.deleteMany({ where: { userId } })
   await db.signal.deleteMany({ where: { userId } })
   await db.weekDayLine.deleteMany({ where: { userId } })
@@ -37,12 +39,14 @@ export async function seedPersona(db: Db, input: SeedInput): Promise<void> {
   await db.circleMatch.deleteMany({ where: { userId } })
   await db.todo.deleteMany({ where: { userId } })
   await db.project.deleteMany({ where: { userId } })
+  await db.client.deleteMany({ where: { userId } })
   await db.circle.deleteMany({ where: { userId } })
   await db.connection.deleteMany({ where: { userId } })
   await db.brief.deleteMany({ where: { userId } })
 
   await db.connection.createMany({ data: rows.connections })
   await db.circle.createMany({ data: rows.circles })
+  await db.client.createMany({ data: rows.clients })
   await db.project.createMany({ data: rows.projects })
   await db.todo.createMany({ data: rows.todos })
   await db.circleMatch.createMany({ data: rows.circleMatches })
@@ -58,4 +62,5 @@ export async function seedPersona(db: Db, input: SeedInput): Promise<void> {
   await db.signal.createMany({ data: rows.signals })
   // What Crazy modelled for the Metrics screen, beside the figures it counts.
   await db.metricSnapshot.createMany({ data: rows.metricSnapshots })
+  await db.timeEntry.createMany({ data: rows.timeEntries })
 }

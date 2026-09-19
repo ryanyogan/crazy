@@ -1,5 +1,6 @@
 import { type Db, seedPersona } from '@crazy/db/write'
 import {
+  PERSONA_BILLING,
   type Persona,
   type ProvisionInput,
   SETTINGS_DEFAULTS,
@@ -46,4 +47,6 @@ export async function reseedUser(
 ): Promise<void> {
   const settings = await db.userSettings.findUniqueOrThrow({ where: { userId } })
   await seedPersona(db, { persona, userId, now, timeZone: settings.timeZone })
+  // A persona's world includes whether the Billing module is on in it.
+  await db.userSettings.update({ where: { userId }, data: { billing: PERSONA_BILLING[persona] } })
 }

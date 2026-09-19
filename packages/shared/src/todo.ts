@@ -37,6 +37,16 @@ export const CONNECTION_STATUSES = ['connected', 'reauth'] as const
 export const connectionStatus = z.enum(CONNECTION_STATUSES)
 export type ConnectionStatus = z.infer<typeof connectionStatus>
 
+/** How a Client's work is charged: a fee for a budget of hours, by the hour, or a monthly retainer. */
+export const CLIENT_ARRANGEMENTS = ['project_fee', 'hourly', 'retainer'] as const
+export const clientArrangement = z.enum(CLIENT_ARRANGEMENTS)
+export type ClientArrangement = z.infer<typeof clientArrangement>
+
+/** How often a Client's invoice goes out. */
+export const CLIENT_CADENCES = ['monthly', 'biweekly', 'first_of_month'] as const
+export const clientCadence = z.enum(CLIENT_CADENCES)
+export type ClientCadence = z.infer<typeof clientCadence>
+
 export const PROJECT_STATUSES = ['on_track', 'at_risk', 'behind'] as const
 export const projectStatus = z.enum(PROJECT_STATUSES)
 export type ProjectStatus = z.infer<typeof projectStatus>

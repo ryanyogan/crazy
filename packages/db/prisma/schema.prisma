@@ -117,6 +117,48 @@ model OverlapNote {
   @@map("overlap_note")
 }
 
+/// Someone a user bills for their time (Billing module): their terms, never their money.
+model Client {
+  id               String      @id
+  userId           String
+  name             String
+  code             String // three letters, as the timeline's chip says it: "MER"
+  arrangement      String // CLIENT_ARRANGEMENTS: how the work is charged
+  rateCents        Int // per hour
+  roundingMinutes  Int // a Time entry is rounded up to this on an invoice
+  paymentTermsDays Int // "net 30"
+  cadence          String // CLIENT_CADENCES: how often an invoice goes out
+  /// The budget or retainer in hours, where the arrangement has one.
+  budgetHours      Int?
+  createdAt        DateTime
+  projects         Project[]
+  timeEntries      TimeEntry[]
+
+  @@index([userId])
+  @@map("client")
+}
+
+/// A span of tracked time. One with no end is the running timer, and a user has
+/// at most one: a partial unique index holds that (migration 0011), as the
+/// command seam does.
+model TimeEntry {
+  id        String    @id
+  userId    String
+  clientId  String?
+  client    Client?   @relation(fields: [clientId], references: [id])
+  projectId String?
+  project   Project?  @relation(fields: [projectId], references: [id])
+  todoId    String?
+  note      String
+  billable  Boolean
+  startedAt DateTime
+  endedAt   DateTime?
+  createdAt DateTime
+
+  @@index([userId, startedAt])
+  @@map("time_entry")
+}
+
 /// A named body of work. Progress is derived from its Todos, never stored.
 model Project {
   id           String   @id
@@ -128,9 +170,15 @@ model Project {
   statusNote   String? // shown in place of the status's own label: "Week 9 of 12"
   milestone    String? // the next milestone, in words
   milestoneDay String? // and the day it falls on
+  /// Who the work is billed to, if anyone (Billing module). A Project's Client wins over a Todo's.
+  clientId     String?
+  client       Client?  @relation(fields: [clientId], references: [id])
+  /// An hourly rate for this Project alone, in cents, in place of its Client's.
+  rateCents    Int?
   createdAt    DateTime
   todos        Todo[]
   tieIns       TieIn[]
+  timeEntries  TimeEntry[]
 
   @@index([userId])
   @@map("project")

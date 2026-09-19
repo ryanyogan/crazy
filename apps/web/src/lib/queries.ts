@@ -36,6 +36,8 @@ export const metricsQuery = (range: MetricRange) =>
 export function applyToCache(queryClient: QueryClient, ops: Patch['ops']): void {
   queryClient.setQueryData(todayQuery.queryKey, (today) => today && apply(today, ops))
   queryClient.setQueryData(integrationsQuery.queryKey, (held) => held && apply(held, ops))
+  // The Shell lists Time and Invoices only while the Billing module is on.
+  queryClient.setQueryData(shellQuery.queryKey, (shell) => shell && apply(shell, ops))
   // A Connection made on another device comes with Clerk's word, which no patch carries.
   if (bornElsewhere(ops)) void queryClient.invalidateQueries(integrationsQuery)
 }

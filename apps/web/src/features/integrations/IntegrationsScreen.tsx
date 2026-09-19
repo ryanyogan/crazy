@@ -1,6 +1,7 @@
 import { Blueprint, NotWired } from '@crazy/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { integrationsQuery } from '#/lib/queries'
+import { BillingCard } from './BillingCard'
 import { ManageAccountButton } from './ClerkActions'
 import { ProviderCards } from './ProviderCards'
 import { RealtimeCard } from './RealtimeCard'
@@ -57,6 +58,7 @@ export function IntegrationsScreen() {
         </Blueprint>
 
         <RealtimeCard realtime={data.realtime} settings={data.settings} timeZone={data.timeZone} />
+        <BillingCard on={data.billing} />
       </aside>
     </div>
   )

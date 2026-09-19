@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vite-plus/test'
 import { type CommandState, apply, command, decide } from './command'
+import { shellDestinations } from './destinations'
 import { overlayClerk, providerFromClerk, scopesLabel } from './integrations'
 
 const NOW = new Date('2025-09-17T14:00:00Z')
@@ -110,5 +111,20 @@ describe('what Clerk reports', () => {
     expect(providerFromClerk('oauth_google')).toBe('google')
     expect(providerFromClerk('facebook')).toBeNull()
     expect(scopesLabel('')).toBeNull()
+  })
+})
+
+describe('the Billing module', () => {
+  test('turning it on gives the Shell Time and Invoices at once, and turning it off takes them away', () => {
+    const on = decide(state(), { type: 'billing.set', on: true }, NOW)
+    if (!on.ok) throw new Error(on.reason)
+    const shell = apply({ billing: false }, on.ops)
+    expect(shellDestinations(shell.billing).map((each) => each.id)).toContain('time')
+
+    const off = decide(state(), { type: 'billing.set', on: false }, NOW)
+    if (!off.ok) throw new Error(off.reason)
+    const without = shellDestinations(apply(shell, off.ops).billing).map((each) => each.id)
+    expect(without).not.toContain('time')
+    expect(without).not.toContain('invoices')
   })
 })

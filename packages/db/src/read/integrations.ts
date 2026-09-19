@@ -14,6 +14,8 @@ export type ConnectionRow = Omit<ConnectionView, 'label' | 'scopes'>
 export interface IntegrationsRead {
   connections: ConnectionRow[]
   settings: LifecycleSettings
+  /** Whether the Billing module is on. */
+  billing: boolean
 }
 
 /**
@@ -26,7 +28,7 @@ export async function readIntegrations(db: ReadDb, userId: string): Promise<Inte
     db.connection.findMany({ where: { userId }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] }),
     db.userSettings.findUnique({ where: { userId } }),
   ])
-  const { briefTime, sentBackDays, archiveDays, timeZone } = settings ?? SETTINGS_DEFAULTS
+  const { briefTime, sentBackDays, archiveDays, timeZone, billing } = settings ?? SETTINGS_DEFAULTS
   return {
     connections: rows.map((row) => ({
       id: row.id,
@@ -37,5 +39,6 @@ export async function readIntegrations(db: ReadDb, userId: string): Promise<Inte
       lastSyncAt: row.lastSyncAt?.toISOString() ?? null,
     })),
     settings: { briefTime, sentBackDays, archiveDays, timeZone },
+    billing,
   }
 }
