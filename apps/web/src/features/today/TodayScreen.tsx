@@ -40,7 +40,7 @@ export function TodayScreen() {
             </>
           )}
         </div>
-        {view.takeOnNow && <TakeOnNowCard takeOnNow={view.takeOnNow} />}
+        {view.takeOnNow && <TakeOnNowCard takeOnNow={view.takeOnNow} timeZone={today.timeZone} />}
       </header>
 
       <div className="today__body">

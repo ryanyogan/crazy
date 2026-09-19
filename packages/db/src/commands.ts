@@ -76,6 +76,7 @@ export async function loadCommandState(
       id: true,
       state: true,
       snoozedUntil: true,
+      swappedOnDay: true,
       sourceConnectionId: true,
       sourceKind: true,
       sourceItemId: true,
@@ -101,6 +102,7 @@ export async function loadCommandState(
     id: row.id,
     state: todoState.parse(row.state),
     snoozedUntil: row.snoozedUntil?.toISOString() ?? null,
+    swappedOnDay: row.swappedOnDay,
     slotHours: slots.filter((slot) => slot.todoId === row.id).map((slot) => slot.hour),
     source:
       row.sourceConnectionId === null || row.sourceItemId === null || row.sourceKind === null
@@ -144,7 +146,8 @@ export async function persistOps(db: Db, userId: string, ops: readonly Op[]): Pr
   for (const op of ops) {
     switch (op.type) {
       case 'todo.set': {
-        const { doneAt, touchedAt, snoozedUntil, ...rest } = op.set
+        // `swappedOnDay` is a day, not a moment, and travels as itself.
+        const { doneAt, touchedAt, snoozedUntil, startedAt, ...rest } = op.set
         await db.todo.updateMany({
           where: { id: op.id, userId },
           data: {
@@ -152,6 +155,7 @@ export async function persistOps(db: Db, userId: string, ops: readonly Op[]): Pr
             doneAt: toDate(doneAt),
             touchedAt: toDate(touchedAt) ?? undefined,
             snoozedUntil: toDate(snoozedUntil),
+            startedAt: toDate(startedAt),
           },
         })
         break

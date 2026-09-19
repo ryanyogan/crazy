@@ -110,6 +110,10 @@ export interface TodayTodo {
   touchedAt: string
   /** While this moment is still to come the Todo is out of the Priority stack; null when not snoozed. */
   snoozedUntil: string | null
+  /** When the user last pressed Start on it; null if they never have. */
+  startedAt: string | null
+  /** The local day the user last declined it as the Take on now; null if they never have. */
+  swappedOnDay: string | null
   /** When it was completed; null until it is. */
   doneAt: string | null
 }

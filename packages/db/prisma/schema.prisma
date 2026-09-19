@@ -179,6 +179,14 @@ model Todo {
   touchedAt       DateTime // the last time the user touched it
   /// While this moment is still to come the Todo is out of the Priority stack.
   snoozedUntil    DateTime?
+  /// When the user last pressed Start on it. The Take on now card draws its
+  /// started state while this is set; the Rollover clears it when it carries
+  /// the Todo over, so that it is offered afresh rather than read as under way.
+  startedAt       DateTime?
+  /// The local day the user last declined this Todo as the Take on now (a Swap).
+  /// It sits one place lower in the stack and is not offered again that day;
+  /// the next day the string no longer matches and it is back in its place.
+  swappedOnDay    String?
   sentBackAt      DateTime? // the Rollover that last sent it back
   doneAt          DateTime?
   slots           Slot[]

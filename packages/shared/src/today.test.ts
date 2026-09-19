@@ -18,6 +18,8 @@ function todo(id: string, fields: Partial<TodayTodo> = {}): TodayTodo {
     createdAt: '2025-09-16T09:00:00.000Z',
     touchedAt: '2025-09-16T09:00:00.000Z',
     snoozedUntil: null,
+    startedAt: null,
+    swappedOnDay: null,
     doneAt: null,
     ...fields,
   }
@@ -25,6 +27,8 @@ function todo(id: string, fields: Partial<TodayTodo> = {}): TodayTodo {
 
 const ids = (todos: { id: string }[]) => todos.map(({ id }) => id)
 const now = new Date('2025-09-17T13:41:00.000Z')
+// Frame 1a's moment: Wednesday 17 Sep 2025, 08:41 on Ryan's wall clock.
+const timeZone = 'America/Chicago'
 
 it('lists only `today` Todos in the Priority stack, in the recommended order', () => {
   const stack = priorityStack(
@@ -36,6 +40,7 @@ it('lists only `today` Todos in the Priority stack, in the recommended order', (
       todo('second', { stackPosition: 2 }),
     ],
     now,
+    timeZone,
   )
   expect(ids(stack)).toEqual(['first', 'second', 'third'])
 })
@@ -48,29 +53,44 @@ it('puts a Todo with no position yet after the placed ones, oldest first', () =>
       todo('placed', { stackPosition: 5 }),
     ],
     now,
+    timeZone,
   )
   expect(ids(stack)).toEqual(['placed', 'jotted earlier', 'jotted later'])
 })
 
+/** The stack read at a wall-clock hour of frame 1a's Wednesday. */
+const at = (hour: number) => new Date(`2025-09-17T${String(hour + 5).padStart(2, '0')}:41:00.000Z`)
+
 it('takes the top of the Priority stack as the Take on now, for the hours it is slotted', () => {
   const stack = [todo('spike', { slotHours: [9, 10] }), todo('reply', { slotHours: [12] })]
-  expect(takeOnNow(stack, 8)).toEqual({ todo: stack[0], hours: { from: 9, until: 11 } })
+  expect(takeOnNow(stack, at(8), timeZone)).toEqual({
+    todo: stack[0],
+    hours: { from: 9, until: 11 },
+    started: false,
+  })
 })
 
 it('has no Take on now when no `today` Todo remains', () => {
-  expect(takeOnNow(priorityStack([todo('finished', { state: 'done' })], now), 8)).toBeNull()
+  const stack = priorityStack([todo('finished', { state: 'done' })], now, timeZone)
+  expect(takeOnNow(stack, at(8), timeZone)).toBeNull()
 })
 
 it('names no hours for a Take on now whose Slots have passed or were never given', () => {
-  expect(takeOnNow([todo('spike', { slotHours: [9, 10] })], 14)?.hours).toBeNull()
-  expect(takeOnNow([todo('unslotted')], 8)?.hours).toBeNull()
+  expect(takeOnNow([todo('spike', { slotHours: [9, 10] })], at(14), timeZone)?.hours).toBeNull()
+  expect(takeOnNow([todo('unslotted')], at(8), timeZone)?.hours).toBeNull()
 })
 
 it('names what is left of a run of Slots already under way, and stops at a gap', () => {
-  expect(takeOnNow([todo('spike', { slotHours: [9, 10, 13] })], 10)?.hours).toEqual({
+  expect(takeOnNow([todo('spike', { slotHours: [9, 10, 13] })], at(10), timeZone)?.hours).toEqual({
     from: 10,
     until: 11,
   })
+})
+
+it('reads the Take on now as started once the user has pressed Start on it', () => {
+  expect(takeOnNow([todo('spike')], at(10), timeZone)?.started).toBe(false)
+  const started = [todo('spike', { startedAt: '2025-09-17T14:10:00.000Z' })]
+  expect(takeOnNow(started, at(10), timeZone)?.started).toBe(true)
 })
 
 it('words the hours for a desktop and for a phone', () => {

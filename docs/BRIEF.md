@@ -51,8 +51,8 @@ Updated as tickets land.
 | Visual comparison harness (`pnpm visual`): frames 1a and 1c–1g against their routes, derived phone screenshots                                    | Real; the Cori frames (2a–2c, 3a, 3b, 4a) join with ticket 16                                                                                                                                                                                                                                                    |
 | Schema for Connection, Circle, Project, Todo, Slot, Brief, calendar event, Signal and the timeline's wording                                      | Real; "one Source, one open Todo" is a partial unique index                                                                                                                                                                                                                                                      |
 | The Ryan persona seed (`seedPersona` in `@crazy/db/write`): every new user starts from it; `POST /dev/seed` resets                                | Real; nothing is stamped later than the moment seeded over; Promises, Waiting on, history to come                                                                                                                                                                                                                |
-| Today screen: greeting, date, Brief, Take on now, Priority stack with footer, read from D1 by `readToday`                                         | Real on seeded rows; Start and Swap are drawn only                                                                                                                                                                                                                                                               |
-| The command seam (`decide` and `apply` in `@crazy/shared`), `useCommand`, the Coordinator's single write path                                     | Real, for nine commands: complete, add, snooze a Todo, give it a Slot or take it off; a Mention; the lifecycle settings, a Connection and its Side                                                                                                                                                               |
+| Today screen: greeting, date, Brief, Take on now, Priority stack with footer, read from D1 by `readToday`                                         | Real on seeded rows; Start and Swap are wired on the desktop, where the frame draws them                                                                                                                                                                                                                         |
+| The command seam (`decide` and `apply` in `@crazy/shared`), `useCommand`, the Coordinator's single write path                                     | Real, for eleven commands: complete, add, snooze a Todo, give it a Slot or take it off, start it or swap it; a Mention; the lifecycle settings, a Connection and its Side                                                                                                                                        |
 | The Brief's text, the stack's order and each Todo's reason                                                                                        | Seeded, stored where generated text will live                                                                                                                                                                                                                                                                    |
 | Today screen: hour timeline, Mentions, the place to add a Todo                                                                                    | Real on seeded rows; adding, dragging a Todo onto an hour and the hour picker are wired                                                                                                                                                                                                                          |
 | How each hour of the timeline is worded                                                                                                           | Seeded (`timeline_hour`), while the hour still holds the Todos it was written for; else derived                                                                                                                                                                                                                  |
@@ -97,7 +97,15 @@ frames exist:
 - **Mentions and the place to add a Todo on a phone.** The phone frame stops at the Priority stack;
   they follow it. The harness masks that rectangle of the phone frame and says why.
 - **Start, Swap and the stack's footer on a phone.** The phone frame draws none of them, so they
-  are hidden below 900px. Start and Swap will need a phone treatment when they are wired (ticket 09).
+  are hidden below 900px. Ticket 09 wired Start and Swap on the desktop and left the phone without
+  them: the harness compares the phone's Take on now card, and the frame draws no actions inside it,
+  so a phone treatment needs a frame (or a mask, which is a debt) before it can be added.
+- **The started state of Take on now, with the Billing module off.** No frame draws it. The card
+  takes the running timer bar's treatment from frame 3a — the accent tint and the accent hairline —
+  without the picker, because with the module off there is no timer and no Client to pick; it says
+  "Started · since 09:12" where Start and Swap were. The card gives up the solid accent fill while
+  it is under way, so a started Today screen has none. With the Billing module on (ticket 20) Start
+  will begin a timer and the bar will hold the elapsed time.
 - **An empty Priority stack** says "Nothing left for today." and the Take on now card is absent.
 - **The Circles screen on a phone.** The frame draws desktop only. The two columns fall into one:
   the heading, the figure at the width there is (it keeps its proportions), then the Overlaps and
@@ -130,7 +138,7 @@ frames exist:
 - **A week Crazy has not written about** keeps the "State of the union" heading and says so under
   it, and shows no tie-in cards. No frame draws either.
 - Still to come, per the spec: phone layouts for Projects, Metrics, Time, Invoices
-  and Integrations, and the started state of Take on now with the Billing module off.
+  and Integrations.
 
 Five deliberate differences from the frames: the wordmark reads CRAZY where they read TODAY; the
 stack's footer says "1 sent back" where frame 1a says "1 moved to backlog"; the Mentions card

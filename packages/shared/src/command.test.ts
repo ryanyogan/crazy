@@ -36,6 +36,8 @@ function todo(id: string, fields: Partial<TodayTodo> = {}): TodayTodo {
     createdAt: '2025-09-16T09:00:00.000Z',
     touchedAt: '2025-09-16T09:00:00.000Z',
     snoozedUntil: null,
+    startedAt: null,
+    swappedOnDay: null,
     doneAt: null,
     ...fields,
   }
@@ -697,6 +699,96 @@ it('leaves a cached day other than the one a Slot was given on alone, and says s
   expect(namesAnotherDay({}, tomorrow)).toBe(false)
 })
 
+// ── Start and Swap the Take on now ────────────────────────────────────────────
+
+const start = (todoId: string): Command => ({ type: 'todo.start', todoId })
+const swap = (todoId: string): Command => ({ type: 'todo.swap', todoId })
+
+/** Frame 1a's stack, as far down as these tests look. */
+const offered = () =>
+  day([
+    todo('spike', { stackPosition: 1, slotHours: [9, 10] }),
+    todo('reply', { stackPosition: 2, slotHours: [12] }),
+    todo('pr', { stackPosition: 3 }),
+  ])
+
+it('starts the Take on now: it is under way, touched, and still the Take on now', () => {
+  const state = offered()
+  const { decision, after } = run(state, start('spike'))
+
+  expect(decision).toEqual({
+    ok: true,
+    ops: [
+      {
+        type: 'todo.set',
+        id: 'spike',
+        set: { startedAt: now.toISOString(), touchedAt: now.toISOString() },
+      },
+    ],
+  })
+  expect(after.todos[0]).toMatchObject({
+    state: 'today',
+    startedAt: now.toISOString(),
+    touchedAt: now.toISOString(),
+  })
+  // Taking something on does not move it, and the card now draws its started state.
+  expect(view(after).stack.map(({ id }) => id)).toEqual(['spike', 'reply', 'pr'])
+  expect(view(after).takeOnNow).toMatchObject({ todo: { id: 'spike' }, started: true })
+})
+
+it('swaps the Take on now: the next fitting Todo takes its place, one place above it', () => {
+  const state = offered()
+  expect(view(state).takeOnNow?.todo.id).toBe('spike')
+
+  const { decision, after } = run(state, swap('spike'))
+
+  expect(decision).toEqual({
+    ok: true,
+    ops: [{ type: 'todo.set', id: 'spike', set: { swappedOnDay: '2025-09-17' } }],
+  })
+  // The next fitting Todo is the Take on now, with the hours it fits.
+  expect(view(after).takeOnNow).toMatchObject({
+    todo: { id: 'reply' },
+    hours: { from: 12, until: 13 },
+  })
+  // The declined one sits one place lower, and no lower than that.
+  expect(view(after).stack.map(({ id }) => id)).toEqual(['reply', 'spike', 'pr'])
+})
+
+it('changes no state and does not touch a Todo that is swapped', () => {
+  const touchedAt = '2025-09-16T09:00:00.000Z'
+  const { after } = run(day([todo('spike', { stackPosition: 1, touchedAt })]), swap('spike'))
+
+  // Dodging something all day is not engaging with it: the Rollover must still
+  // send it back (CONTEXT.md, "Swap" and "Touched").
+  expect(after.todos[0]).toMatchObject({ state: 'today', touchedAt, doneAt: null })
+})
+
+it('keeps a swapped Todo lowered for the rest of that local day, and no further', () => {
+  const { after } = run(offered(), swap('spike'))
+  const order = (moment: Date) => viewToday(after, moment, timeZone).stack.map(({ id }) => id)
+  const offers = (moment: Date) => viewToday(after, moment, timeZone).takeOnNow?.todo.id
+
+  // Later the same day it is still a place lower and still not on offer.
+  const evening = new Date('2025-09-18T02:30:00.000Z') // 21:30 on Ryan's wall clock
+  expect(order(evening)).toEqual(['reply', 'spike', 'pr'])
+  expect(offers(evening)).toBe('reply')
+
+  // Past the user's own midnight it is back at the top, offered again.
+  const tomorrow = new Date('2025-09-18T13:41:00.000Z')
+  expect(order(tomorrow)).toEqual(['spike', 'reply', 'pr'])
+  expect(offers(tomorrow)).toBe('spike')
+})
+
+it('leaves no Take on now card when the last fitting Todo is swapped', () => {
+  const alone = day([todo('spike', { stackPosition: 1 })])
+  const { after } = run(alone, swap('spike'))
+
+  // It is still in the stack — its state did not change — but nothing is offered.
+  expect(view(after).stack.map(({ id }) => id)).toEqual(['spike'])
+  expect(view(after).takeOnNow).toBeNull()
+})
+
 // ── When the optimistic screen can be kept ────────────────────────────────────
 
 /** What the browser guessed against its cache, for a command the Coordinator then decided. */
@@ -774,6 +866,8 @@ it('the optimistic screen stands when the Coordinator touched every row the brow
     addSignal('priya', 'new'),
     slot('spike', 12),
     clearSlot('spike'),
+    start('spike'),
+    swap('spike'),
   ]) {
     const guess = guessFor(stack, input)
     expect(covers(guess, guess)).toBe(true)

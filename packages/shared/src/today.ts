@@ -12,19 +12,53 @@ import { type SignalKind, type Source, type TodayTodo, isSnoozed } from './todo'
 // stack is, which Todo is the Take on now, and how the moment is worded.
 
 /**
+ * Whether the user declined this Todo as the Take on now on the day in
+ * question. A Swap stores the day it was taken on, so the rest of that local
+ * day it sits lower and is not offered again — and not one minute beyond it,
+ * because tomorrow's day no longer matches the string.
+ */
+export function isSwapped(todo: Pick<TodayTodo, 'swappedOnDay'>, day: string): boolean {
+  return todo.swappedOnDay === day
+}
+
+/**
+ * Whether the user has pressed Start on this Todo. It is the moment itself and
+ * nothing derived: no rule here decides when a start stops counting, because
+ * the day's turning belongs to the Rollover, which clears `startedAt` when it
+ * carries a Todo over.
+ */
+export function isStarted(todo: Pick<TodayTodo, 'startedAt'>): boolean {
+  return todo.startedAt !== null
+}
+
+/** Where a Todo sits in the stack: its place, and one lower once it has been declined today. */
+const place = (todo: StackTodo, day: string) =>
+  (todo.stackPosition ?? Infinity) + (isSwapped(todo, day) ? 1 : 0)
+
+type StackTodo = Pick<
+  TodayTodo,
+  'state' | 'stackPosition' | 'createdAt' | 'snoozedUntil' | 'swappedOnDay'
+>
+
+/**
  * The Priority stack: the `today` Todos in the order Crazy recommends. It is
  * an ordering of Todos, not a list of its own. A Todo with no position yet
  * (one just added) follows the placed ones, oldest first. A snoozed Todo is
- * out of it until its snooze ends.
+ * out of it until its snooze ends. A Todo the user swapped today sits one
+ * place lower, and behind the Todo it changed places with where the two meet.
  */
-export function priorityStack<
-  T extends Pick<TodayTodo, 'state' | 'stackPosition' | 'createdAt' | 'snoozedUntil'>,
->(todos: readonly T[], now: Date): T[] {
+export function priorityStack<T extends StackTodo>(
+  todos: readonly T[],
+  now: Date,
+  timeZone: string,
+): T[] {
+  const { day } = wallClock(now, timeZone)
   return todos
     .filter((todo) => todo.state === 'today' && !isSnoozed(todo, now))
     .sort(
       (a, b) =>
-        (a.stackPosition ?? Infinity) - (b.stackPosition ?? Infinity) ||
+        place(a, day) - place(b, day) ||
+        Number(isSwapped(a, day)) - Number(isSwapped(b, day)) ||
         a.createdAt.localeCompare(b.createdAt),
     )
 }
@@ -39,6 +73,8 @@ export interface TakeOnNow<T> {
   todo: T
   /** The hours the Todo fits; null when it holds no Slot still to come. */
   hours: Hours | null
+  /** Whether the user has pressed Start on it today, which is what the card draws. */
+  started: boolean
 }
 
 /** The first unbroken run of Slots that has not already ended. */
@@ -52,17 +88,25 @@ function fittingHours(slotHours: readonly number[], hourNow: number): Hours | nu
 }
 
 /**
- * The one Todo to do at this moment, or none when the stack is empty. Until
- * the calendar is read it is the top of the stack, and the hours it fits are
- * the Slots it holds.
+ * The one Todo to do at this moment, or none when nothing in the stack is
+ * still on offer. Until the calendar is read it is the highest Todo in the
+ * stack the user has not declined today, and the hours it fits are the Slots
+ * it holds. Swap the last one and there is no Take on now, rather than a card
+ * offering something that was just turned down.
  */
-export function takeOnNow<T extends Pick<TodayTodo, 'slotHours'>>(
+export function takeOnNow<T extends Pick<TodayTodo, 'slotHours' | 'swappedOnDay' | 'startedAt'>>(
   stack: readonly T[],
-  hourNow: number,
+  now: Date,
+  timeZone: string,
 ): TakeOnNow<T> | null {
-  const todo = stack[0]
+  const { day, hour } = wallClock(now, timeZone)
+  const todo = stack.find((each) => !isSwapped(each, day))
   if (!todo) return null
-  return { todo, hours: fittingHours(todo.slotHours, hourNow) }
+  return {
+    todo,
+    hours: fittingHours(todo.slotHours, hour),
+    started: isStarted(todo),
+  }
 }
 
 /** Something Crazy noticed at a Provider that might deserve a Todo. It never becomes one on its own. */
@@ -118,8 +162,7 @@ export interface TodayView {
 
 /** Everything the Today screen derives from the day, at a moment of it. */
 export function viewToday(today: Today, now: Date, timeZone: string): TodayView {
-  const hourNow = wallClock(now, timeZone).hour
-  const stack = priorityStack(today.todos, now)
+  const stack = priorityStack(today.todos, now, timeZone)
   return {
     stack,
     snoozed: today.todos
@@ -128,7 +171,7 @@ export function viewToday(today: Today, now: Date, timeZone: string): TodayView 
     done: today.todos
       .filter((todo) => todo.state === 'done')
       .sort((a, b) => (b.doneAt ?? '').localeCompare(a.doneAt ?? '')),
-    takeOnNow: takeOnNow(stack, hourNow),
+    takeOnNow: takeOnNow(stack, now, timeZone),
     timeline: timeline(stack, today.events, today.hours),
     meetings: meetingCount(today.events),
     carriedOver: stack.filter((todo) => todo.carryCount > 0).length,

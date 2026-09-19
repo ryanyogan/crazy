@@ -121,6 +121,31 @@
   outline-color: var(--color-bg);
 }
 
+/*
+ * Started: no frame draws this, so it takes the running timer bar's treatment
+ * from frame 3a — the accent tint and the accent hairline — without the picker,
+ * because with the Billing module off there is no timer and no Client to pick.
+ * The card gives up the solid accent fill as it does so: it has stopped being
+ * the recommendation and become the report of what is under way.
+ */
+.ton--started {
+  background: var(--color-accent-100);
+  border-color: var(--color-accent-300);
+  color: var(--color-text);
+}
+
+.ton--started .ton__kicker,
+.ton--started .ton__meta {
+  opacity: 1;
+  color: var(--color-neutral-700);
+}
+
+.ton__started {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--color-accent-800);
+}
+
 /* ── Priority stack ───────────────────────────────────────────────────────── */
 
 .stack {

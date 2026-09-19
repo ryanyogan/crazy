@@ -111,6 +111,8 @@ export async function readToday(
       createdAt: row.createdAt.toISOString(),
       touchedAt: row.touchedAt.toISOString(),
       snoozedUntil: row.snoozedUntil?.toISOString() ?? null,
+      startedAt: row.startedAt?.toISOString() ?? null,
+      swappedOnDay: row.swappedOnDay,
       doneAt: row.doneAt?.toISOString() ?? null,
     })),
     events,

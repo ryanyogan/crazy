@@ -71,6 +71,10 @@ export const command = z.discriminatedUnion('type', [
   // user's (`SERVER_ONLY`). The row is bookkeeping: no token is in it, or anywhere.
   z.object({ type: z.literal('connection.add'), id, provider, externalAccountId: id }),
   z.object({ type: z.literal('connection.setSide'), connectionId: id, side }),
+  // Taking on the Take on now, and declining it. Start says the user is on it
+  // now; Swap says not this one, not today.
+  z.object({ type: z.literal('todo.start'), todoId: id }),
+  z.object({ type: z.literal('todo.swap'), todoId: id }),
 ])
 export type Command = z.infer<typeof command>
 
@@ -83,6 +87,9 @@ export const todoChange = z
     state: todoState,
     touchedAt: z.iso.datetime(),
     snoozedUntil: z.iso.datetime().nullable(),
+    startedAt: z.iso.datetime(),
+    /** The user's local day, which is how long a Swap lasts. */
+    swappedOnDay: day,
     doneAt: z.iso.datetime().nullable(),
   })
   .partial()
@@ -143,6 +150,8 @@ export interface TodoFacts {
   source: Source | null
   /** While this moment is still to come the Todo has left the day; null when not snoozed. */
   snoozedUntil: string | null
+  /** The local day the user last declined it as the Take on now; null if they never have. */
+  swappedOnDay: string | null
   /** The hours it holds a Slot on, on the day the state is of (`needsTheDay`). */
   slotHours: readonly number[]
 }
@@ -184,6 +193,8 @@ export function todosNamed(input: Command): string[] {
     case 'todo.snooze':
     case 'todo.slot':
     case 'todo.clearSlot':
+    case 'todo.start':
+    case 'todo.swap':
       return [input.todoId]
     case 'todo.add':
       return [input.id]
@@ -217,6 +228,9 @@ export function needsTheDay(input: Command): boolean {
 export function needsConnections(input: Command): boolean {
   return input.type === 'connection.add' || input.type === 'connection.setSide'
 }
+
+/** A snoozed Todo has left the day: nothing that plans or takes on the day applies to it. */
+const OUT_OF_THE_DAY = 'A snoozed Todo is out of the day until its snooze ends.'
 
 /** What stands between a Todo and an hour, once there is something. */
 type SlotBlock =
@@ -260,7 +274,7 @@ export function slotRefusal(
     case 'state':
       return 'Only a Todo in the Priority stack can be given a Slot.'
     case 'snoozed':
-      return 'A snoozed Todo is out of the day until its snooze ends.'
+      return OUT_OF_THE_DAY
     case 'day-end':
       return 'The day ends before that Todo would.'
     case 'meeting':
@@ -470,6 +484,38 @@ export function decide(state: CommandState, input: Command, now: Date): Decision
         ops: [{ type: 'connection.set', id: connection.id, set: { defaultSide: input.side } }],
       }
     }
+
+    case 'todo.start': {
+      const todo = state.todos.find((each) => each.id === input.todoId)
+      if (!todo) return refuse('That Todo no longer exists.')
+      if (todo.state !== 'today') return refuse('Only a Todo in the Priority stack can be started.')
+      // A Todo the user has put out of the day is not one they are starting.
+      if (isSnoozed(todo, now)) return refuse(OUT_OF_THE_DAY)
+      // Starting is a touch: a Todo worked on is carried over, not sent back.
+      // Pressed again it says the same thing of a later moment, which is what
+      // "I am on this now" means; nothing is lost, because nothing read the first.
+      return {
+        ok: true,
+        ops: [{ type: 'todo.set', id: todo.id, set: { startedAt: at, touchedAt: at } }],
+      }
+    }
+
+    case 'todo.swap': {
+      const todo = state.todos.find((each) => each.id === input.todoId)
+      if (!todo) return refuse('That Todo no longer exists.')
+      if (todo.state !== 'today') return refuse('Only a Todo in the Priority stack can be swapped.')
+      if (isSnoozed(todo, now)) return refuse(OUT_OF_THE_DAY)
+      // Declined twice, or on two devices at once: it is already a place lower
+      // and out of the running for today, which is what was asked.
+      if (todo.swappedOnDay === state.day) return { ok: true, ops: [] }
+      // Declining is not touching it (CONTEXT.md, "Swap"): a Todo the user
+      // keeps dodging must still be sent back at the Rollover. Its state does
+      // not change either — only where it sits, and only until midnight.
+      return {
+        ok: true,
+        ops: [{ type: 'todo.set', id: todo.id, set: { swappedOnDay: state.day } }],
+      }
+    }
   }
 }
 
@@ -485,6 +531,8 @@ function born(todo: NewTodo): TodayTodo {
     reason: null,
     slotHours: [],
     snoozedUntil: null,
+    startedAt: null,
+    swappedOnDay: null,
     doneAt: null,
   }
 }

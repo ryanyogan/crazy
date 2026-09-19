@@ -441,6 +441,45 @@ it("cannot give another user's Todo a Slot", async () => {
   expect((await slotsOf(theirs.id)).map((slot) => slot.hour)).toEqual([12])
 })
 
+const startedRow = (id: string) =>
+  env.DB.prepare('SELECT startedAt, swappedOnDay, state, touchedAt FROM todo WHERE id = ?')
+    .bind(id)
+    .first<{
+      startedAt: string | null
+      swappedOnDay: string | null
+      state: string
+      touchedAt: string
+    }>()
+
+// The one thing about Start and Swap that lives here and not at the command
+// seam: a moment and a day reaching their columns in D1 intact. The rules
+// themselves are pinned in `packages/shared/src/command.test.ts`.
+it('writes a start as a moment and a swap as a day, touching the Todo only for the start', async () => {
+  const coordinator = coordinatorFor('user_aa')
+  await coordinator.provision({ timeZone: 'America/Chicago' })
+  const spike = (await todoRow('user_aa', 'Finish Cloudflare session-token spike'))!
+  const dentist = (await todoRow('user_aa', 'Book dentist'))!
+  const untouchedSince = '2025-09-16T16:00:00.000Z'
+  await env.DB.prepare("UPDATE todo SET touchedAt = ? WHERE userId = 'user_aa'")
+    .bind(untouchedSince)
+    .run()
+
+  await coordinator.command({ type: 'todo.start', todoId: spike.id })
+  await coordinator.command({ type: 'todo.swap', todoId: dentist.id })
+
+  const started = (await startedRow(spike.id))!
+  expect(started.startedAt).not.toBeNull()
+  expect(new Date(started.startedAt!).getTime()).toBeGreaterThan(0)
+  // Starting is a touch, taken at the Coordinator's own moment.
+  expect(new Date(started.touchedAt).getTime()).toBeGreaterThan(new Date(untouchedSince).getTime())
+
+  const swapped = (await startedRow(dentist.id))!
+  expect(swapped.swappedOnDay).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+  expect(swapped.state).toBe('today')
+  // Declining is not touching: the Rollover must still be free to send it back.
+  expect(new Date(swapped.touchedAt).getTime()).toBe(new Date(untouchedSince).getTime())
+})
+
 it("cannot add another user's Mention", async () => {
   await coordinatorFor('user_s').provision({ timeZone: 'America/Chicago' })
   await coordinatorFor('user_t').provision({ timeZone: 'America/Chicago' })
