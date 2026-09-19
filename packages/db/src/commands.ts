@@ -303,6 +303,15 @@ export async function persistOps(db: Db, userId: string, ops: readonly Op[]): Pr
           where: { id: op.id, userId },
           data: { ...rest, endedAt: toDate(endedAt) },
         })
+        break
+      }
+      case 'project.insert': {
+        const { createdAt, ...rest } = op.project
+        // No Circle: Crazy infers Circles, and a Project named by hand has none
+        // until it has looked, so it has no Side of its own yet either.
+        await db.project.create({
+          data: { ...rest, userId, circleId: null, createdAt: new Date(createdAt) },
+        })
       }
     }
   }

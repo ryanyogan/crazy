@@ -14,7 +14,7 @@ import {
   namesUnknownWork,
 } from './command'
 import type { DayEvent, HourWording } from './timeline'
-import type { TimeEntryFacts, TimerEntry, TodayTimer } from './timer'
+import type { TimeEntryFacts, TimerEntry, TimerPicker, TodayTimer } from './timer'
 import { type Signal, type Today, viewToday } from './today'
 import type { Source, TodayTodo } from './todo'
 
@@ -77,6 +77,7 @@ function day(todos: TodayTodo[], signals: Signal[] = []): Today {
     signals,
     sentBack: 0,
     timer: null,
+    picker: null,
   }
 }
 
@@ -1128,4 +1129,188 @@ it('reads the day again when a patch starts a timer on work this browser cannot 
   expect(ops.ok && namesUnknownWork({ timer: bar }, ops.ops)).toBe(true)
   // With the Billing module off there is no bar to catch up, and nothing to read.
   expect(ops.ok && namesUnknownWork({ timer: null }, ops.ops)).toBe(false)
+})
+
+// ── Switching the work while the timer runs (ticket 18) ─────────────────────
+
+const QUILL = 'client/quill'
+const ADMIN = 'project/admin'
+
+/** Cori's world as the picker offers it: two Clients, and a Project of her own. */
+const picking = (entries: TimeEntryFacts[]): CommandState =>
+  timing(entries, {
+    projects: [
+      { id: DISCOVERY, clientId: MERIDIAN },
+      // A Project with no Client: her own work, which Internal is the label for.
+      { id: ADMIN, clientId: null },
+    ],
+    clients: [{ id: MERIDIAN }, { id: QUILL }],
+  })
+
+const switchTo = (fields: Partial<Extract<Command, { type: 'timer.switch' }>> = {}): Command => ({
+  type: 'timer.switch',
+  id: 'entry/next',
+  clientId: null,
+  projectId: ADMIN,
+  ...fields,
+})
+
+it('ends the running entry and begins the next at the same instant', () => {
+  const decision = decide(picking([running()]), switchTo(), now)
+
+  expect(decision).toEqual({
+    ok: true,
+    ops: [
+      { type: 'timeEntry.set', id: 'entry/wed', set: { endedAt: now.toISOString() } },
+      {
+        type: 'timeEntry.insert',
+        entry: {
+          id: 'entry/next',
+          clientId: null,
+          projectId: ADMIN,
+          todoId: null,
+          note: '',
+          billable: false,
+          startedAt: now.toISOString(),
+          createdAt: now.toISOString(),
+        },
+      },
+    ],
+  })
+  // The same instant, so the day has no gap in it and no second is counted twice.
+  const [ended, begun] = decision.ok ? decision.ops : []
+  expect(ended?.type === 'timeEntry.set' && ended.set.endedAt).toBe(
+    begun?.type === 'timeEntry.insert' ? begun.entry.startedAt : null,
+  )
+})
+
+it('refuses to switch with nothing running: beginning from idle is a start', () => {
+  const stopped: TimeEntryFacts = { ...running(), endedAt: '2025-09-17T15:00:00.000Z' }
+
+  expect(decide(picking([stopped]), switchTo(), now)).toEqual({
+    ok: false,
+    reason: 'No timer is running. Press start to begin one.',
+  })
+})
+
+it('refuses to switch to the work already running, which would split nothing', () => {
+  const decision = decide(
+    picking([running()]),
+    switchTo({ clientId: MERIDIAN, projectId: DISCOVERY }),
+    now,
+  )
+
+  expect(decision).toEqual({ ok: false, reason: 'The timer is already on that work.' })
+})
+
+it('settles the Client and the Project against each other, in all four combinations', () => {
+  // Running on Meridian with no Project, so that none of the four is the work
+  // it is already on: a switch to that is refused, and is its own test.
+  const onMeridian: TimeEntryFacts = {
+    id: 'entry/wed',
+    clientId: MERIDIAN,
+    projectId: null,
+    endedAt: null,
+  }
+  const cases: {
+    what: string
+    clientId: string | null
+    projectId: string | null
+    ends: { clientId: string | null; projectId: string | null } | string
+  }[] = [
+    // A Project that has a Client sets that Client, whether or not it is named.
+    {
+      what: 'a Project with a Client',
+      clientId: null,
+      projectId: DISCOVERY,
+      ends: { clientId: MERIDIAN, projectId: DISCOVERY },
+    },
+    {
+      what: 'a Project with a Client, contradicted',
+      clientId: QUILL,
+      projectId: DISCOVERY,
+      ends: "That Client is not the Project's Client.",
+    },
+    // A Project with no Client is the user's own: naming a Client with it is a
+    // contradiction too, and refused in the same words.
+    {
+      what: 'an Internal Project',
+      clientId: null,
+      projectId: ADMIN,
+      ends: { clientId: null, projectId: ADMIN },
+    },
+    {
+      what: 'an Internal Project with a Client',
+      clientId: QUILL,
+      projectId: ADMIN,
+      ends: "That Client is not the Project's Client.",
+    },
+    // A Client with no Project: billable work that is part of nothing larger.
+    {
+      what: 'a Client alone',
+      clientId: QUILL,
+      projectId: null,
+      ends: { clientId: QUILL, projectId: null },
+    },
+    // Neither: Internal, which is the absence of a Client and not a row anywhere.
+    { what: 'neither', clientId: null, projectId: null, ends: { clientId: null, projectId: null } },
+  ]
+
+  for (const { what, clientId, projectId, ends } of cases) {
+    const decision = decide(picking([onMeridian]), switchTo({ clientId, projectId }), now)
+    if (typeof ends === 'string') {
+      expect(decision, what).toEqual({ ok: false, reason: ends })
+      continue
+    }
+    const begun = decision.ok ? decision.ops[1] : null
+    expect(begun?.type === 'timeEntry.insert' ? begun.entry : null, what).toMatchObject({
+      ...ends,
+      // Work for a Client is billable; the user's own never is.
+      billable: ends.clientId !== null,
+    })
+  }
+})
+
+it("names a Project in the picker, and refuses one for somebody else's Client", () => {
+  const add = (clientId: string | null): Command => ({
+    type: 'project.add',
+    id: 'project/new',
+    name: 'Retainer review',
+    clientId,
+  })
+  const state = picking([running()])
+
+  expect(decide(state, add(MERIDIAN), now)).toEqual({
+    ok: true,
+    ops: [
+      {
+        type: 'project.insert',
+        project: {
+          id: 'project/new',
+          name: 'Retainer review',
+          clientId: MERIDIAN,
+          // On track, no Circle: Crazy infers Circles, and a Project named by
+          // hand has none until it has looked.
+          status: 'on_track',
+          createdAt: now.toISOString(),
+        },
+      },
+    ],
+  })
+  expect(decide(state, add('client/somebody-elses'), now)).toEqual({
+    ok: false,
+    reason: 'That Client is not one of yours.',
+  })
+
+  // Laid twice — once as the answer, once over the socket — the picker holds it once.
+  const made = decide(state, add(null), now)
+  const picker: TimerPicker = {
+    clients: [{ id: null, name: 'Internal', weekSeconds: 0, projects: [] }],
+    recent: [],
+  }
+  const ops = made.ok ? made.ops : []
+  const twice = apply(apply({ picker }, ops), ops)
+  expect(twice.picker?.clients[0]?.projects).toEqual([
+    { id: 'project/new', name: 'Retainer review', lastStartedAt: null, running: false },
+  ])
 })

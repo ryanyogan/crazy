@@ -342,20 +342,23 @@ export function cori(input: SeedInput) {
   }
   const started = past(workdayBack(40), '09:00')
 
-  const clients: Prisma.ClientCreateManyInput[] = CLIENTS.map(({ key, ...client }) => ({
+  /** A minute apart, so that the order she took them on is a real order. */
+  const takenOn = (index: number) => new Date(started.getTime() + index * 60_000)
+
+  const clients: Prisma.ClientCreateManyInput[] = CLIENTS.map(({ key, ...client }, index) => ({
     id: id('client', key),
     userId,
     ...client,
-    createdAt: started,
+    createdAt: takenOn(index),
   }))
 
-  const projects: Prisma.ProjectCreateManyInput[] = PROJECTS.map((project) => ({
+  const projects: Prisma.ProjectCreateManyInput[] = PROJECTS.map((project, index) => ({
     id: id('project', project.key),
     userId,
     name: project.name,
     status: 'on_track',
     clientId: project.client ? id('client', project.client) : null,
-    createdAt: started,
+    createdAt: takenOn(index),
   }))
 
   const todos: Prisma.TodoCreateManyInput[] = STACK.map((todo, index) => ({

@@ -13,7 +13,7 @@ import {
   writtenFor,
 } from '@crazy/shared'
 import type { ReadDb } from '../client'
-import { readTimer } from './timer'
+import { readTimer, readTimerPicker } from './timer'
 
 /**
  * The day's calendar, as the timeline and the Slot commands read it: meetings
@@ -67,7 +67,7 @@ export async function readToday(
   const dayStart = startOfDay(day, timeZone)
   const dayEnd = startOfDay(addDays(day, 1), timeZone)
 
-  const [brief, todos, sentBack, events, hours, signals, timer] = await Promise.all([
+  const [brief, todos, sentBack, events, hours, signals, timer, picker] = await Promise.all([
     db.brief.findUnique({
       where: { userId_kind_day: { userId, kind: 'daily', day } },
       select: { body: true, bodyShort: true },
@@ -87,6 +87,9 @@ export async function readToday(
     db.timelineHour.findMany({ where: { userId, day }, orderBy: { hour: 'asc' } }),
     db.signal.findMany({ where: { userId, kind: 'mention' }, orderBy: { at: 'desc' } }),
     billing ? readTimer(db, userId, now, timeZone) : null,
+    // The picker's lists come with the timer and for the same reason: with the
+    // Billing module off there is no timer, and nothing to choose work for.
+    billing ? readTimerPicker(db, userId, now, timeZone) : null,
   ])
 
   return {
@@ -147,5 +150,6 @@ export async function readToday(
     })),
     sentBack,
     timer,
+    picker,
   }
 }

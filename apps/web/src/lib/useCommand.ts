@@ -2,6 +2,7 @@ import {
   type Command,
   type CommandState,
   type Patch,
+  type TimerPicker,
   type TodayTimer,
   covers,
   decide,
@@ -19,12 +20,18 @@ class CommandRefused extends Error {}
 
 /**
  * What this browser knows of the user's Time entries, and of the Clients and
- * Projects they name. The cache holds today's entries and the last one, which
- * is enough to decide a start from the preselection — all the bar can start
- * until the picker arrives. The Coordinator decides against every row in D1, so
- * a start this guess allows and the truth refuses is simply put back.
+ * Projects a timer command may name. The entries are the ones the bar holds:
+ * today's, the last one, and the running one. The Clients and Projects are the
+ * picker's own lists, which are every one the user has — so any work the picker
+ * offers can be decided here, and a Project named a moment ago is among them.
+ * The Coordinator decides against every row in D1 regardless, so a command this
+ * guess allows and the truth refuses is simply put back.
  */
-function timerFacts(timer: TodayTimer | null | undefined): Partial<CommandState> {
+function timerFacts(today: {
+  timer?: TodayTimer | null
+  picker?: TimerPicker | null
+}): Partial<CommandState> {
+  const { timer, picker } = today
   if (!timer) return {}
   const entries = [
     ...new Map(
@@ -41,12 +48,14 @@ function timerFacts(timer: TodayTimer | null | undefined): Partial<CommandState>
       projectId,
       endedAt,
     })),
-    projects: entries
-      .filter((entry) => entry.projectId !== null)
-      .map((entry) => ({ id: entry.projectId as string, clientId: entry.clientId })),
-    clients: entries
-      .filter((entry) => entry.clientId !== null)
-      .map((entry) => ({ id: entry.clientId as string })),
+    projects:
+      picker?.clients.flatMap((client) =>
+        client.projects.map((project) => ({ id: project.id, clientId: client.id })),
+      ) ?? [],
+    clients:
+      picker?.clients
+        .filter((client) => client.id !== null)
+        .map((client) => ({ id: client.id as string })) ?? [],
   }
 }
 
@@ -83,7 +92,7 @@ function commandState(queryClient: QueryClient, command: Command): CommandState 
     connections: integrations?.connections ?? [],
     // The timer is the Billing module's, and only the Today cache holds it.
     billing: shell?.billing ?? false,
-    ...timerFacts(today?.timer),
+    ...timerFacts(today ?? {}),
   }
 }
 

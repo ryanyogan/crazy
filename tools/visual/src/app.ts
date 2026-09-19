@@ -31,11 +31,14 @@ export async function seedApp(
   }
 }
 
-/** Where the part sits on the page, and how much of the page below it the frame reaches. */
+/** Where the part sits on the page, and how much of the page around it the frame reaches. */
 async function clipFor(tab: Page, part: Part) {
   const box = await tab.locator(part.selector).boundingBox()
   if (!box) throw new Error(`Nothing on the page matches ${part.selector}`)
-  return { x: box.x, y: box.y, width: box.width, height: part.height }
+  // A frame of something that rises from the bottom of the screen is a frame of
+  // its foot: the crop ends where the element does (frame 3b's sheet).
+  const y = part.from === 'bottom' ? box.y + box.height - part.height : box.y
+  return { x: box.x, y, width: box.width, height: part.height }
 }
 
 export interface Shot {
@@ -53,6 +56,8 @@ export interface Part {
   selector: string
   /** The frame's own height: what the app is cropped to, so the two can be compared. */
   height: number
+  /** Which edge of the element the frame's height is measured from; the top by default. */
+  from?: 'top' | 'bottom'
 }
 
 export async function shootRoute(
@@ -62,6 +67,8 @@ export async function shootRoute(
   now: string,
   viewport: { width: number; height: number },
   part?: Part,
+  /** A control to press before the shot: how a frame of an opened thing is reached. */
+  open?: string,
 ): Promise<Shot> {
   const context = await browser.newContext({
     viewport,
@@ -100,6 +107,12 @@ export async function shootRoute(
       .catch(() => {
         throw new Error(`${route} never went live: the socket to the Coordinator did not connect`)
       })
+    // A frame of something the user has opened is reached by opening it: the
+    // harness presses the control, and the app has no state it would not.
+    if (open) {
+      await tab.locator(open).click()
+      await tab.waitForTimeout(200)
+    }
     const overflow = await tab.evaluate(
       () => document.documentElement.scrollHeight - window.innerHeight,
     )

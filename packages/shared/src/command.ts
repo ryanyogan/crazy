@@ -7,7 +7,9 @@ import { type Signal, formatHour } from './today'
 import {
   type ProjectFacts,
   type TimeEntryFacts,
+  type TimerPicker,
   type TodayTimer,
+  addProject,
   changeEntry,
   nameEntry,
 } from './timer'
@@ -22,6 +24,7 @@ import {
   sameSource,
   source,
   connectionStatus,
+  projectStatus,
   provider,
   side,
   todoState,
@@ -107,11 +110,29 @@ export const command = z.discriminatedUnion('type', [
     clientId: id.nullable().optional(),
     projectId: id.nullable().optional(),
   }),
+  // Choosing other work while the timer runs. One command, two operations: the
+  // running entry ends at this moment and the next begins at the same instant,
+  // so no second of the day falls between them and none is counted twice.
+  z.object({
+    type: z.literal('timer.switch'),
+    id,
+    clientId: id.nullable().optional(),
+    projectId: id.nullable().optional(),
+  }),
   z.object({ type: z.literal('timer.stop') }),
   // The note the invoice line is written from. It takes the entry's id rather
   // than meaning "the running one", so that editing a stopped entry is the
   // same command when the Time screen comes to ask for it (ticket 20).
   z.object({ type: z.literal('timer.setNote'), entryId: id, note: z.string().trim().max(500) }),
+  // A Project made where the work is chosen, so that naming one is not a trip
+  // to another screen. The browser names it, as `todo.add` names its Todo. A
+  // Client is optional and must be the user's; a Project with none is their own.
+  z.object({
+    type: z.literal('project.add'),
+    id,
+    name: z.string().trim().min(1).max(200),
+    clientId: id.nullable().optional(),
+  }),
   // The Coordinator's own, at the user's local midnight (`SERVER_ONLY`): each
   // `today` Todo is carried over or sent back, and the backlog ages.
   z.object({ type: z.literal('rollover') }),
@@ -178,6 +199,20 @@ export const timeEntryChange = z
   .partial()
 export type TimeEntryChange = z.infer<typeof timeEntryChange>
 
+/**
+ * A Project as it is born. A Project belongs to one Circle and takes its Side
+ * from it (CONTEXT.md), and Crazy infers Circles: one named by hand has none
+ * until Crazy has looked, and no progress, milestone or rate of its own.
+ */
+export const newProject = z.object({
+  id,
+  name: z.string().min(1),
+  clientId: id.nullable(),
+  status: projectStatus,
+  createdAt: z.iso.datetime(),
+})
+export type NewProject = z.infer<typeof newProject>
+
 /** A Connection as it is born: the bookkeeping row, and nothing secret (ADR 0001). */
 export const newConnection = z.object({
   id,
@@ -210,6 +245,7 @@ export const op = z.discriminatedUnion('type', [
   z.object({ type: z.literal('connection.set'), id, set: z.object({ defaultSide: side }) }),
   z.object({ type: z.literal('timeEntry.insert'), entry: newTimeEntry }),
   z.object({ type: z.literal('timeEntry.set'), id, set: timeEntryChange }),
+  z.object({ type: z.literal('project.insert'), project: newProject }),
 ])
 export type Op = z.infer<typeof op>
 
@@ -359,13 +395,24 @@ export function timeEntriesNamed(input: Command): string[] {
   return input.type === 'timer.setNote' ? [input.entryId] : []
 }
 
-/** The Client and Project a timer command names, whose own rows it is decided against. */
+/**
+ * The Client and Project a command names, whose own rows it is decided against:
+ * a Project's Client settles the entry's, so the Project's row has to be read.
+ * `project.add` names the id it means to use, so that a clash with a Project
+ * the user already has is refused rather than thrown by the database.
+ */
 export function workNamed(
   input: Command,
 ): { clientId: string | null; projectId: string | null } | null {
-  return input.type === 'timer.start'
-    ? { clientId: input.clientId ?? null, projectId: input.projectId ?? null }
-    : null
+  switch (input.type) {
+    case 'timer.start':
+    case 'timer.switch':
+      return { clientId: input.clientId ?? null, projectId: input.projectId ?? null }
+    case 'project.add':
+      return { clientId: input.clientId ?? null, projectId: input.id }
+    default:
+      return null
+  }
 }
 
 /** A snoozed Todo has left the day: nothing that plans or takes on the day applies to it. */
@@ -835,6 +882,48 @@ export function decide(state: CommandState, input: Command, now: Date): Decision
       }
     }
 
+    // Choosing other work while the timer runs. The entry that was running is
+    // given its end and the next is begun at the same instant, so the day has
+    // no gap in it and no second is counted twice (spec, story 87).
+    case 'timer.switch': {
+      if (!state.billing) return refuse(BILLING_OFF)
+      const entries = state.timeEntries
+      if (!entries) return refuse(NO_ENTRIES)
+      if (entries.some((each) => each.id === input.id)) {
+        return refuse('That Time entry already exists.')
+      }
+      const running = entries.find((each) => each.endedAt === null)
+      // Nothing to split. Beginning from idle is `timer.start`, which says so
+      // rather than quietly inventing the first half of a switch.
+      if (!running) return refuse('No timer is running. Press start to begin one.')
+      const work = workFor(state, input)
+      if (!work.ok) return refuse(work.reason)
+      // Switching to the work already running would end an entry and begin an
+      // identical one at the same instant: two rows where the timesheet means one.
+      if (work.clientId === running.clientId && work.projectId === running.projectId) {
+        return refuse('The timer is already on that work.')
+      }
+      return {
+        ok: true,
+        ops: [
+          { type: 'timeEntry.set', id: running.id, set: { endedAt: at } },
+          {
+            type: 'timeEntry.insert',
+            entry: {
+              id: input.id,
+              clientId: work.clientId,
+              projectId: work.projectId,
+              todoId: null,
+              note: '',
+              billable: work.clientId !== null,
+              startedAt: at,
+              createdAt: at,
+            },
+          },
+        ],
+      }
+    }
+
     case 'timer.stop': {
       if (!state.billing) return refuse(BILLING_OFF)
       const entries = state.timeEntries
@@ -855,6 +944,35 @@ export function decide(state: CommandState, input: Command, now: Date): Decision
       const entry = entries.find((each) => each.id === input.entryId)
       if (!entry) return refuse('That Time entry is not one of yours.')
       return { ok: true, ops: [{ type: 'timeEntry.set', id: entry.id, set: { note: input.note } }] }
+    }
+
+    // A Project named where the work is chosen. Only the two things a person
+    // can say are stored: what it is called and, if anyone, who it is for.
+    case 'project.add': {
+      if (state.projects?.some((each) => each.id === input.id)) {
+        return refuse('That Project already exists.')
+      }
+      const clientId = input.clientId ?? null
+      // Only the user's own Clients are ever loaded, so one that is not there
+      // is either gone or somebody else's; neither is theirs to bill.
+      if (clientId !== null && !state.clients?.some((each) => each.id === clientId)) {
+        return refuse('That Client is not one of yours.')
+      }
+      return {
+        ok: true,
+        ops: [
+          {
+            type: 'project.insert',
+            project: {
+              id: input.id,
+              name: input.name,
+              clientId,
+              status: 'on_track',
+              createdAt: at,
+            },
+          },
+        ],
+      }
     }
   }
 }
@@ -890,6 +1008,8 @@ export interface Applicable {
   day?: string
   /** The timer's rows, where a state holds them: Today's, and null with the Billing module off. */
   timer?: TodayTimer | null
+  /** What the picker offers, beside them: every Client and Project the user has. */
+  picker?: TimerPicker | null
 }
 
 /**
@@ -906,6 +1026,7 @@ export function apply<S extends Applicable>(state: S, ops: readonly Op[]): S {
   let connections = state.connections
   let billing = state.billing
   let timer = state.timer
+  let picker = state.picker
   for (const each of ops) {
     switch (each.type) {
       case 'todo.set':
@@ -962,7 +1083,7 @@ export function apply<S extends Applicable>(state: S, ops: readonly Op[]): S {
       // answer to the command, once over the socket — it says the same thing.
       case 'timeEntry.insert': {
         if (!timer) break
-        const entry = nameEntry(timer, each.entry)
+        const entry = nameEntry(timer, each.entry, picker)
         if (!entry) break
         timer = {
           ...timer,
@@ -973,6 +1094,11 @@ export function apply<S extends Applicable>(state: S, ops: readonly Op[]): S {
       }
       case 'timeEntry.set':
         if (timer) timer = changeEntry(timer, each.id, each.set)
+        break
+      // A Project named in the picker joins it at once, so that the switch
+      // that follows can be worded and chosen without reading the day again.
+      case 'project.insert':
+        if (picker) picker = addProject(picker, each.project)
     }
   }
   if (
@@ -981,7 +1107,8 @@ export function apply<S extends Applicable>(state: S, ops: readonly Op[]): S {
     settings === state.settings &&
     billing === state.billing &&
     connections === state.connections &&
-    timer === state.timer
+    timer === state.timer &&
+    picker === state.picker
   ) {
     return state
   }
@@ -994,6 +1121,7 @@ export function apply<S extends Applicable>(state: S, ops: readonly Op[]): S {
     ...(billing === state.billing ? {} : { billing }),
     ...(connections === state.connections ? {} : { connections }),
     ...(timer === state.timer ? {} : { timer }),
+    ...(picker === state.picker ? {} : { picker }),
   } as S
 }
 
@@ -1004,11 +1132,15 @@ export function apply<S extends Applicable>(state: S, ops: readonly Op[]): S {
  * state with no timer — the Billing module is off, or this screen holds none —
  * has nothing to read again.
  */
-export function namesUnknownWork(state: Pick<Applicable, 'timer'>, ops: readonly Op[]): boolean {
+export function namesUnknownWork(
+  state: Pick<Applicable, 'timer' | 'picker'>,
+  ops: readonly Op[],
+): boolean {
   const { timer } = state
   if (!timer) return false
   return ops.some(
-    (each) => each.type === 'timeEntry.insert' && nameEntry(timer, each.entry) === null,
+    (each) =>
+      each.type === 'timeEntry.insert' && nameEntry(timer, each.entry, state.picker) === null,
   )
 }
 
@@ -1058,6 +1190,8 @@ function rowTouched(each: Op): string {
       return `timeEntry:${each.entry.id}`
     case 'timeEntry.set':
       return `timeEntry:${each.id}`
+    case 'project.insert':
+      return `project:${each.project.id}`
   }
 }
 

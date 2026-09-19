@@ -68,6 +68,10 @@ export const COPY: [from: string, to: string][] = [
   ['Reply to Priya on rate limits', 'Reply to Priya on edge rate limits'],
   // The repo writes British English, here and in the ticket that asked for it.
   ['Backlog aging', 'Backlog ageing'],
+  // Frame 3a's picker gives one Project a qualifier as part of its name. The
+  // Project is called Admin; that it is not billable follows from its having
+  // no Client, which is what the Internal group it sits under already says.
+  ['Admin · not billable', 'Admin'],
 ]
 
 export interface View {
@@ -83,6 +87,12 @@ export interface View {
 export interface Part {
   selector: string
   width: number
+  /**
+   * Which edge of the element the frame's height is measured from. A frame of
+   * something that rises from the bottom of the screen — frame 3b's sheet — is
+   * a frame of its foot, so its height is counted back from the bottom edge.
+   */
+  from?: 'top' | 'bottom'
 }
 
 export interface Target {
@@ -99,8 +109,15 @@ export interface Target {
   now: string
   /** Seeded with the persona's timer already stopped: the only way to see the idle bar. */
   timer?: 'idle'
+  /**
+   * A control the harness presses before the shot, so that a frame of
+   * something opened is reached by opening it. The app holds no state for the
+   * harness's sake: frames 3a (open) and 3b are the picker, pressed open.
+   */
+  open?: string
   part?: Part
-  desktop: View
+  /** Null where no desktop frame is drawn: frame 3b's sheet is a phone's. */
+  desktop: View | null
   /** Null where no phone frame is drawn: the phone layout is derived. */
   phone: View | null
 }
@@ -221,6 +238,24 @@ const SEEDED_FIGURES =
 
 const SEEDED_NOTE =
   "The words inside the note field. The frame draws it empty, showing its placeholder; the Time entry Cori has running is seeded with the note frame 2b's timesheet gives it, so the field shows that instead. The field itself is compared"
+
+const CARD_NOT_SCREEN =
+  'Below the bar, on either side of the dropdown. Frame 3a draws the open picker on a card 410px tall so that the panel has something to hang in; in the app the panel hangs over the Today screen, which is what fills these two bands. The bar and the dropdown are compared'
+
+const NOTE_BEHIND_THE_PICKER =
+  "The part of the note field that the dropdown does not cover. Frame 3a's open card leaves the note out — the panel is drawn over where it sits — and the app does not take a running entry's note away while its picker is open"
+
+const OPEN_CARD_ROW =
+  "The bar's own row: the trigger, and the line that says how to drive the list. Frame 3a's open card lays that row out from the top of the card and nudges the line down 8px; its idle and running cards centre the row, which is what the app does and what those two frames are compared against. Two or three pixels, in the one card of the three that differs. A debt for the designer"
+
+const SEARCH_FOCUSED =
+  "The search field. It takes the focus as the list opens, so the app draws it wearing the accent focus ring every control here keeps; the frame draws no focus anywhere. The field is otherwise the frame's, and what it holds is compared through the rows below it"
+
+const ABOVE_THE_CLIENTS =
+  "Everything above the first Client. Frame 3b paints the screen behind the sheet as one flat panel, where the app dims the Today screen it is over; and the app's sheet has a taller head than the frame's card has room for at 560px — its handle and heading, the search field, the work timed lately that a thumb reaches first, and the place to name a Project, which frame 3b's sheet leaves out although its dropdown has one. The sheet is anchored to the bottom edge, so the Clients and their Projects — what the sheet is for — sit in the same places in both, and are compared"
+
+const PICKER_FIGURES =
+  "The picker's right-hand column: the hours each Client has had and what each Project last did. The frame quotes hours that are in no timesheet in the mockups (14h 05m for Meridian, 6h 30m for Quill), and gives each Project a line of a different kind — a meeting from the calendar, an hour left on a retainer. The app counts this week from Cori's seeded Time entries and says when the Project was last timed. A debt for the designer: the column needs one meaning"
 
 /**
  * Frame 3a draws the timer bar on its own, at the width of the screen beside
@@ -354,6 +389,52 @@ export const TARGETS: Target[] = [
     { x: 140, y: 22, width: 28, height: 24, why: SEEDED_FIGURES },
     { x: 26, y: 60, width: 410, height: 26, why: SEEDED_NOTE },
   ]),
+  {
+    frame: '3a-open',
+    option: '3a',
+    card: 2,
+    title: 'Today · timer picker open',
+    route: '/',
+    persona: 'cori',
+    now: CORIS_MORNING,
+    open: '.timer__pick',
+    part: { selector: '.timer__bar', width: TIMER_BAR },
+    desktop: {
+      // The dropdown itself, which is what this frame is of.
+      regions: { picker: { x: 176, y: 56, width: 420, height: 320 } },
+      masks: [
+        { x: 0, y: 101, width: 176, height: 309, why: CARD_NOT_SCREEN },
+        { x: 596, y: 101, width: 416, height: 309, why: CARD_NOT_SCREEN },
+        { x: 18, y: 54, width: 158, height: 38, why: NOTE_BEHIND_THE_PICKER },
+        { x: 466, y: 100, width: 130, height: 240, why: PICKER_FIGURES },
+        { x: 138, y: 24, width: 26, height: 26, why: SEEDED_FIGURES },
+        { x: 176, y: 10, width: 420, height: 42, why: OPEN_CARD_ROW },
+        { x: 830, y: 10, width: 182, height: 32, why: OPEN_CARD_ROW },
+        { x: 184, y: 60, width: 424, height: 40, why: SEARCH_FOCUSED },
+      ],
+    },
+    phone: null,
+  },
+  {
+    frame: '3b',
+    option: '3b',
+    card: 1,
+    title: 'Today · the picker as a bottom sheet',
+    route: '/',
+    persona: 'cori',
+    now: CORIS_MORNING,
+    open: '.timer__pick',
+    // The sheet rises from the bottom edge, so the frame is of its foot.
+    part: { selector: 'dialog.sheet', width: PHONE, from: 'bottom' },
+    desktop: null,
+    phone: {
+      regions: { clients: { x: 0, y: 178, width: PHONE, height: 382 } },
+      masks: [
+        { x: 0, y: 0, width: PHONE, height: 178, why: ABOVE_THE_CLIENTS },
+        { x: 250, y: 200, width: 126, height: 330, why: PICKER_FIGURES },
+      ],
+    },
+  },
 ]
 
 /** Routes no frame draws at any width. Screenshotted on a phone, never compared. */

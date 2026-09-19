@@ -63,8 +63,6 @@
 }
 
 .timer__pick {
-  order: 3;
-  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -103,7 +101,8 @@
   color: var(--color-neutral-700);
 }
 
-.timer__meta {
+.timer__meta,
+.timer__hint {
   order: 4;
   grid-column: 1 / -1;
   display: flex;
@@ -125,6 +124,149 @@
   min-height: 40px;
   font-size: 13px;
   background: transparent;
+}
+
+/* ── The work picker, frames 3a (open) and 3b ──────────────────────────────
+   One list of choices. On a phone it is a modal sheet from the bottom edge
+   (frame 3b) and leads with the work timed lately, which a thumb reaches
+   first; from 900px the same list hangs under the trigger as frame 3a's
+   dropdown, where the hours each Client has had this week have room. */
+
+.timer__picker {
+  order: 3;
+  grid-column: 1 / -1;
+  position: relative;
+}
+
+.picker__sheet {
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.picker__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.picker__title {
+  margin: 0;
+  font-size: 16px;
+}
+
+.picker__split {
+  font-size: 12px;
+  color: var(--color-neutral-700);
+}
+
+.picker__search {
+  min-height: 40px;
+  font-size: 13px;
+}
+
+.picker__search::placeholder {
+  color: var(--color-neutral-700);
+}
+
+/* The sheet spaces every row it holds; frame 3b's gap is the sheet's own. */
+.picker__list {
+  display: grid;
+  gap: 4px;
+}
+
+/* Every choice is a row of the one list: a Client on its own is work for them
+   that is part of no Project, and it reads as its own group's heading. */
+.picker__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+/* Where the arrows are, and where the timer already is when the list opens:
+   the accent tint frame 3a draws. The screen's one solid accent fill is the
+   timer's square, and nothing here takes a second. */
+.picker__row.is-active {
+  background: var(--color-accent-100);
+}
+
+.picker__group {
+  gap: 8px;
+  padding: 10px 0 2px;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-neutral-700);
+}
+
+.picker__swatch {
+  flex: none;
+  width: 3px;
+  height: 10px;
+}
+
+/* The hours each Client has had this week: frame 3a's dropdown has room for
+   them, frame 3b's sheet does not draw them. */
+.picker__hours {
+  display: none;
+  margin-left: auto;
+  font-family: var(--font-heading);
+  font-size: 11px;
+  letter-spacing: 0;
+}
+
+.picker__project,
+.picker__recent {
+  min-height: 44px;
+  padding-left: 11px;
+}
+
+.picker__name {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Two lines in the room of one: the work, and when it was last timed. */
+.picker__recent .picker__name {
+  line-height: 1.15;
+}
+
+.picker__when,
+.picker__meta {
+  font-size: 11px;
+  color: var(--color-neutral-700);
+}
+
+.picker__when {
+  display: block;
+}
+
+.picker__new {
+  min-height: 44px;
+  color: var(--color-accent-700);
+}
+
+/* On a phone the recents lead and the place to name a Project follows them,
+   so that the Clients and their Projects keep the foot of the sheet. */
+.picker__recent {
+  order: -2;
+}
+
+.picker__new {
+  order: -1;
+}
+
+/* The bar's own line while the list is open belongs to the sheet's heading here. */
+.timer__hint {
+  display: none;
 }
 
 /* ── Desktop: frame 3a's strip ────────────────────────────────────────────── */
@@ -174,14 +316,102 @@
   }
 
   .timer__pick {
-    grid-column: auto;
-    max-width: 420px;
     min-height: 36px;
   }
 
-  .timer__meta {
+  .timer__meta,
+  .timer__hint {
     grid-column: auto;
     justify-content: flex-end;
+  }
+
+  /* Frame 3a's dropdown: under the trigger, the width of it, over the screen.
+     The wrapper takes the whole height of the bar's row so that the panel
+     hangs from the row rather than from the trigger inside it; the trigger
+     itself stays centred in the row, as frames 3a idle and running draw it. */
+  .timer__picker {
+    grid-column: auto;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    max-width: 420px;
+  }
+
+  .timer__pick {
+    flex: 1;
+  }
+
+  .timer--picking .timer__pick {
+    border-color: var(--color-accent);
+  }
+
+  /* A <dialog> held open rather than shown modally: the screen behind it is
+     not dimmed and stays usable, which is what a dropdown is. Its own
+     placement is undone so that it hangs where frame 3a hangs it. */
+  .picker__panel {
+    position: absolute;
+    /* 42px below the top of the bar's row, where frame 3a hangs it. */
+    top: 42px;
+    right: 0;
+    bottom: auto;
+    left: 0;
+    z-index: 20;
+    display: grid;
+    width: auto;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    padding: 6px 0;
+    font-size: 13px;
+    color: inherit;
+    background: var(--color-bg);
+  }
+
+  .picker__search {
+    margin: 4px 10px 6px;
+    min-height: 30px;
+    padding: 4px 10px;
+    font-size: 12px;
+  }
+
+  /* The dropdown's rows sit against each other, as frame 3a draws them. */
+  .picker__list {
+    gap: 0;
+  }
+
+  .picker__group {
+    padding: 6px 12px 2px;
+  }
+
+  .picker__hours {
+    display: block;
+  }
+
+  .picker__project {
+    min-height: 0;
+    padding: 5px 12px 5px 23px;
+  }
+
+  /* The recents are the phone's shortcut; the dropdown lists the work itself. */
+  .picker__recent {
+    display: none;
+  }
+
+  .picker__new {
+    order: 0;
+    min-height: 0;
+    margin-top: 4px;
+    padding: 6px 12px 2px;
+    border-top: 1px solid var(--color-divider);
+  }
+
+  /* While the list is open the bar says how to drive it, where the figures were. */
+  .timer--picking .timer__meta {
+    display: none;
+  }
+
+  .timer--picking .timer__hint {
+    display: flex;
   }
 
   .timer__note {

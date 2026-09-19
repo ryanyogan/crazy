@@ -58,7 +58,7 @@ async function save(name: string, png: Buffer): Promise<string> {
 }
 
 async function compareAt(target: Target, width: Width): Promise<Result> {
-  const view = width === DESKTOP ? target.desktop : target.phone!
+  const view = (width === DESKTOP ? target.desktop : target.phone)!
   const now = options.now ?? target.now
   const page = await canvasPage(PERSONAS[target.persona])
   // A frame that draws one part of a screen is drawn at that part's width, and
@@ -78,7 +78,8 @@ async function compareAt(target: Target, width: Width): Promise<Result> {
     target.route,
     now,
     { width, height: part ? PART_VIEWPORT : height },
-    part && { selector: part.selector, height },
+    part && { selector: part.selector, height, from: part.from },
+    target.open,
   )
   const { whole, regions, diff } = compare(frame.picture, app.picture, view.regions, view.masks)
 
@@ -145,7 +146,9 @@ try {
       // A frame of one part of a screen is drawn at one width; the phone's
       // timer is frame 3b's, and the screen around it is compared by its own
       // target, so there is nothing to shoot a second time here.
-      if (width === PHONE && target.part) continue
+      if (width === PHONE && target.part && !target.phone) continue
+      // A frame only a phone is drawn for: frame 3b's sheet.
+      if (width === DESKTOP && !target.desktop) continue
       const result =
         width === PHONE && !target.phone
           ? await derivedAt(target.title, target.route, options.now ?? target.now)

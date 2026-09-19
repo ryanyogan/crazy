@@ -1,4 +1,4 @@
-import { startOfDay, wallClock } from './clock'
+import { addDays, clockTime, startOfDay, wallClock } from './clock'
 
 // The timer, as the Today screen holds it and shows it. A Time entry is the
 // record and the timer is only the control (CONTEXT.md); the running timer is
@@ -35,6 +35,50 @@ export interface TodayTimer {
   last: TimerEntry | null
   /** Every Time entry that touches today, newest first: what today's totals count. */
   today: TimerEntry[]
+}
+
+/** A Project as the picker offers it. */
+export interface PickerProject {
+  id: string
+  name: string
+  /** When it was last timed, if ever; the picker says how long ago in a word. */
+  lastStartedAt: string | null
+  /** Whether the running Time entry is on this Project. */
+  running: boolean
+}
+
+/**
+ * A Client the picker groups its Projects under, and an option in its own
+ * right: choosing the Client alone is work for them that is part of nothing
+ * larger (CONTEXT.md, "One-off").
+ */
+export interface PickerClient {
+  /** Null is Internal: the absence of a Client, not a Client of its own. */
+  id: string | null
+  /** The Client's name, or "Internal" where there is none. */
+  name: string
+  /** Seconds tracked for this Client since Monday, counted no further than now. */
+  weekSeconds: number
+  projects: PickerProject[]
+}
+
+/** Work timed lately, as the phone's sheet leads with it: one row per piece of work. */
+export interface RecentWork extends TimerWork {
+  /** When that spell of it began. */
+  startedAt: string
+  /** How long that spell ran, in seconds. */
+  seconds: number
+}
+
+/**
+ * Everything the picker offers: every Client of the user's with its Projects
+ * and the hours put in this week, the Projects that belong to no Client under
+ * Internal, and the work they timed most recently. Read only with the Billing
+ * module on, beside the timer's own rows.
+ */
+export interface TimerPicker {
+  clients: PickerClient[]
+  recent: RecentWork[]
 }
 
 /** What `decide` needs to know of a Time entry. */
@@ -114,6 +158,28 @@ export function viewTimer(timer: TodayTimer, now: Date, timeZone: string): Timer
   }
 }
 
+const WEEKDAY = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'short' })
+const DATE = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' })
+
+/**
+ * Which day a moment fell on, as a person says it looking back from `now`:
+ * "today", "yesterday", the weekday within the week behind, and the date
+ * beyond that. The present is a parameter here as everywhere.
+ */
+export function dayWorked(moment: string, now: Date, timeZone: string): string {
+  const { day } = wallClock(new Date(moment), timeZone)
+  const today = wallClock(now, timeZone).day
+  if (day === today) return 'today'
+  if (day === addDays(today, -1)) return 'yesterday'
+  const date = new Date(`${day}T00:00:00Z`)
+  return day > addDays(today, -7) && day < today ? WEEKDAY.format(date) : DATE.format(date)
+}
+
+/** "yesterday 15:00": when a spell of work began, as the phone's recents say it. */
+export function whenWorked(moment: string, now: Date, timeZone: string): string {
+  return `${dayWorked(moment, now, timeZone)} ${clockTime(new Date(moment), timeZone)}`
+}
+
 /** "Meridian Health · Discovery research", or "Internal" where there is no Client. */
 export function workLine(work: TimerWork): { client: string; project: string | null } {
   return { client: work.clientName ?? INTERNAL, project: work.projectName }
@@ -143,23 +209,35 @@ function held(timer: TodayTimer): TimerEntry[] {
 
 /**
  * The Time entry an operation brings, worded with the Client and Project names
- * this cache already holds. A patch carries ids and not names, so a cache that
- * cannot name the work gets null and reads the day again (`namesUnknownWork`)
- * rather than showing an entry it can only half say.
+ * this cache already holds — the picker's lists where it has them, and the
+ * entries it is showing otherwise. A patch carries ids and not names, so a
+ * cache that cannot name the work gets null and reads the day again
+ * (`namesUnknownWork`) rather than showing an entry it can only half say. With
+ * the picker loaded that is rare: it names every Client and Project the user
+ * has, so any work the picker can start can also be worded.
  */
 export function nameEntry(
   timer: TodayTimer,
   entry: Omit<TimerEntry, 'clientName' | 'projectName' | 'endedAt'>,
+  picker?: TimerPicker | null,
 ): TimerEntry | null {
   const known = held(timer)
   const nameOf = (id: string, of: 'clientId' | 'projectId', say: 'clientName' | 'projectName') =>
     known.find((each) => each[of] === id)?.[say] ?? null
 
   const clientName =
-    entry.clientId === null ? null : nameOf(entry.clientId, 'clientId', 'clientName')
+    entry.clientId === null
+      ? null
+      : (picker?.clients.find((each) => each.id === entry.clientId)?.name ??
+        nameOf(entry.clientId, 'clientId', 'clientName'))
   if (entry.clientId !== null && clientName === null) return null
   const projectName =
-    entry.projectId === null ? null : nameOf(entry.projectId, 'projectId', 'projectName')
+    entry.projectId === null
+      ? null
+      : (picker?.clients
+          .flatMap((client) => client.projects)
+          .find((each) => each.id === entry.projectId)?.name ??
+        nameOf(entry.projectId, 'projectId', 'projectName'))
   if (entry.projectId !== null && projectName === null) return null
 
   return {
@@ -173,6 +251,38 @@ export function nameEntry(
     startedAt: entry.startedAt,
     endedAt: null,
   }
+}
+
+/**
+ * The picker with one more Project in it, under the Client it is for — or
+ * under Internal, which is the absence of a Client and so is made as it is
+ * needed rather than stored. A Project for a Client the picker does not hold
+ * leaves it as it was; nothing invents a group.
+ */
+export function addProject(
+  picker: TimerPicker,
+  project: { id: string; name: string; clientId: string | null },
+): TimerPicker {
+  const born: PickerProject = {
+    id: project.id,
+    name: project.name,
+    lastStartedAt: null,
+    running: false,
+  }
+  const held = picker.clients.some((client) => client.id === project.clientId)
+  if (!held && project.clientId !== null) return picker
+  // Laid twice — once as the answer to the command, once over the socket — it
+  // says the same thing: a Project already in the list is replaced, not repeated.
+  const joined = (projects: readonly PickerProject[]) =>
+    projects.some((each) => each.id === born.id)
+      ? projects.map((each) => (each.id === born.id ? born : each))
+      : [...projects, born]
+  const clients = held
+    ? picker.clients.map((client) =>
+        client.id === project.clientId ? { ...client, projects: joined(client.projects) } : client,
+      )
+    : [...picker.clients, { id: null, name: INTERNAL, weekSeconds: 0, projects: [born] }]
+  return { ...picker, clients }
 }
 
 /**
