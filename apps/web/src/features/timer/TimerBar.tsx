@@ -167,6 +167,15 @@ export function TimerBar({ place }: { place: TimerPlace }) {
             </div>
           )}
 
+          {/* What she is timing, where the strip has room for it: the Todo the
+              entry was started from, in a word and cut short rather than
+              wrapped. The full bar is frame 3a's and draws no such line. */}
+          {compact && running?.todoTitle && (
+            <p className="timer__todo" title={running.todoTitle}>
+              {running.todoTitle}
+            </p>
+          )}
+
           {receipt ? (
             // Billing software owes a receipt: what was just decided about her
             // money, in the place the figures were.

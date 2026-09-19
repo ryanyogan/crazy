@@ -14,6 +14,7 @@ const todo = (id: string, fields: Partial<TodoFacts>): TodoFacts => ({
   id,
   state: 'today',
   source: null,
+  projectId: null,
   snoozedUntil: null,
   swappedOnDay: null,
   slotHours: [],

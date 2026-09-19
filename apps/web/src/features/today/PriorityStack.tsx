@@ -1,4 +1,5 @@
 import {
+  INTERNAL,
   SNOOZE_CHOICES,
   SOURCE_KINDS,
   type DayEvent,
@@ -12,12 +13,22 @@ import {
 } from '@crazy/shared'
 import { Blueprint, Button, NotWired, SourceChip, Tag } from '@crazy/ui'
 import { useId, useState } from 'react'
+import { StartOnTodo } from '#/features/timer/StartOnTodo'
 import { useCommand } from '#/lib/useCommand'
 
 const join = (parts: (string | null)[]) => parts.filter(Boolean).join(' · ')
 
 interface StackRowProps {
   todo: TodayTodo
+  /**
+   * With the Billing module on the row ends in the control that starts a timer
+   * on the Todo rather than the chip that says where it came from, and the line
+   * under its title names the Client it is billed to: with a timer in reach,
+   * who is paying for an hour is what a contractor needs to see (frame 2a).
+   */
+  billing: boolean
+  /** Whether the timer is running on this Todo, which is what the row says in place of its estimate. */
+  timed: boolean
   /** The hours the timeline draws, which are the hours a Slot can be picked from. */
   hours: number[]
   events: DayEvent[]
@@ -35,7 +46,7 @@ interface StackRowProps {
  * drag can do the hour picker does too, so a thumb and a keyboard plan the day
  * as well as a mouse.
  */
-function StackRow({ todo, hours, events, now, onDrag }: StackRowProps) {
+function StackRow({ todo, billing, timed, hours, events, now, onDrag }: StackRowProps) {
   const [open, setOpen] = useState(false)
   const command = useCommand()
   const whyId = useId()
@@ -46,7 +57,11 @@ function StackRow({ todo, hours, events, now, onDrag }: StackRowProps) {
     <>
       {todo.title}
       <span className="stack__meta">
-        {join([todo.project ?? 'One-off', formatEstimate(todo.estimateMinutes)])}
+        {join([
+          billing ? (todo.clientName ?? INTERNAL) : (todo.project ?? 'One-off'),
+          // What it is costing now says more than what it was thought to cost.
+          timed ? 'running' : formatEstimate(todo.estimateMinutes),
+        ])}
       </span>
     </>
   )
@@ -83,7 +98,11 @@ function StackRow({ todo, hours, events, now, onDrag }: StackRowProps) {
         <span id={dragId} hidden>
           Open this Todo to give it an hour of the day, or drag it onto one.
         </span>
-        <SourceChip source={todo.source && SOURCE_KINDS[todo.source.kind]} />
+        {billing ? (
+          <StartOnTodo todo={todo} timed={timed} />
+        ) : (
+          <SourceChip source={todo.source && SOURCE_KINDS[todo.source.kind]} />
+        )}
       </div>
       <div id={whyId} className="stack__why" hidden={!open}>
         {why && <p>{why}</p>}
@@ -161,6 +180,9 @@ function DoneRow({ todo }: { todo: TodayTodo }) {
 
 interface PriorityStackProps {
   stack: TodayTodo[]
+  billing: boolean
+  /** The Todo the timer is running on, if it was started from one. */
+  timedTodoId: string | null
   done: TodayTodo[]
   snoozed: SnoozedTodo[]
   timeZone: string
@@ -175,6 +197,8 @@ interface PriorityStackProps {
 /** The `today` Todos in the order Crazy recommends, and what the last Rollover did. */
 export function PriorityStack({
   stack,
+  billing,
+  timedTodoId,
   done,
   snoozed,
   timeZone,
@@ -188,7 +212,9 @@ export function PriorityStack({
   return (
     <Blueprint as="section" className="card stack" aria-labelledby="stack-title">
       <h2 id="stack-title" className="card-kicker stack__title">
-        Priority stack
+        {/* Frame 2a says what the control on each row is for, where a first-time
+            user will look for it: in the card's own heading. */}
+        Priority stack{billing && ' · press ▸ to start a timer on one'}
       </h2>
       {stack.length === 0 ? (
         <p className="stack__empty">Nothing left for today.</p>
@@ -198,6 +224,8 @@ export function PriorityStack({
             <StackRow
               key={todo.id}
               todo={todo}
+              billing={billing}
+              timed={todo.id === timedTodoId}
               hours={hours}
               events={events}
               now={now}

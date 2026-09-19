@@ -4,7 +4,7 @@ import { dirname, join, normalize } from 'node:path'
 import type { Browser } from 'playwright'
 import { PNG } from 'pngjs'
 import type { Picture } from './compare.ts'
-import { COPY, type Persona, WORDMARK } from './targets.ts'
+import { COPY, type Compose, type Persona, WORDMARK } from './targets.ts'
 import { canvasValues, expand } from './template.ts'
 
 // Draws one option of the frozen canvas on its own, at the size it is drawn,
@@ -82,6 +82,7 @@ export async function drawFrame(
   option: string,
   width: number,
   card = 0,
+  compose?: Compose,
 ): Promise<DrawnFrame> {
   const context = await browser.newContext({
     viewport: { width, height: 900 },
@@ -112,10 +113,24 @@ export async function drawFrame(
     const tab = await context.newPage()
     await tab.goto(`${ORIGIN}/`)
     const height = await tab.evaluate(
-      ({ option, width, card }) => {
-        const drawn = [...document.querySelectorAll<HTMLElement>(`[id="${option}"] .dv-card`)]
-        const wanted = drawn.filter((each) => each.style.width === `${width}px`)[card]
+      ({ option, width, card, compose }) => {
+        const cardsOf = (id: string, at: number) =>
+          [...document.querySelectorAll<HTMLElement>(`[id="${id}"] .dv-card`)].filter(
+            (each) => each.style.width === `${at}px`,
+          )
+        const wanted = cardsOf(option, width)[card]
         if (!wanted) return null
+        // One frame's piece put into another's screen, which is what the canvas
+        // itself suggests trying next under frame 3a ("put the 3a bar into 2a").
+        // The band keeps the place and the edges the screen gives it; what fills
+        // it is the other frame's, at the size that frame draws it.
+        if (compose) {
+          const band = wanted.querySelector<HTMLElement>(compose.replace)
+          const source = cardsOf(compose.with.option, compose.with.width)[compose.with.card]
+          if (!band || !source) return null
+          band.style.cssText = `${source.style.cssText};${compose.band}`
+          band.replaceChildren(...source.children)
+        }
         wanted.style.border = '0'
         wanted.style.boxShadow = 'none'
         wanted.style.maxWidth = 'none'
@@ -124,7 +139,7 @@ export async function drawFrame(
         // nearest: a viewport is a whole number of rows.
         return Math.round(wanted.getBoundingClientRect().height)
       },
-      { option, width, card },
+      { option, width, card, compose: compose ?? null },
     )
     if (height === null) {
       throw new Error(`Frame ${option} has no card ${card} drawn at ${width}px`)

@@ -48,7 +48,7 @@ Updated as tickets land.
 | The Shell at both widths, the More screen, a route behind every destination                                                                                                      | Real; Time and Invoices are still empty routes                                                                                                                                                                                                                                                         |
 | Live across devices: `/live` hands the socket to the user's Coordinator, patches land in the query cache, the Live indicator shows the connection                                | Real; nothing pings, so a connection that dies silently is not noticed until the browser notices                                                                                                                                                                                                       |
 | The current time as an injected value in the web app, which a development request can pin                                                                                        | Real                                                                                                                                                                                                                                                                                                   |
-| Visual comparison harness (`pnpm visual`): frames 1a and 1c–1g against their routes, derived phone screenshots                                                                   | Real; the Cori frames (2a–2c, 3a, 3b, 4a) join with ticket 16                                                                                                                                                                                                                                          |
+| Visual comparison harness (`pnpm visual`): frames 1a, 1c–1g, 2a, 3a and 3b against their routes, derived phone screenshots                                                       | Real; frames 2b, 2c and 4a join with the tickets that draw those screens                                                                                                                                                                                                                               |
 | Schema for Connection, Circle, Project, Todo, Slot, Brief, calendar event, Signal and the timeline's wording                                                                     | Real; "one Source, one open Todo" is a partial unique index                                                                                                                                                                                                                                            |
 | The Ryan persona seed (`seedPersona` in `@crazy/db/write`): every new user starts from it; `POST /dev/seed` resets                                                               | Real; nothing is stamped later than the moment seeded over                                                                                                                                                                                                                                             |
 | Today screen: greeting, date, Brief, Take on now, Priority stack with footer, read from D1 by `readToday`                                                                        | Real on seeded rows; Start and Swap are wired on the desktop, where the frame draws them                                                                                                                                                                                                               |
@@ -113,8 +113,26 @@ frames exist:
   takes the running timer bar's treatment from frame 3a — the accent tint and the accent hairline —
   without the picker, because with the module off there is no timer and no Client to pick; it says
   "Started · since 09:12" where Start and Swap were. The card gives up the solid accent fill while
-  it is under way, so a started Today screen has none. With the Billing module on (ticket 20) Start
-  will begin a timer and the bar will hold the elapsed time.
+  it is under way, so a started Today screen has none. With the Billing module **on** there is no
+  Take on now card at all: frame 2a drops it, and the stack sits where it was with a start control
+  on every row, so the Todo Crazy recommends is the stack's first row and taking it on is the same
+  one press as taking on anything else.
+- **The Today screen on a phone with the Billing module on.** Frame 2a's phone card draws the
+  timer as a solid accent card with Stop and Switch project on it; frame 3b draws the same control
+  as a tinted card with the square, and 3b is the one the app follows, so the two frames cannot both
+  be met and the screen below the card sits at a different height for that reason alone. Frame 2a's
+  phone also leaves the Brief out and lists the day's hours as rows; the app keeps the Brief — it is
+  the first thing the screen is for — and keeps frame 1a's sideways hour strip, with each hour's
+  Client rule across its head and its tracked figure under the title. Screenshotted at 390px and
+  not compared (`tools/visual/src/targets.ts`).
+- **What a timeline hour says with the Billing module on.** Frame 2a gives each hour a Client's
+  colour down its left edge, the Client's three letters where frame 1a puts the Source chip, and
+  the time tracked in it on the right; and it draws the hour by what became of it rather than by
+  what is planned for it — the hours the timer is in now framed in the accent, hours with tracked
+  time plainly boxed, everything still only planned dashed. A meeting is a meeting either way. Whose
+  an hour is comes from what was tracked in it, and failing that from the Todo slotted on it; Crazy
+  never reads a Client off a Provider's calendar, so a meeting hour with nothing tracked names
+  nobody, where the frame names the Client whose meeting it is.
 - **The compact time header.** No frame draws it; it is frame 3a's running bar cut down to a strip
   and uses nothing 3a does not — the accent tint, the accent hairline, the heading face's tabular
   figures and the Client's rule. While a Time entry runs it shows on every Shell screen: a 44px
@@ -260,6 +278,13 @@ and `report.json` holds the figures. How to read them:
 - **Derived** routes (no phone frame) are screenshotted at 390px and listed without a figure.
 - The pictures are one viewport, the size of the frame. If the page runs longer, the report says
   by how much.
+
+It can also put one frame's card into another frame's screen, which is what frame 2a needs: 2a
+draws the timer as a segmented picker the app does not have, and the bar it does have is frame 3a's,
+drawn on its own beside it. Rather than mask the band and compare nothing there, the target names
+the band and the card that goes in it (`compose` in `tools/visual/src/targets.ts`) — which is what
+the canvas itself suggests trying next under frame 3a, "put the 3a bar into 2a" — so the screen
+below stands where the app stands it and can be compared at all.
 
 How it draws a frame: the canvas's own runtime is not among the frozen files, so the harness
 expands the canvas's loops and values itself (`tools/visual/src/template.ts`), keeps the one card

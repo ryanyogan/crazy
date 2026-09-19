@@ -104,20 +104,28 @@ export const command = z.discriminatedUnion('type', [
   // new Time entry, as `todo.add` names its Todo, so the optimistic row and the
   // real one are the same row. The work is a Client, a Project, both or
   // neither; a Project that has a Client settles it (`workFor`).
+  // Started from a Todo, the entry records it, the Todo is marked Touched and
+  // started, and the work is the Todo's Project (whose Client wins). A Todo
+  // with no Project starts on whatever the bar had chosen, so that the common
+  // case — one press, no choosing — stays one press.
   z.object({
     type: z.literal('timer.start'),
     id,
     clientId: id.nullable().optional(),
     projectId: id.nullable().optional(),
+    todoId: id.nullable().optional(),
   }),
   // Choosing other work while the timer runs. One command, two operations: the
   // running entry ends at this moment and the next begins at the same instant,
   // so no second of the day falls between them and none is counted twice.
+  // Pressing start on a Todo while the timer runs is a switch, not a refusal:
+  // one press moves the hours from one Todo to the next at the same instant.
   z.object({
     type: z.literal('timer.switch'),
     id,
     clientId: id.nullable().optional(),
     projectId: id.nullable().optional(),
+    todoId: id.nullable().optional(),
   }),
   z.object({ type: z.literal('timer.stop') }),
   // The note the invoice line is written from. It takes the entry's id rather
@@ -258,6 +266,8 @@ export interface TodoFacts {
   id: string
   state: TodoState
   source: Source | null
+  /** The Project it belongs to, which is the work a timer started from it is for. */
+  projectId: string | null
   /** While this moment is still to come the Todo has left the day; null when not snoozed. */
   snoozedUntil: string | null
   /** The local day the user last declined it as the Take on now; null if they never have. */
@@ -338,6 +348,11 @@ export function todosNamed(input: Command): string[] {
       return [input.todoId]
     case 'signal.addAll':
       return input.adds.map((add) => add.todoId)
+    // A timer started from a Todo is decided against that Todo: whose it is,
+    // whether it is still open, and what Project it belongs to.
+    case 'timer.start':
+    case 'timer.switch':
+      return input.todoId ? [input.todoId] : []
     default:
       return []
   }
@@ -538,6 +553,50 @@ const BILLING_OFF = 'The timer belongs to the Billing module, which is off.'
 const NO_ENTRIES = 'The timer needs the Time entries of the user it is for.'
 
 /**
+ * The Todo a timer is started from, or why it cannot be started from it. Only
+ * the user's own Todos are ever loaded, so one that is not here is either gone
+ * or somebody else's; and a Todo that is done or archived is not one being
+ * worked on now. A command that names no Todo has none, which is the bar's own
+ * Start and not an error.
+ */
+function todoTimed(
+  state: CommandState,
+  todoId: string | null | undefined,
+): { ok: true; todo: TodoFacts | null } | { ok: false; reason: string } {
+  if (!todoId) return { ok: true, todo: null }
+  const todo = state.todos.find((each) => each.id === todoId)
+  if (!todo) return { ok: false, reason: 'That Todo no longer exists.' }
+  if (!isOpen(todo)) return { ok: false, reason: 'A Todo that is finished cannot be timed.' }
+  return { ok: true, todo }
+}
+
+/**
+ * Starting a timer on a Todo is starting the Todo: it is marked as under way
+ * and Touched, exactly as `todo.start` marks it, in the same decision — so the
+ * one press says both things and the Rollover carries the Todo over rather
+ * than sending it back (CONTEXT.md, "Touched").
+ */
+function startedTodo(todo: TodoFacts | null, at: string): Op[] {
+  return todo === null
+    ? []
+    : [{ type: 'todo.set', id: todo.id, set: { startedAt: at, touchedAt: at } }]
+}
+
+/**
+ * What work a timer started from a Todo is for. The Todo's Project settles it —
+ * and the Project's Client settles the Client, through `workFor` — so an entry
+ * started from a Todo can never contradict the Project the Todo belongs to. A
+ * Todo that is part of nothing larger takes the work the bar already had, which
+ * is why starting from one is a press and not a choice.
+ */
+function workOf(
+  todo: TodoFacts | null,
+  input: { clientId?: string | null; projectId?: string | null },
+): { clientId?: string | null; projectId?: string | null } {
+  return todo?.projectId ? { projectId: todo.projectId } : input
+}
+
+/**
  * The work a Time entry is for, or why it cannot be that work. A Project that
  * has a Client sets that Client, so an entry can never contradict its Project;
  * naming a Client the Project does not have is refused rather than quietly
@@ -627,6 +686,7 @@ function addOneSignal(
       id: todo.id,
       state: 'today',
       source: todo.source,
+      projectId: null,
       snoozedUntil: null,
       swappedOnDay: null,
       slotHours: [],
@@ -858,7 +918,9 @@ export function decide(state: CommandState, input: Command, now: Date): Decision
       if (entries.some((each) => each.endedAt === null)) {
         return refuse('A timer is already running. Stop it before starting another.')
       }
-      const work = workFor(state, input)
+      const timed = todoTimed(state, input.todoId)
+      if (!timed.ok) return refuse(timed.reason)
+      const work = workFor(state, workOf(timed.todo, input))
       if (!work.ok) return refuse(work.reason)
       return {
         ok: true,
@@ -869,7 +931,7 @@ export function decide(state: CommandState, input: Command, now: Date): Decision
               id: input.id,
               clientId: work.clientId,
               projectId: work.projectId,
-              todoId: null,
+              todoId: timed.todo?.id ?? null,
               note: '',
               // Work for a Client is billable until the user says otherwise;
               // their own never is, which is how the seed reads it too.
@@ -878,6 +940,7 @@ export function decide(state: CommandState, input: Command, now: Date): Decision
               createdAt: at,
             },
           },
+          ...startedTodo(timed.todo, at),
         ],
       }
     }
@@ -896,11 +959,23 @@ export function decide(state: CommandState, input: Command, now: Date): Decision
       // Nothing to split. Beginning from idle is `timer.start`, which says so
       // rather than quietly inventing the first half of a switch.
       if (!running) return refuse('No timer is running. Press start to begin one.')
-      const work = workFor(state, input)
+      const timed = todoTimed(state, input.todoId)
+      if (!timed.ok) return refuse(timed.reason)
+      const work = workFor(state, workOf(timed.todo, input))
       if (!work.ok) return refuse(work.reason)
+      // Pressed on the Todo the running entry already names: the timer is on it
+      // and a split would leave two rows in the timesheet where the day means one.
+      if (timed.todo && running.todoId === timed.todo.id) {
+        return refuse('The timer is already on that Todo.')
+      }
       // Switching to the work already running would end an entry and begin an
-      // identical one at the same instant: two rows where the timesheet means one.
-      if (work.clientId === running.clientId && work.projectId === running.projectId) {
+      // identical one at the same instant — unless the Todo is what changed,
+      // which two spells on one Project for one Client genuinely are.
+      if (
+        !timed.todo &&
+        work.clientId === running.clientId &&
+        work.projectId === running.projectId
+      ) {
         return refuse('The timer is already on that work.')
       }
       return {
@@ -913,13 +988,14 @@ export function decide(state: CommandState, input: Command, now: Date): Decision
               id: input.id,
               clientId: work.clientId,
               projectId: work.projectId,
-              todoId: null,
+              todoId: timed.todo?.id ?? null,
               note: '',
               billable: work.clientId !== null,
               startedAt: at,
               createdAt: at,
             },
           },
+          ...startedTodo(timed.todo, at),
         ],
       }
     }
@@ -982,6 +1058,9 @@ function born(todo: NewTodo): TodayTodo {
   return {
     ...todo,
     project: null,
+    projectId: null,
+    clientId: null,
+    clientName: null,
     estimateMinutes: null,
     energy: null,
     carryCount: 0,
@@ -1126,11 +1205,13 @@ export function apply<S extends Applicable>(state: S, ops: readonly Op[]): S {
 }
 
 /**
- * Whether operations start a Time entry whose Client or Project a cached timer
- * cannot name. A patch carries ids, and the names live in rows it does not
- * carry, so such a tab reads the day again rather than showing half a line. A
- * state with no timer — the Billing module is off, or this screen holds none —
- * has nothing to read again.
+ * Whether operations start a Time entry whose Client, Project or Todo a cached
+ * timer cannot name. A patch carries ids, and the names live in rows it does
+ * not carry, so such a tab reads the day again rather than showing half a line.
+ * An unnamed Client or Project leaves the entry out of the cache altogether; an
+ * unnamed Todo only leaves its title off, so the hours show at once either way
+ * and the words catch up. A state with no timer — the Billing module is off, or
+ * this screen holds none — has nothing to read again.
  */
 export function namesUnknownWork(
   state: Pick<Applicable, 'timer' | 'picker'>,
@@ -1138,10 +1219,11 @@ export function namesUnknownWork(
 ): boolean {
   const { timer } = state
   if (!timer) return false
-  return ops.some(
-    (each) =>
-      each.type === 'timeEntry.insert' && nameEntry(timer, each.entry, state.picker) === null,
-  )
+  return ops.some((each) => {
+    if (each.type !== 'timeEntry.insert') return false
+    const named = nameEntry(timer, each.entry, state.picker)
+    return named === null || (named.todoId !== null && named.todoTitle === null)
+  })
 }
 
 /**

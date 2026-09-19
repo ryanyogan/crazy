@@ -65,7 +65,7 @@ export async function readProjects(
     db.todo.findMany({
       where: { userId, projectId: { not: null }, state: { in: ['today', 'backlog'] } },
       include: {
-        project: { select: { name: true } },
+        project: { select: { name: true, clientId: true, client: { select: { name: true } } } },
         slots: { where: { userId, day }, select: { hour: true }, orderBy: { hour: 'asc' } },
       },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
@@ -136,6 +136,8 @@ export async function readProjects(
       title: row.title,
       state: todoState.parse(row.state),
       project: row.project?.name ?? null,
+      clientId: row.project?.clientId ?? null,
+      clientName: row.project?.client?.name ?? null,
       estimateMinutes: row.estimateMinutes,
       energy: row.energy === null ? null : energy.parse(row.energy),
       carryCount: row.carryCount,

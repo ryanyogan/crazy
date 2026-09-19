@@ -127,6 +127,15 @@ export interface TodayTodo {
   state: TodoState
   /** Null is a One-off. */
   project: string | null
+  /** The Project's own id: what a timer started from this Todo is for. */
+  projectId: string | null
+  /**
+   * Who the Project's work is billed to, where the Billing module is on. A
+   * Project's Client wins over anything else, so this is the Project's; null is
+   * Internal, which is the absence of a Client and not a Client of its own.
+   */
+  clientId: string | null
+  clientName: string | null
   estimateMinutes: number | null
   energy: Energy | null
   carryCount: number

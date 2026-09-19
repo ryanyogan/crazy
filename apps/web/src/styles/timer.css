@@ -498,6 +498,12 @@
   display: none;
 }
 
+/* On a 48px dock there is no room for it: the square and the figure and the
+   work are what a phone has room for, and the work is what says most. */
+.timer__todo {
+  display: none;
+}
+
 .timer--compact .timer__control {
   order: 1;
   flex: none;
@@ -773,6 +779,22 @@
      42px, because the strip is not 42px tall. */
   .timer--compact .picker__panel {
     top: calc(100% + 1px);
+  }
+
+  /* The Todo the running entry was started from (ticket 19). It is the quiet
+     answer to "what am I timing?", so it stands back and gives its room up
+     first: one line, cut short, never a second one. */
+  .timer--compact .timer__todo {
+    order: 3;
+    display: block;
+    flex: 0 1 auto;
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 12px;
+    color: var(--color-neutral-700);
   }
 
   /* From the breakpoint up the strip has room for the note and the figures,

@@ -1,16 +1,39 @@
 import {
   SOURCE_KINDS,
+  type ClientWeek,
   type DayEvent,
+  type LoggedHour,
   type TimelineHour,
   type TodayTodo,
+  formatLogged,
   slotRefusal,
 } from '@crazy/shared'
-import { SourceChip, Timeline, TimelineRow } from '@crazy/ui'
-import { useState } from 'react'
+import { SourceChip, Tag, Timeline, TimelineRow, type TimelineRowKind } from '@crazy/ui'
+import { type ReactNode, useState } from 'react'
 import { notify } from '#/lib/notices'
+import { clientCode, clientShade } from '#/lib/shades'
 import { useCommand } from '#/lib/useCommand'
 
 const count = (many: number, one: string) => `${many} ${one}${many === 1 ? '' : 's'}`
+
+/**
+ * How an hour is drawn. With the Billing module off it is what the day holds:
+ * a meeting, a focus block, a Slot or nothing. With it on, what became of the
+ * hour wins over what was planned for it (frame 2a) — the hour the timer is in
+ * now is framed in the accent, an hour with tracked time in it is plainly
+ * boxed, and everything still only planned is dashed, because a plan is a plan.
+ * A meeting is a meeting either way: Crazy never changes a Provider's calendar.
+ */
+function kindOf(
+  hour: TimelineHour,
+  spent: LoggedHour | undefined,
+  billing: boolean,
+  runningHours: readonly number[],
+): TimelineRowKind {
+  if (!billing || hour.kind === 'meeting') return hour.kind
+  if (runningHours.includes(hour.hour)) return 'tracked'
+  return spent ? 'logged' : 'free'
+}
 
 interface DayTimelineProps {
   timeline: TimelineHour[]
@@ -20,6 +43,19 @@ interface DayTimelineProps {
   /** The Todo being dragged over the day, if one is; null the rest of the time. */
   dragging: TodayTodo | null
   now: Date
+  /** What is drawn above the hours: the Brief, where frame 2a puts it. */
+  lead?: ReactNode
+  /**
+   * With the Billing module on, what was actually tracked in each hour and
+   * every Client the user has, so the day can say whose each hour was. Null
+   * with the module off: then the timeline is a plan and nothing else.
+   */
+  logged?: LoggedHour[] | null
+  clients?: ClientWeek[]
+  /** The hours the running entry has time in, which frame 2a frames in the accent. */
+  runningHours?: readonly number[]
+  /** The Todos the day holds, so a planned hour can say whose work it is for. */
+  stack?: TodayTodo[]
 }
 
 /**
@@ -38,6 +74,11 @@ export function DayTimeline({
   events,
   dragging,
   now,
+  lead,
+  logged = null,
+  clients = [],
+  runningHours = [],
+  stack = [],
 }: DayTimelineProps) {
   const [over, setOver] = useState<number | null>(null)
   // How deep in the timeline the drag is: moving between an hour's own parts
@@ -54,8 +95,21 @@ export function DayTimeline({
     setOver(null)
   }
 
+  /** Whose hour it was: who was tracked in it, or failing that whose work is slotted on it. */
+  const clientOf = (hour: number) => {
+    const spent = logged?.find((each) => each.hour === hour)
+    if (spent) return spent.clientId
+    const slotted = stack.find((todo) => todo.slotHours.includes(hour))
+    return slotted ? slotted.clientId : null
+  }
+  /** Whether anything at all belongs to the hour, so an empty hour wears no Client's colour. */
+  const owned = (hour: number) =>
+    logged?.some((each) => each.hour === hour) ||
+    stack.some((todo) => todo.slotHours.includes(hour))
+
   return (
     <section className="today__day" aria-labelledby="day-title">
+      {lead}
       <div className="day__head">
         <h2 id="day-title" className="day__title">
           Your day · {count(todos, 'todo')} · {count(meetings, 'meeting')}
@@ -74,11 +128,19 @@ export function DayTimeline({
       >
         {timeline.map((hour) => {
           const refusal = dragging && slotRefusal(dragging, hour.hour, events, now)
+          const spent = logged?.find((each) => each.hour === hour.hour)
+          const client = clientOf(hour.hour)
           return (
             <TimelineRow
               key={hour.hour}
               label={String(hour.hour).padStart(2, '0')}
-              kind={hour.kind}
+              kind={kindOf(hour, spent, logged !== null, runningHours)}
+              {...(logged === null
+                ? {}
+                : {
+                    rule: owned(hour.hour) ? clientShade(client, clients) : null,
+                    figure: spent ? formatLogged(spent.seconds) : null,
+                  })}
               title={hour.title}
               note={hour.note}
               className={lit === hour.hour ? 'tl-row--over' : undefined}
@@ -99,7 +161,13 @@ export function DayTimeline({
                 command.mutate({ type: 'todo.slot', todoId: dragging.id, hour: hour.hour })
               }}
             >
-              <SourceChip source={hour.source && SOURCE_KINDS[hour.source]} />
+              {logged === null ? (
+                <SourceChip source={hour.source && SOURCE_KINDS[hour.source]} />
+              ) : (
+                <Tag className="source-chip">
+                  {owned(hour.hour) ? clientCode(client, clients) : '—'}
+                </Tag>
+              )}
             </TimelineRow>
           )
         })}

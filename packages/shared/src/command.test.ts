@@ -3,6 +3,7 @@ import {
   type Command,
   type CommandState,
   type Op,
+  type TodoFacts,
   SNOOZE_CHOICES,
   SNOOZE_MINUTES,
   apply,
@@ -29,6 +30,9 @@ function todo(id: string, fields: Partial<TodayTodo> = {}): TodayTodo {
     title: id,
     state: 'today',
     project: null,
+    projectId: null,
+    clientId: null,
+    clientName: null,
     estimateMinutes: null,
     energy: null,
     carryCount: 0,
@@ -973,6 +977,7 @@ const running = (id = 'entry/wed'): TimeEntryFacts => ({
   id,
   clientId: MERIDIAN,
   projectId: DISCOVERY,
+  todoId: null,
   endedAt: null,
 })
 
@@ -1096,6 +1101,8 @@ it('lays a started and stopped timer over the bar the browser is showing', () =>
     clientId: MERIDIAN,
     clientName: 'Meridian Health',
     projectId: DISCOVERY,
+    todoId: null,
+    todoTitle: null,
     projectName: 'Discovery research',
     note: 'Interviews 2–3',
     billable: true,
@@ -1208,6 +1215,7 @@ it('settles the Client and the Project against each other, in all four combinati
     id: 'entry/wed',
     clientId: MERIDIAN,
     projectId: null,
+    todoId: null,
     endedAt: null,
   }
   const cases: {
@@ -1311,4 +1319,158 @@ it("names a Project in the picker, and refuses one for somebody else's Client", 
   expect(twice.picker?.clients[0]?.projects).toEqual([
     { id: 'project/new', name: 'Retainer review', lastStartedAt: null, running: false },
   ])
+})
+
+// ── Starting a timer from a Todo (ticket 19) ────────────────────────────────
+// One press on a Todo starts the timer on it: the entry records the Todo, the
+// Todo is marked as under way and Touched, and the work comes from its Project.
+
+const SYNTHESIS = 'todo/synthesis'
+
+/** The world a Todo-started timer is decided against: her stack, and whose work is whose. */
+function timingTodos(entries: TimeEntryFacts[], todos: TodoFacts[] = []): CommandState {
+  return timing(entries, { todos })
+}
+
+const todoFacts = (id: string, fields: Partial<TodoFacts> = {}): TodoFacts => ({
+  id,
+  state: 'today',
+  source: null,
+  projectId: DISCOVERY,
+  snoozedUntil: null,
+  swappedOnDay: null,
+  slotHours: [],
+  touchedAt: '2025-09-16T09:00:00.000Z',
+  carryCount: 0,
+  ...fields,
+})
+
+it('starts a timer on a Todo: the entry names it, and the Todo is under way and Touched', () => {
+  const state = timingTodos([], [todoFacts(SYNTHESIS)])
+  // The bar's own preselection is passed and ignored: the Todo's Project is the
+  // work, and the Project's Client comes with it.
+  const decision = decide(
+    state,
+    startTimer({ todoId: SYNTHESIS, clientId: null, projectId: null }),
+    now,
+  )
+
+  expect(decision).toEqual({
+    ok: true,
+    ops: [
+      {
+        type: 'timeEntry.insert',
+        entry: {
+          id: 'entry/new',
+          clientId: MERIDIAN,
+          projectId: DISCOVERY,
+          todoId: SYNTHESIS,
+          note: '',
+          billable: true,
+          startedAt: now.toISOString(),
+          createdAt: now.toISOString(),
+        },
+      },
+      {
+        type: 'todo.set',
+        id: SYNTHESIS,
+        set: { startedAt: now.toISOString(), touchedAt: now.toISOString() },
+      },
+    ],
+  })
+})
+
+it('starts a Todo that is part of nothing larger on the work the bar already had', () => {
+  const state = timingTodos([], [todoFacts('todo/one-off', { projectId: null })])
+  const decision = decide(state, startTimer({ todoId: 'todo/one-off' }), now)
+  const ops = decision.ok ? decision.ops : []
+
+  expect(ops[0]).toEqual({
+    type: 'timeEntry.insert',
+    entry: {
+      id: 'entry/new',
+      clientId: MERIDIAN,
+      projectId: DISCOVERY,
+      todoId: 'todo/one-off',
+      note: '',
+      billable: true,
+      startedAt: now.toISOString(),
+      createdAt: now.toISOString(),
+    },
+  })
+})
+
+it('refuses a Todo that is not hers, and one that is finished', () => {
+  const state = timingTodos([], [todoFacts('todo/done', { state: 'done' })])
+
+  expect(decide(state, startTimer({ todoId: 'todo/somebody-elses' }), now)).toEqual({
+    ok: false,
+    reason: 'That Todo no longer exists.',
+  })
+  expect(decide(state, startTimer({ todoId: 'todo/done' }), now)).toEqual({
+    ok: false,
+    reason: 'A Todo that is finished cannot be timed.',
+  })
+})
+
+it('presses start on a Todo while one runs: the entries split at the same instant', () => {
+  const state = timingTodos([running()], [todoFacts(SYNTHESIS)])
+  // The same Client and the same Project as the running entry: the Todo is what
+  // changed, and two spells on one Project for two Todos are two rows.
+  const decision = decide(state, { type: 'timer.switch', id: 'entry/new', todoId: SYNTHESIS }, now)
+
+  expect(decision).toEqual({
+    ok: true,
+    ops: [
+      { type: 'timeEntry.set', id: 'entry/wed', set: { endedAt: now.toISOString() } },
+      {
+        type: 'timeEntry.insert',
+        entry: {
+          id: 'entry/new',
+          clientId: MERIDIAN,
+          projectId: DISCOVERY,
+          todoId: SYNTHESIS,
+          note: '',
+          billable: true,
+          startedAt: now.toISOString(),
+          createdAt: now.toISOString(),
+        },
+      },
+      {
+        type: 'todo.set',
+        id: SYNTHESIS,
+        set: { startedAt: now.toISOString(), touchedAt: now.toISOString() },
+      },
+    ],
+  })
+})
+
+it('does nothing when start is pressed on the Todo the timer already names', () => {
+  const state = timingTodos([{ ...running(), todoId: SYNTHESIS }], [todoFacts(SYNTHESIS)])
+
+  expect(decide(state, { type: 'timer.switch', id: 'entry/new', todoId: SYNTHESIS }, now)).toEqual({
+    ok: false,
+    reason: 'The timer is already on that Todo.',
+  })
+})
+
+it('starts no timer from a Todo with the Billing module off', () => {
+  const state = timingTodos([], [todoFacts(SYNTHESIS)])
+  expect(decide({ ...state, billing: false }, startTimer({ todoId: SYNTHESIS }), now)).toEqual({
+    ok: false,
+    reason: 'The timer belongs to the Billing module, which is off.',
+  })
+  // With the module off, pressing Start on the Take on now is what it always was.
+  expect(
+    decide({ ...state, billing: false }, { type: 'todo.start', todoId: SYNTHESIS }, now),
+  ).toEqual({
+    ok: true,
+    ops: [
+      {
+        type: 'todo.set',
+        id: SYNTHESIS,
+        set: { startedAt: now.toISOString(), touchedAt: now.toISOString() },
+      },
+    ],
+  })
 })

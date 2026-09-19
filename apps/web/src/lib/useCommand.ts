@@ -49,10 +49,11 @@ function timerFacts(held: {
   ]
 
   return {
-    timeEntries: entries.map(({ id, clientId, projectId, endedAt }) => ({
+    timeEntries: entries.map(({ id, clientId, projectId, todoId, endedAt }) => ({
       id,
       clientId,
       projectId,
+      todoId,
       endedAt,
     })),
     projects:

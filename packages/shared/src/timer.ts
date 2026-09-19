@@ -1,4 +1,5 @@
 import { addDays, clockTime, startOfDay, wallClock } from './clock'
+import type { ClientArrangement } from './todo'
 
 // The timer, as the Today screen holds it and shows it. A Time entry is the
 // record and the timer is only the control (CONTEXT.md); the running timer is
@@ -14,6 +15,10 @@ export interface TimerEntry {
   clientName: string | null
   projectId: string | null
   projectName: string | null
+  /** The Todo the timer was started from, if it was started from one (ticket 19). */
+  todoId: string | null
+  /** That Todo's title, as the header says it; null when the entry names no Todo. */
+  todoTitle: string | null
   note: string
   billable: boolean
   startedAt: string
@@ -86,6 +91,8 @@ export interface TimeEntryFacts {
   id: string
   clientId: string | null
   projectId: string | null
+  /** The Todo it was started from; what makes a second spell on the same work a real change. */
+  todoId: string | null
   endedAt: string | null
 }
 
@@ -105,6 +112,9 @@ export interface TimerWork {
 
 /** The label a Client wears where it has none: the absence of a Client, not one of its own. */
 export const INTERNAL = 'Internal'
+
+/** The three letters that stand for no Client at all, as the timeline's chip says it. */
+export const INTERNAL_CODE = 'INT'
 
 /** Seconds of a Time entry that fall within the day, counted no further than `now`. */
 function secondsWithin(entry: TimerEntry, dayStart: Date, now: Date): number {
@@ -213,6 +223,141 @@ export function formatTracked(seconds: number): string {
   return `${Math.floor(minutes / 60)}h ${two(minutes % 60)}m`
 }
 
+/**
+ * What one Client's week has come to, as "This week by Client" draws it
+ * (frame 2a). Internal is one of these lines — work for nobody is still work —
+ * and it is the absence of a Client, never a stored row.
+ */
+export interface ClientWeek {
+  /** Null is Internal. */
+  clientId: string | null
+  name: string
+  /** The three letters the timeline's chip says: "MER", or "INT" for Internal. */
+  code: string
+  /**
+   * Where the Client sits in the order they were taken on, which is what its
+   * colour follows: a Client's shade must not move when a week's hours do.
+   * Internal, which is no Client, has none.
+   */
+  order: number | null
+  /** Seconds tracked since Monday, counted no further than the moment asked. */
+  weekSeconds: number
+  /** Seconds tracked since the first of the month, which is what a budget is spent against. */
+  monthSeconds: number
+  arrangement: ClientArrangement | null
+  /** Per hour, in cents; null for Internal, which is billed to nobody. */
+  rateCents: number | null
+  /** The budget or retainer in hours, where the arrangement has one. */
+  budgetHours: number | null
+}
+
+/**
+ * How a Client's work is charged and where the month stands against it, in the
+ * line frame 2a draws under the bar. Internal has no terms: it is billed to
+ * nobody, which is the whole of what there is to say about it.
+ */
+export function clientTerms(client: ClientWeek): string {
+  const { arrangement, budgetHours, monthSeconds } = client
+  if (arrangement === null) return 'Not billed'
+  const hours = monthSeconds / 3600
+  switch (arrangement) {
+    case 'project_fee':
+      return budgetHours === null
+        ? 'Project fee'
+        : `Project fee · ${formatTracked(monthSeconds)} of ${budgetHours}h budget`
+    case 'hourly':
+      return client.rateCents === null
+        ? 'Hourly'
+        : `Hourly · $${Math.round(client.rateCents / 100)}/h`
+    case 'retainer': {
+      if (budgetHours === null) return 'Retainer'
+      const left = (budgetHours - hours) * 3600
+      return left >= 0
+        ? `Retainer · ${budgetHours}h/mo, ${formatTracked(left)} left`
+        : `Retainer · ${budgetHours}h/mo, ${formatTracked(-left)} over`
+    }
+  }
+}
+
+/**
+ * How far along a Client's bar is drawn: its hours against the busiest Client's
+ * this week, so the longest line is full and the rest are read against it. A
+ * week with nothing in it draws nothing.
+ */
+export function weekShare(client: ClientWeek, clients: readonly ClientWeek[]): number {
+  const most = Math.max(...clients.map((each) => each.weekSeconds), 0)
+  return most === 0 ? 0 : client.weekSeconds / most
+}
+
+/** The hours of a day a Time entry ran in, and how many seconds it spent in each. */
+export interface LoggedHour {
+  hour: number
+  seconds: number
+  /** Whose hour it was, by the entry that spent most of it here; null is Internal. */
+  clientId: string | null
+  clientName: string | null
+}
+
+/**
+ * What was actually tracked, hour by hour of the user's day, from the Time
+ * entries themselves — so the timeline shows what happened beside what was
+ * planned (spec, story 96). A running entry counts up to `now` and no further;
+ * the browser may hand in a later moment as it ticks, and reads no clock to do
+ * it. An entry that spans midnight is counted only for the part inside the day.
+ */
+export function loggedByHour(
+  entries: readonly TimerEntry[],
+  now: Date,
+  timeZone: string,
+): LoggedHour[] {
+  const { day } = wallClock(now, timeZone)
+  const dayStart = startOfDay(day, timeZone).getTime()
+  /** Seconds spent in each hour, and by whom. */
+  const hours = new Map<number, Map<string, { seconds: number; name: string | null }>>()
+
+  for (const entry of entries) {
+    const from = Math.max(new Date(entry.startedAt).getTime(), dayStart)
+    const until = Math.min(
+      entry.endedAt ? new Date(entry.endedAt).getTime() : now.getTime(),
+      now.getTime(),
+    )
+    if (until <= from) continue
+    const firstHour = Math.floor((from - dayStart) / 3_600_000)
+    const lastHour = Math.floor((until - dayStart - 1) / 3_600_000)
+    for (let hour = firstHour; hour <= lastHour; hour += 1) {
+      const start = dayStart + hour * 3_600_000
+      const seconds = Math.floor(
+        (Math.min(until, start + 3_600_000) - Math.max(from, start)) / 1000,
+      )
+      if (seconds <= 0) continue
+      const by = hours.get(hour) ?? new Map()
+      const key = entry.clientId ?? ''
+      const held = by.get(key) ?? { seconds: 0, name: entry.clientName }
+      by.set(key, { seconds: held.seconds + seconds, name: entry.clientName })
+      hours.set(hour, by)
+    }
+  }
+
+  return [...hours.entries()]
+    .map(([hour, by]) => {
+      const spells = [...by.entries()]
+      const most = spells.reduce((best, each) => (each[1].seconds > best[1].seconds ? each : best))
+      return {
+        hour,
+        seconds: spells.reduce((total, each) => total + each[1].seconds, 0),
+        clientId: most[0] === '' ? null : most[0],
+        clientName: most[1].name,
+      }
+    })
+    .sort((a, b) => a.hour - b.hour)
+}
+
+/** "1:42", "0:20": tracked time as the timeline's right-hand figure reads it. */
+export function formatLogged(seconds: number): string {
+  const minutes = Math.max(0, Math.floor(seconds / 60))
+  return `${Math.floor(minutes / 60)}:${two(minutes % 60)}`
+}
+
 /** How long a Time entry ran, in whole seconds; 0 while it is still running. */
 export function entrySeconds(entry: TimerEntry): number {
   if (!entry.endedAt) return 0
@@ -270,8 +415,10 @@ function held(timer: TodayTimer): TimerEntry[] {
  */
 export function nameEntry(
   timer: TodayTimer,
-  entry: Omit<TimerEntry, 'clientName' | 'projectName' | 'endedAt'>,
+  entry: Omit<TimerEntry, 'clientName' | 'projectName' | 'todoTitle' | 'endedAt'>,
   picker?: TimerPicker | null,
+  /** The Todo's title, where the caller holds the day and can say it. */
+  todoTitle?: string | null,
 ): TimerEntry | null {
   const known = held(timer)
   const nameOf = (id: string, of: 'clientId' | 'projectId', say: 'clientName' | 'projectName') =>
@@ -298,6 +445,14 @@ export function nameEntry(
     clientName,
     projectId: entry.projectId,
     projectName,
+    todoId: entry.todoId,
+    // A Todo this cache cannot name leaves the entry showing without its title
+    // rather than not showing at all: the hours are what matter, and the title
+    // arrives with the read `namesUnknownWork` asks for.
+    todoTitle:
+      entry.todoId === null
+        ? null
+        : (todoTitle ?? known.find((each) => each.todoId === entry.todoId)?.todoTitle ?? null),
     note: entry.note,
     billable: entry.billable,
     startedAt: entry.startedAt,

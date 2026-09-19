@@ -1,5 +1,7 @@
 import {
   INTERNAL,
+  INTERNAL_CODE,
+  type ClientWeek,
   type PickerClient,
   type PickerProject,
   type RecentWork,
@@ -7,6 +9,7 @@ import {
   type TimerPicker,
   type TodayTimer,
   addDays,
+  clientArrangement,
   startOfDay,
   startOfWeek,
   wallClock,
@@ -24,18 +27,21 @@ type Row = {
   client: { name: string } | null
   projectId: string | null
   project: { name: string } | null
+  todoId: string | null
   note: string
   billable: boolean
   startedAt: Date
   endedAt: Date | null
 }
 
-const entry = (row: Row): TimerEntry => ({
+const entry = (row: Row, todoTitle: string | null = null): TimerEntry => ({
   id: row.id,
   clientId: row.clientId,
   clientName: row.client?.name ?? null,
   projectId: row.projectId,
   projectName: row.project?.name ?? null,
+  todoId: row.todoId,
+  todoTitle,
   note: row.note,
   billable: row.billable,
   startedAt: row.startedAt.toISOString(),
@@ -77,10 +83,26 @@ export async function readTimer(
     }),
   ])
 
-  const today = touchingToday.map(entry)
+  // The Todos those entries were started from. There is no relation on the row
+  // — a Time entry outlives the Todo that caused it — so the titles are read
+  // beside it, and an entry whose Todo has gone simply has none.
+  const todoIds = [...touchingToday, lastEnded]
+    .map((row) => row?.todoId)
+    .filter((each) => each !== null && each !== undefined)
+  const todos =
+    todoIds.length === 0
+      ? []
+      : await db.todo.findMany({
+          where: { userId, id: { in: [...new Set(todoIds)] } },
+          select: { id: true, title: true },
+        })
+  const titleOf = (todoId: string | null) =>
+    todoId === null ? null : (todos.find((each) => each.id === todoId)?.title ?? null)
+
+  const today = touchingToday.map((row) => entry(row, titleOf(row.todoId)))
   return {
     running: today.find((each) => each.endedAt === null) ?? null,
-    last: lastEnded ? entry(lastEnded) : null,
+    last: lastEnded ? entry(lastEnded, titleOf(lastEnded.todoId)) : null,
     today,
   }
 }
@@ -89,6 +111,8 @@ export async function readTimer(
 export interface TimerRead {
   timer: TodayTimer | null
   picker: TimerPicker | null
+  /** Where this week has gone, Client by Client (frame 2a); empty with the module off. */
+  week: ClientWeek[]
 }
 
 /**
@@ -105,12 +129,96 @@ export async function readTimerAndPicker(
   timeZone: string,
   billing: boolean,
 ): Promise<TimerRead> {
-  if (!billing) return { timer: null, picker: null }
-  const [timer, picker] = await Promise.all([
+  if (!billing) return { timer: null, picker: null, week: [] }
+  const [timer, picker, week] = await Promise.all([
     readTimer(db, userId, now, timeZone),
     readTimerPicker(db, userId, now, timeZone),
+    readWeekByClient(db, userId, now, timeZone),
   ])
-  return { timer, picker }
+  return { timer, picker, week }
+}
+
+/**
+ * Where the week has gone, Client by Client, as frame 2a's card draws it: every
+ * Client of the user's with the hours put in since Monday, Internal among them
+ * because work for nobody is still work, and the month's hours beside them so
+ * the card can say where a budget or a retainer stands. Most hours first: for a
+ * contractor with one dominant Client, that is the line worth reading.
+ *
+ * The seconds are counted no further than `now`, which is a parameter here as
+ * everywhere; the running entry counts up to it and not past it.
+ */
+export async function readWeekByClient(
+  db: ReadDb,
+  userId: string,
+  now: Date,
+  timeZone: string,
+): Promise<ClientWeek[]> {
+  const { day } = wallClock(now, timeZone)
+  const weekStart = startOfDay(startOfWeek(day), timeZone)
+  const monthStart = startOfDay(`${day.slice(0, 7)}-01`, timeZone)
+  const since = weekStart < monthStart ? weekStart : monthStart
+
+  const [clients, entries] = await Promise.all([
+    db.client.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        arrangement: true,
+        rateCents: true,
+        budgetHours: true,
+        createdAt: true,
+      },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    }),
+    db.timeEntry.findMany({
+      where: {
+        userId,
+        startedAt: { lt: now },
+        OR: [{ endedAt: null }, { endedAt: { gt: since } }],
+      },
+      select: { clientId: true, startedAt: true, endedAt: true },
+    }),
+  ])
+
+  /** Seconds one Client spent between a moment and now, each entry clipped to both. */
+  const secondsSince = (of: string | null, from: Date) =>
+    entries
+      .filter((row) => row.clientId === of)
+      .reduce((total, row) => {
+        const start = Math.max(row.startedAt.getTime(), from.getTime())
+        const until = Math.min(row.endedAt?.getTime() ?? now.getTime(), now.getTime())
+        return total + Math.max(0, Math.floor((until - start) / 1000))
+      }, 0)
+
+  const lines: ClientWeek[] = clients.map((client, order) => ({
+    clientId: client.id,
+    name: client.name,
+    code: client.code,
+    order,
+    weekSeconds: secondsSince(client.id, weekStart),
+    monthSeconds: secondsSince(client.id, monthStart),
+    arrangement: clientArrangement.parse(client.arrangement),
+    rateCents: client.rateCents,
+    budgetHours: client.budgetHours,
+  }))
+  // Internal is the absence of a Client, never a stored row, and it is not one
+  // of them: it sits last however many hours went into it.
+  lines.sort((a, b) => b.weekSeconds - a.weekSeconds)
+  lines.push({
+    clientId: null,
+    name: INTERNAL,
+    code: INTERNAL_CODE,
+    order: null,
+    weekSeconds: secondsSince(null, weekStart),
+    monthSeconds: secondsSince(null, monthStart),
+    arrangement: null,
+    rateCents: null,
+    budgetHours: null,
+  })
+  return lines
 }
 
 /** How many pieces of recently timed work the phone's sheet leads with (frame 3b). */

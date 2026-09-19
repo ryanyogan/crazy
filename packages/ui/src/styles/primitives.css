@@ -76,6 +76,19 @@
   --tl-fill: transparent;
 }
 
+/* With the Billing module on an hour says what became of it as well as what
+   holds it: the hour the timer is in now is framed in the accent, and an hour
+   with hours already in it is plainly boxed (frame 2a). */
+.tl-row--tracked {
+  --tl-border: 1px solid var(--color-accent);
+  --tl-fill: transparent;
+}
+
+.tl-row--logged {
+  --tl-border: 1px solid var(--color-divider);
+  --tl-fill: transparent;
+}
+
 /* The hour a Todo is being dragged over, whatever else holds it. The cell wears
    it on a phone and the row's box from 900px, as every other kind does. */
 .tl-row--over {
@@ -104,6 +117,22 @@
 .tl-row__note,
 .tl-row .source-chip {
   display: none;
+}
+
+/* Whose hour it is, down its left edge. On a phone the row is a cell, so the
+   rule lies across its head rather than down its side. */
+.tl-row__rule {
+  display: block;
+  height: 3px;
+  margin-bottom: 3px;
+}
+
+/* How much of the hour was actually tracked. */
+.tl-row__figure {
+  display: block;
+  font-family: var(--font-heading);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
 }
 
 @media (min-width: 900px) {
@@ -163,6 +192,19 @@
 
   .tl-row .source-chip {
     display: inline-flex;
+  }
+
+  .tl-row__rule {
+    flex: none;
+    width: 4px;
+    height: auto;
+    align-self: stretch;
+    margin: 0;
+  }
+
+  .tl-row__figure {
+    min-width: 38px;
+    text-align: right;
   }
 }
 

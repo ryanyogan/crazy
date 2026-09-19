@@ -311,6 +311,49 @@ const ENTRIES: EntrySeed[] = [
   },
 ]
 
+/**
+ * Her day, hour by hour, as frame 2a draws it: which Todos hold which hours,
+ * the one meeting the calendar holds, and the words Crazy wrote for each hour
+ * when it planned the day. An hour with no Todo and no meeting is still worded
+ * — 08:00 is the spell she tracked to Internal before the day began, 12:00 is
+ * lunch — because Crazy plans the whole day and not only the parts with a row.
+ */
+const DAY: {
+  hour: number
+  /** The Todo that holds the hour, if one does. */
+  todo?: string
+  title: string
+  note: string | null
+}[] = [
+  { hour: 8, title: 'Inbox · proposal tweak', note: 'tracked to Internal · project?' },
+  {
+    hour: 9,
+    todo: 'synthesis',
+    title: 'Research synthesis · discovery interviews',
+    note: 'running',
+  },
+  { hour: 10, todo: 'synthesis', title: '↳ synthesis continues', note: 'running' },
+  { hour: 11, title: 'Quill weekly · 11:30', note: '30m · billable' },
+  { hour: 12, title: 'Lunch', note: 'timer paused' },
+  {
+    hour: 13,
+    todo: 'wireframes',
+    title: 'Bramble · onboarding flow v3',
+    note: 'suggested · retainer hits 20h ~15:00',
+  },
+  { hour: 14, todo: 'wireframes', title: '↳ Bramble continues', note: 'suggested' },
+  {
+    hour: 15,
+    todo: 'invoice-draft',
+    title: 'Review Meridian invoice draft',
+    note: '15m · not billable',
+  },
+  { hour: 16, todo: 'writeup', title: 'Quill · synthesis writeup', note: 'suggested · 1h' },
+]
+
+/** The one meeting on her day: Quill's weekly, which the 11:00 hour is drawn around. */
+const MEETING = { key: 'quill-weekly', title: 'Quill weekly', from: '11:30', until: '12:00' }
+
 const BRIEF = {
   body: "You're 1h 42m into Meridian's synthesis; the timer hasn't moved projects since 09:00, so I'll ask before your 11:30 with Quill. Bramble's retainer hits 20h at about 15:00 today. September invoices go out Friday and Meridian's is ready to review.",
   bodyShort:
@@ -401,6 +444,46 @@ export function cori(input: SeedInput) {
   // The tools she reads are the first persona's; her billing Providers are ticket 23's.
   const { connections } = ryan(input)
 
+  const slots: Prisma.SlotCreateManyInput[] = DAY.filter((hour) => hour.todo !== undefined).map(
+    (hour) => ({
+      id: id('slot', `${hour.todo}-${hour.hour}`),
+      userId,
+      todoId: id('todo', hour.todo!),
+      day: today,
+      hour: hour.hour,
+      createdAt: past(today, '08:05'),
+    }),
+  )
+
+  const calendarEvents: Prisma.CalendarEventCreateManyInput[] = [
+    {
+      id: id('event', MEETING.key),
+      userId,
+      connectionId: id('connection', 'google'),
+      itemId: MEETING.key,
+      kind: 'meeting',
+      title: MEETING.title,
+      who: null,
+      startsAt: localTimeToInstant(`${today}T${MEETING.from}`, timeZone)!,
+      endsAt: localTimeToInstant(`${today}T${MEETING.until}`, timeZone)!,
+      createdAt: past(workdayBack(4), '09:00'),
+    },
+  ]
+
+  const timelineHours: Prisma.TimelineHourCreateManyInput[] = DAY.map((hour) => ({
+    id: id('hour', `${today}-${hour.hour}`),
+    userId,
+    day: today,
+    hour: hour.hour,
+    title: hour.title,
+    note: hour.note,
+    sourceKind: hour.hour === 11 ? 'calendar_event' : null,
+    // Crazy worded the day it had planned, so each hour's words were written
+    // for the Todos it holds. Re-plan the hour and the words step aside.
+    writtenFor: JSON.stringify(hour.todo ? [id('todo', hour.todo)] : []),
+    createdAt: past(today, '08:00'),
+  }))
+
   return {
     connections,
     circles: [],
@@ -409,7 +492,7 @@ export function cori(input: SeedInput) {
     todos,
     circleMatches: [],
     overlapNotes: [],
-    slots: [],
+    slots,
     briefs: [
       {
         id: id('brief', today),
@@ -423,8 +506,8 @@ export function cori(input: SeedInput) {
     weekDayLines: [],
     weekDayNotes: [],
     tieIns: [],
-    calendarEvents: [],
-    timelineHours: [],
+    calendarEvents,
+    timelineHours,
     signals: [],
     metricSnapshots: [],
     timeEntries,

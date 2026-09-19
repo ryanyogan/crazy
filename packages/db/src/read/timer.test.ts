@@ -1,9 +1,9 @@
-import { localTimeToInstant, viewTimer } from '@crazy/shared'
+import { clientTerms, localTimeToInstant, viewTimer } from '@crazy/shared'
 import { env } from 'cloudflare:test'
 import { beforeAll, expect, it } from 'vite-plus/test'
 import { createReadDb } from '../index'
 import { createDb, seedPersona } from '../write'
-import { readTimer, readTimerAndPicker, readTimerPicker } from './timer'
+import { readTimer, readTimerAndPicker, readTimerPicker, readWeekByClient } from './timer'
 
 // Frame 3a's moment: Wednesday 17 Sep 2025, 10:42 on Cori's wall clock, 1h 42m
 // into Meridian's synthesis.
@@ -96,5 +96,27 @@ it('reads the bar and the picker together for the Shell, and nothing at all with
   expect(await readTimerAndPicker(db, userId, now, timeZone, false)).toEqual({
     timer: null,
     picker: null,
+    week: [],
   })
+})
+
+it("counts the week by Client, most hours first, with Internal last and the month's terms", async () => {
+  await seedPersona(createDb(env.DB), { persona: 'cori', userId, now, timeZone })
+  const week = await readWeekByClient(createReadDb(env.DB), userId, now, timeZone)
+
+  // Monday to now: Meridian 4h 15m + 3h + the running 1h 42m; Bramble 2h 30m;
+  // Quill 1h 45m; and an hour of her own between a call and the inbox.
+  expect(week.map((client) => [client.name, client.weekSeconds / 60])).toEqual([
+    ['Meridian Health', 4 * 60 + 15 + 180 + 102],
+    ['Bramble', 150],
+    ['Quill & Co', 105],
+    ['Internal', 60],
+  ])
+  // Internal is the absence of a Client: it has no terms and no colour of its own.
+  expect(week.at(-1)).toMatchObject({ clientId: null, arrangement: null, order: null })
+  // The running entry is counted up to the moment asked and no further.
+  expect(clientTerms(week[0]!)).toBe('Project fee · 27h 57m of 40h budget')
+  expect(clientTerms(week[1]!)).toBe('Retainer · 20h/mo, 2h 10m left')
+  expect(clientTerms(week[2]!)).toBe('Hourly · $190/h')
+  expect(clientTerms(week[3]!)).toBe('Not billed')
 })

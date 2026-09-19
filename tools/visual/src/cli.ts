@@ -70,6 +70,7 @@ async function compareAt(target: Target, width: Width): Promise<Result> {
     target.option ?? target.frame,
     part?.width ?? width,
     target.card,
+    target.compose,
   )
   const { height } = frame.picture
   const app = await shootRoute(

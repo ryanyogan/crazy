@@ -1,13 +1,20 @@
 import type { ComponentPropsWithoutRef, ReactNode } from 'react'
 
-/** How an hour is drawn: a meeting is a tinted fill, a focus block is framed, a free hour is dashed. */
-export type TimelineRowKind = 'meeting' | 'focus' | 'slotted' | 'free'
+/**
+ * How an hour is drawn: a meeting is a tinted fill, a focus block is framed, a
+ * free hour is dashed. With the Billing module on an hour also says what became
+ * of it — `tracked` is the hour the timer is in now, `logged` is one that has
+ * hours in it already (frame 2a).
+ */
+export type TimelineRowKind = 'meeting' | 'focus' | 'slotted' | 'free' | 'tracked' | 'logged'
 
 const KIND_WORDS: Record<TimelineRowKind, string | null> = {
   meeting: 'Meeting',
   focus: 'Focus block',
   slotted: null,
   free: 'Free',
+  tracked: 'Tracking now',
+  logged: 'Logged',
 }
 
 /**
@@ -24,7 +31,14 @@ type TimelineRowProps = {
   kind: TimelineRowKind
   title: string
   note?: string | null
-  /** What follows the note: a source chip. */
+  /**
+   * The colour of the rule down the hour's left edge, which says whose work it
+   * is; nothing where the hour belongs to nobody (frame 2a). A token, always.
+   */
+  rule?: string | null
+  /** The tracked time in the hour, as the row's right-hand figure: "1:42". */
+  figure?: string | null
+  /** What follows the note: a source chip, or the Client's code with the Billing module on. */
   children?: ReactNode
   /**
    * Anything else a screen hangs on the row, such as a drop target for a Todo
@@ -39,6 +53,8 @@ export function TimelineRow({
   kind,
   title,
   note,
+  rule,
+  figure,
   children,
   className,
   ...rest
@@ -48,12 +64,21 @@ export function TimelineRow({
       <div className="tl-row__label">{label}</div>
       <div className="tl-row__body">
         <div className="tl-row__box">
+          {rule !== undefined && (
+            <span className="tl-row__rule" style={{ background: rule ?? 'transparent' }} />
+          )}
           <span className="tl-row__title">
             {KIND_WORDS[kind] && <span className="sr-only">{KIND_WORDS[kind]}: </span>}
             {title}
           </span>
           {note && <span className="tl-row__note">{note}</span>}
           {children}
+          {figure !== undefined && (
+            <span className="tl-row__figure">
+              {figure && <span className="sr-only">Tracked </span>}
+              {figure}
+            </span>
+          )}
         </div>
       </div>
     </li>

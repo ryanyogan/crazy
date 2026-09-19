@@ -77,7 +77,12 @@ export async function readToday(
         OR: [{ state: 'today' }, { state: 'done', doneAt: { gte: dayStart, lt: dayEnd } }],
       },
       include: {
-        project: { select: { name: true } },
+        // The Project's Client comes with it: a Project's Client wins, so this
+        // is who the Todo's work is billed to and what a timer started from it
+        // would be for (CONTEXT.md, "Project").
+        project: {
+          select: { id: true, name: true, clientId: true, client: { select: { name: true } } },
+        },
         slots: { where: { day }, select: { hour: true }, orderBy: { hour: 'asc' } },
       },
     }),
@@ -95,6 +100,9 @@ export async function readToday(
       title: row.title,
       state: todoState.parse(row.state),
       project: row.project?.name ?? null,
+      projectId: row.project?.id ?? null,
+      clientId: row.project?.clientId ?? null,
+      clientName: row.project?.client?.name ?? null,
       estimateMinutes: row.estimateMinutes,
       energy: row.energy === null ? null : energy.parse(row.energy),
       carryCount: row.carryCount,

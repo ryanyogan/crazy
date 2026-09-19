@@ -68,6 +68,15 @@ export const COPY: [from: string, to: string][] = [
   ['Reply to Priya on rate limits', 'Reply to Priya on edge rate limits'],
   // The repo writes British English, here and in the ticket that asked for it.
   ['Backlog aging', 'Backlog ageing'],
+  // The glossary's word is Todo, and the card is the Priority stack: an
+  // ordering of Todos and not a list of its own. Frame 2a's heading says what
+  // the control on each row is for, which is worth keeping.
+  [
+    '>Todos · press ▸ to start a timer on one<',
+    '>Priority stack · press ▸ to start a timer on one<',
+  ],
+  // A Client is a Client, capitalised, wherever the app says it (CONTEXT.md).
+  ['>This week by client<', '>This week by Client<'],
   // Frame 3a's picker gives one Project a qualifier as part of its name. The
   // Project is called Admin; that it is not billable follows from its having
   // no Client, which is what the Internal group it sits under already says.
@@ -95,6 +104,23 @@ export interface Part {
   from?: 'top' | 'bottom'
 }
 
+/**
+ * One frame's piece put into another frame's screen. Frame 2a draws the timer
+ * as a segmented picker the app does not have; the bar it does have is frame
+ * 3a's, which is drawn on its own beside it. Rather than mask the whole band
+ * and compare nothing there, the harness puts 3a's card into 2a's bar — which
+ * is what the canvas itself suggests trying next under frame 3a ("put the 3a
+ * bar into 2a") — so the screen below it stands where the app stands it.
+ */
+export interface Compose {
+  /** The band of this frame's card that the other frame's card goes into. */
+  replace: string
+  /** Which card goes in it, and the width it is drawn at. */
+  with: { option: string; card: number; width: number }
+  /** What the band keeps of its own: the edges the screen around it gives it. */
+  band: string
+}
+
 export interface Target {
   /** What a developer names: usually the option's id on the canvas, "1a". */
   frame: string
@@ -116,6 +142,8 @@ export interface Target {
    */
   open?: string
   part?: Part
+  /** Another frame's card put into a band of this one's (desktop only). */
+  compose?: Compose
   /** Null where no desktop frame is drawn: frame 3b's sheet is a phone's. */
   desktop: View | null
   /** Null where no phone frame is drawn: the phone layout is derived. */
@@ -240,7 +268,7 @@ const SEEDED_NOTE =
   "The words inside the note field. The frame draws it empty, showing its placeholder; the Time entry Cori has running is seeded with the note frame 2b's timesheet gives it, so the field shows that instead. The field itself is compared"
 
 const CARD_NOT_SCREEN =
-  'Below the bar, on either side of the dropdown. Frame 3a draws the open picker on a card 410px tall so that the panel has something to hang in; in the app the panel hangs over the Today screen, which is what fills these two bands. The bar and the dropdown are compared'
+  'Below the bar: either side of the dropdown, and the strip under its foot. Frame 3a draws the open picker on a card 410px tall so that the panel has something to hang in; in the app the panel hangs over the Today screen, which is what fills these bands. The bar and the dropdown are compared'
 
 const NOTE_BEHIND_THE_PICKER =
   "The part of the note field that the dropdown does not cover. Frame 3a's open card leaves the note out — the panel is drawn over where it sits — and the app does not take a running entry's note away while its picker is open"
@@ -256,6 +284,30 @@ const ABOVE_THE_CLIENTS =
 
 const PICKER_FIGURES =
   "The picker's right-hand column: the hours each Client has had and what each Project last did. The frame quotes hours that are in no timesheet in the mockups (14h 05m for Meridian, 6h 30m for Quill), and gives each Project a line of a different kind — a meeting from the calendar, an hour left on a retainer. The app counts this week from Cori's seeded Time entries and says when the Project was last timed. A debt for the designer: the column needs one meaning"
+
+const RAIL_CIRCLES =
+  "The foot of the rail's nav. Frame 2a lists seven destinations and leaves Circles out; the Shell keeps Circles with the Billing module on, because a Circle is how work and life are told apart and turning on billing does not stop a person having both (ticket 16). The five destinations above it are compared"
+
+const WOKE_AT_2A =
+  'The Live line. Frame 2a writes "Live" alone where frame 1a writes "Live · woke 08:59"; the Shell follows 1a, and when the Coordinator last woke is read off the real clock rather than the pinned one'
+
+const LOGGED_ON_THE_HOUR =
+  'The tracked figures on the two hours the running entry spans. The frame puts the whole spell — 1:42 — on the hour it began and leaves the next blank; the app counts each hour\'s own share of it (1:00 and 0:42), which is what "logged time per hour" means and what makes the column add up to the day. The other seven hours\' figures are compared'
+
+const WHOSE_MEETING =
+  "The meeting hour's Client rule and chip. The frame says the 11:00 hour is Quill's, from the meeting in the calendar; the app says whose an hour is from what was tracked in it and what is slotted on it, and Crazy never reads a Client off a Provider's calendar. The hour's words and its tint are compared"
+
+const START_GLYPH =
+  "The glyph inside the control on each Todo. The frame draws the character ▸; the app draws Lucide's play at stroke 1.5, as every other icon in the app is drawn, and the Todo the timer is on wears a solid mark in its place. The control's box is compared"
+
+const PAST_THE_FRAME =
+  "The 17:00 hour. Frame 2a's card is 780px tall and its timeline runs out at 16:00; the app draws the day to 17:00 as frame 1a does, and the row falls where the frame has nothing"
+
+const WEEK_FIGURES =
+  'The rows of "This week by Client". The frame quotes hours from no timesheet in the mockups (14h 05m for Meridian against a 28h month, 17h 50m for Bramble) and lists three Clients; the app counts Cori\'s seeded Time entries since Monday, orders them by hours, and lists Internal as well, because work for nobody is still work. The card\'s heading and its edges are compared'
+
+const BELOW_THE_WEEK =
+  'Below the two cards frame 2a draws. Mentions and the place to add a Todo follow them on the Today screen, as they do in frame 1a; this frame has nothing there'
 
 /*
  * A note for Cori's other frames, when their tickets add them (2b, 2c, 4a):
@@ -414,6 +466,7 @@ export const TARGETS: Target[] = [
       masks: [
         { x: 0, y: 101, width: 176, height: 309, why: CARD_NOT_SCREEN },
         { x: 596, y: 101, width: 416, height: 309, why: CARD_NOT_SCREEN },
+        { x: 176, y: 392, width: 420, height: 18, why: CARD_NOT_SCREEN },
         { x: 18, y: 54, width: 158, height: 38, why: NOTE_BEHIND_THE_PICKER },
         { x: 466, y: 100, width: 130, height: 240, why: PICKER_FIGURES },
         { x: 138, y: 24, width: 26, height: 26, why: SEEDED_FIGURES },
@@ -422,6 +475,64 @@ export const TARGETS: Target[] = [
         { x: 184, y: 60, width: 424, height: 40, why: SEARCH_FOCUSED },
       ],
     },
+    phone: null,
+  },
+  {
+    frame: '2a',
+    title: 'Today · the Billing module on',
+    route: '/',
+    persona: 'cori',
+    now: CORIS_MORNING,
+    // Frame 3a's running bar in place of frame 2a's segmented picker, which is
+    // a control the app does not have. The band keeps the hairline onto the
+    // screen that 2a gives it, which is the one the app draws too.
+    compose: {
+      replace: 'main > div:first-child',
+      with: { option: '3a', card: 1, width: TIMER_BAR },
+      band: 'width:auto;border-bottom:1px solid var(--color-accent-300)',
+    },
+    desktop: {
+      regions: {
+        rail: { x: 0, y: 0, width: 168, height: 780 },
+        brief: { x: 168, y: 101, width: 632, height: 160 },
+        timeline: { x: 190, y: 261, width: 600, height: 350 },
+        // The two cards are blueprints: measured with their corner marks, 6px
+        // beyond the box.
+        'priority stack': { x: 805, y: 115, width: 354, height: 290 },
+        'this week by client': { x: 805, y: 405, width: 354, height: 285 },
+      },
+      masks: [
+        { x: 308, y: 20, width: 30, height: 26, why: SEEDED_FIGURES },
+        { x: 852, y: 20, width: 296, height: 26, why: SEEDED_FIGURES },
+        { x: 194, y: 60, width: 416, height: 28, why: SEEDED_NOTE },
+        {
+          x: 610,
+          y: 60,
+          width: 302,
+          height: 28,
+          why: "The sentence beside the note field, which frame 3a's running card draws as a note about the mockup",
+        },
+        { x: 16, y: 232, width: 140, height: 96, why: RAIL_CIRCLES },
+        { x: 16, y: 704, width: 140, height: 26, why: WOKE_AT_2A },
+        { x: 745, y: 298, width: 45, height: 72, why: LOGGED_ON_THE_HOUR },
+        { x: 255, y: 388, width: 470, height: 28, why: WHOSE_MEETING },
+        { x: 1114, y: 163, width: 26, height: 212, why: START_GLYPH },
+        { x: 190, y: 608, width: 600, height: 80, why: PAST_THE_FRAME },
+        { x: 804, y: 446, width: 354, height: 250, why: WEEK_FIGURES },
+        { x: 804, y: 690, width: 354, height: 90, why: BELOW_THE_WEEK },
+      ],
+    },
+    /*
+     * Frame 2a's phone card is not compared, and is a screenshot instead. It
+     * draws the timer as a solid accent card with Stop and Switch project on
+     * it, where frame 3b draws the same control as a tinted card with the
+     * square — and 3b is the one ticket 17 built and the one frozen here, so
+     * the two frames cannot both be met. Everything below the card sits at a
+     * different height for that reason alone, and a comparison of it would be
+     * masks and nothing else. Frame 2a's phone also leaves the Brief out
+     * altogether; the app keeps it, because a Brief is the first thing the
+     * screen is for. Listed as derived in docs/BRIEF.md.
+     */
     phone: null,
   },
   {

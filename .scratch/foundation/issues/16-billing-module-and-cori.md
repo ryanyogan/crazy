@@ -38,6 +38,13 @@ found while off, the rail gains and loses Time and Invoices on the switch, `/tim
   `tools/visual/src/targets.ts`. Ticket 17 added the `cori` persona (the frames call her
   "Jo Okafor") and targets for frame 3a; 2a–2c, 3b and 4a still have none. Add them, run
   `pnpm visual` once, and look at the rail and the phone tab bar.
+  - Ticket 18 added frame 3b's sheet; **ticket 19 added frame 2a at 1180px** (0.00% in every
+    region), so the Billing-on rail is now compared against a frame: it reads 0.00% down to the
+    fifth destination, and the three below it are masked because frame 2a omits Circles and the
+    Shell keeps it (which this ticket's own decision already recorded). Frame 2a's phone card is
+    screenshotted and not compared, and why is written beside the target and in `docs/BRIEF.md`.
+    **What is still open here: 2b, 2c and 4a, which are the tickets that draw those screens, and
+    the phone tab bar with the Billing module on, which no compared frame reaches.**
 - [x] *At most one Time entry per user has no end, enforced at the command seam* — done in ticket
   17: `decide` refuses `timer.start` while an entry with no end exists, with a reason, and the
   partial unique index `time_entry_userId_running_key` stays as the backstop under it.

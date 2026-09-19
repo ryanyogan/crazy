@@ -101,6 +101,7 @@ export async function loadCommandState(
       sourceItemId: true,
       sourceRef: true,
       sourceUrl: true,
+      projectId: true,
     },
   })
 
@@ -124,6 +125,7 @@ export async function loadCommandState(
     swappedOnDay: row.swappedOnDay,
     touchedAt: row.touchedAt.toISOString(),
     carryCount: row.carryCount,
+    projectId: row.projectId,
     slotHours: slots.filter((slot) => slot.todoId === row.id).map((slot) => slot.hour),
     source:
       row.sourceConnectionId === null || row.sourceItemId === null || row.sourceKind === null
@@ -155,18 +157,24 @@ export async function loadCommandState(
     ? (
         await db.timeEntry.findMany({
           where: { userId, OR: [{ endedAt: null }, { id: { in: entryIds } }] },
-          select: { id: true, clientId: true, projectId: true, endedAt: true },
+          select: { id: true, clientId: true, projectId: true, todoId: true, endedAt: true },
         })
       ).map((row): TimeEntryFacts => ({ ...row, endedAt: row.endedAt?.toISOString() ?? null }))
     : undefined
 
   // The work a timer names: the Project decides the Client, so the Project's
-  // own row has to be read before a start can be decided.
+  // own row has to be read before a start can be decided. A timer started from
+  // a Todo names no Project of its own — the Todo's is the work — so that one
+  // is read as well, from the Todo that has just been loaded.
   const work = workNamed(command)
+  const wanted = [
+    work?.projectId,
+    ...(needsTheTimer(command) ? todos.map((todo) => todo.projectId) : []),
+  ].filter((each) => each !== null && each !== undefined)
   const [projects, clients] = await Promise.all([
-    work?.projectId
+    wanted.length > 0
       ? db.project.findMany({
-          where: { userId, id: work.projectId },
+          where: { userId, id: { in: [...new Set(wanted)] } },
           select: { id: true, clientId: true },
         })
       : ([] as ProjectFacts[]),

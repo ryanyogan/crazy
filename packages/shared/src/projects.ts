@@ -81,11 +81,8 @@ export interface ProjectRow {
   counts: ProjectCounts
 }
 
-/** A Todo of a Project, as the expanded card lists it. */
-export interface ProjectTodo extends TodayTodo {
-  /** Null for a One-off, and for a Todo a command has just made. */
-  projectId?: string | null
-}
+/** A Todo of a Project, as the expanded card lists it. Its `projectId` is what groups it. */
+export type ProjectTodo = TodayTodo
 
 /** When the next backlog Todos cross the archive period, and how many do. */
 export interface ArchiveSoon {
