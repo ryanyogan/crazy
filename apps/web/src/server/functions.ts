@@ -3,6 +3,7 @@ import {
   readCircles,
   readMetrics,
   readProjects,
+  readTimerAndPicker,
   readToday,
   readWeek,
 } from '@crazy/db'
@@ -44,14 +45,36 @@ export const getToday = createServerFn().handler(async () => {
   const userId = await viewerId()
   if (!userId) throw redirect({ to: '/sign-in' })
 
-  const { timeZone, billing } = await settingsFor(userId)
+  const { timeZone } = await settingsFor(userId)
   const now = requestNow(timeZone)
   // Before the read, not beside it: a socket opened from this is replayed
   // whatever was committed while D1 was being read (Coordinator.lastSeq).
   const seq = await coordinatorFor(userId).lastSeq()
   return {
-    ...(await readToday(createReadDb(env.DB), userId, now, timeZone, billing)),
+    ...(await readToday(createReadDb(env.DB), userId, now, timeZone)),
     seq,
+    now: now.toISOString(),
+    timeZone,
+  }
+})
+
+/**
+ * The timer, for every screen the Shell wraps. It is read on its own rather
+ * than with the day because while a Time entry runs the header follows the
+ * user around (ticket 27): one query, so the header on Week and the bar on
+ * Today are the same rows. With the Billing module off it holds nothing.
+ */
+export const getTimer = createServerFn().handler(async () => {
+  const userId = await viewerId()
+  if (!userId) throw redirect({ to: '/sign-in' })
+
+  const { timeZone, billing } = await settingsFor(userId)
+  const now = requestNow(timeZone)
+  const seq = await coordinatorFor(userId).lastSeq()
+  return {
+    ...(await readTimerAndPicker(createReadDb(env.DB), userId, now, timeZone, billing)),
+    seq,
+    // The moment the count runs from: the browser never reads the clock for it.
     now: now.toISOString(),
     timeZone,
   }

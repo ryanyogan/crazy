@@ -7,17 +7,35 @@
    of the count: frame 3b leads with the figure, frame 3a with the control. The
    order each frame draws is the `order` each rule carries. */
 
+.shell {
+  /* The docked strip's height on a phone, which the screen above it clears. */
+  --timer-dock: 48px;
+  /* The compact strip's height on desktop, and the height the full bar leaves
+     behind when it condenses into one. */
+  --timer-strip: 44px;
+  --timer-tall: 101px;
+}
+
 .timer {
   padding: 14px 18px 0;
 }
 
 .timer__bar {
+  position: relative;
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 12px 10px;
   align-items: center;
   padding: 16px;
   border: 1px solid var(--color-divider);
+}
+
+/* A hairline of nothing just under the bar. While it is above the top of the
+   viewport the bar has been scrolled past, which is what the header watches
+   for; it takes no room of its own. */
+.timer__edge {
+  height: 1px;
+  margin-bottom: -1px;
 }
 
 /* Running, the bar takes the accent tint and the accent hairline. */
@@ -87,10 +105,16 @@
   background: var(--color-accent-700);
 }
 
+/* One line, always: a Client called "Northgate Orthopaedic Partners" is cut
+   short with an ellipsis rather than wrapping, because a second line would
+   move the figure beside it. */
 .timer__work {
   flex: 1;
   min-width: 0;
   line-height: 1.15;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .timer__client {
@@ -138,8 +162,13 @@
   position: relative;
 }
 
-.picker__sheet {
+/* Open, so that a closed <dialog> keeps the display: none the browser gives it
+   and cannot cover what is under it — the tab bar, in the docked header. */
+.picker__sheet[open] {
   display: grid;
+}
+
+.picker__sheet {
   gap: 4px;
   font-size: 14px;
 }
@@ -418,5 +447,381 @@
     max-width: 420px;
     min-height: 30px;
     padding: 4px 10px;
+  }
+}
+
+/* ── The compact header, ticket 27 ─────────────────────────────────────────
+   No frame draws this, so it is derived (docs/BRIEF.md): the running bar cut
+   down to a strip, using nothing frame 3a does not — the accent tint, the
+   accent hairline, the heading face's tabular figures and the Client's rule.
+
+   One component in two sizes. On a phone it docks directly above the tab bar,
+   where a thumb is, the way a music player keeps what is playing; from 900px
+   it is a strip across the top of the screen. On the Today screen the full bar
+   is itself what takes these measurements once the page has scrolled, so the
+   same timer is never shown twice.
+
+   The strip's one solid accent object is not the square: it is a hairline box
+   with an accent-700 glyph, so the screen underneath keeps its own single fill
+   and the tint band is what says "running". */
+
+.timer--header {
+  position: fixed;
+  right: 0;
+  bottom: calc(var(--tabbar) + env(safe-area-inset-bottom));
+  left: 0;
+  z-index: 15;
+  padding: 0;
+}
+
+.timer--compact .timer__bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: var(--timer-dock);
+  padding: 0 18px;
+  border: 0;
+  background: var(--color-accent-100);
+}
+
+/* Docked, the edge it meets the screen at is its top one, and that is where
+   the minute rule lies. */
+.timer--header .timer__bar {
+  border-top: 1px solid var(--color-accent-300);
+}
+
+/* A strip has no card's edges of its own, and the square wears a hairline box
+   rather than the blueprint's marks: they reach 6px past the box, which a
+   48px band has no room for, and the band is meant to be quiet. */
+.timer--compact > .timer__bar > .corner,
+.timer--compact .timer__control > .corner {
+  display: none;
+}
+
+.timer--compact .timer__control {
+  order: 1;
+  flex: none;
+  /* A thumb's target, inside a 48px strip. */
+  width: 44px;
+  height: 44px;
+  border-color: var(--color-accent);
+  background: transparent;
+  color: var(--color-accent-700);
+}
+
+.timer--compact .timer__control:hover {
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+}
+
+.timer--compact .timer__control:active {
+  background: color-mix(in srgb, var(--color-accent) 20%, transparent);
+}
+
+.timer--compact .timer__stop {
+  width: 12px;
+  height: 12px;
+  background: var(--color-accent-700);
+}
+
+/* A box wide enough for the longest reading it can take, in the figures' own
+   width, so that nothing beside it moves when a 1 becomes an 8, when 09:59:59
+   becomes 10:00:00, or when the tenth hour arrives. */
+.timer--compact .timer__elapsed {
+  order: 2;
+  flex: none;
+  min-width: 7.2ch;
+  font-size: 22px;
+}
+
+.timer--compact .timer__seconds {
+  font-size: 14px;
+}
+
+.timer--compact .timer__picker {
+  order: 3;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: none;
+  grid-column: auto;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+}
+
+/* On the strip the work is a line, not a field: the box around it would be a
+   second frame inside one. */
+.timer--compact .timer__pick,
+.timer--compact.timer--running .timer__pick {
+  flex: 1;
+  min-height: 44px;
+  padding-inline: 0;
+  background: transparent;
+  border-color: transparent;
+}
+
+.timer--compact .timer__pick:hover {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+
+/* The note stays on Today's full card on a phone; the docked strip is for
+   seeing the time and stopping it. The figures go with it: the strip says the
+   work and the count, and the sheet says the rest. */
+.timer--compact .timer__note,
+.timer--compact .timer__meta,
+.timer--compact .timer__hint {
+  display: none;
+}
+
+/* The receipt Stop leaves behind, in the place the figures were. On the docked
+   strip there is room for one line, and this is the line worth having: the
+   figure it names is the one that has just stopped counting. */
+.timer__receipt {
+  color: var(--color-text);
+}
+
+.timer--compact.timer--stopped .timer__elapsed,
+.timer--compact.timer--stopped .timer__picker {
+  display: none;
+}
+
+.timer--compact.timer--stopped .timer__meta {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+}
+
+/* ── The minute rule ───────────────────────────────────────────────────────
+   Liveness without a blinking colon: over the header's accent hairline, a 1px
+   accent-700 line draws itself from the left edge to the right once a minute
+   and starts again. One CSS animation and no JavaScript — the negative delay
+   is where this entry's minute already stands, so it agrees with the seconds
+   beside it and with every other device showing the same entry. It is the one
+   bold thing; everything else in the header keeps still. */
+
+.timer__minute {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 1px;
+  background: var(--color-accent-700);
+  transform-origin: left;
+  animation: timer-minute 60s linear infinite;
+  animation-delay: var(--minute-into, 0s);
+  pointer-events: none;
+}
+
+/* Docked, the rule lies on the strip's top edge: the one the screen meets. */
+.timer--header .timer__minute {
+  top: -1px;
+  bottom: auto;
+}
+
+@keyframes timer-minute {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* ── Starting, switching ───────────────────────────────────────────────────
+   The tint washes across from the square, once, whether the press was made
+   here or on another device; the figure goes from neutral to text colour with
+   it. A switch changes the work and nothing else moves. */
+
+.timer--washing .timer__bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--color-accent-300);
+  transform-origin: left;
+  /* One pass, and it ends where it ends: the class outlives the wash, so the
+     overlay must stay where the last frame left it and not spring back. */
+  animation: timer-wash 240ms ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes timer-wash {
+  from {
+    transform: scaleX(0);
+    opacity: 0.85;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 0;
+  }
+}
+
+.timer__elapsed {
+  transition: color 240ms ease-out;
+}
+
+.timer--switched .timer__work {
+  animation: timer-said 220ms ease-out;
+}
+
+@keyframes timer-said {
+  from {
+    opacity: 0.25;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Nothing moves: the rule stands complete, the wash does not play, and the
+   figure changes colour at once. */
+@media (prefers-reduced-motion: reduce) {
+  .timer__minute {
+    animation: none;
+    transform: scaleX(1);
+  }
+
+  .timer--washing .timer__bar::after {
+    display: none;
+  }
+
+  .timer--switched .timer__work,
+  .timer__elapsed {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* ── Desktop: the strip across the top ─────────────────────────────────────── */
+
+@media (min-width: 900px) {
+  /* On every screen but the one that draws its own bar: sticky at the top of
+     `shell__main`, so a running entry is in sight at every scroll position. */
+  .timer--header {
+    position: sticky;
+    top: 0;
+    right: auto;
+    bottom: auto;
+    left: auto;
+  }
+
+  /* On the Today screen the full bar is itself the sticky element, and takes
+     the compact measurements once the page has scrolled past it. */
+  .timer--screen.timer--running {
+    position: sticky;
+    top: 0;
+    z-index: 15;
+  }
+
+  /* Condensed it is 44px, but the room the full bar had is held open: without
+     that, everything below would jump up by the difference as it pinned. The
+     part of that room the strip does not fill lets presses through to the
+     screen sliding under it. */
+  .timer--screen.timer--compact {
+    min-height: var(--timer-tall);
+    pointer-events: none;
+  }
+
+  .timer--screen.timer--compact .timer__bar {
+    pointer-events: auto;
+  }
+
+  .timer--compact .timer__bar {
+    height: var(--timer-strip);
+    gap: 14px;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--color-accent-300);
+  }
+
+  .timer--header .timer__bar {
+    border-top: 0;
+  }
+
+  .timer--header .timer__minute {
+    top: auto;
+    bottom: -1px;
+  }
+
+  .timer--compact .timer__control {
+    width: 32px;
+    height: 32px;
+  }
+
+  .timer--compact .timer__stop {
+    width: 10px;
+    height: 10px;
+  }
+
+  .timer--compact .timer__elapsed {
+    font-size: 20px;
+  }
+
+  .timer--compact .timer__seconds {
+    font-size: 13px;
+  }
+
+  .timer--compact .timer__picker {
+    flex: 0 1 auto;
+    max-width: 300px;
+  }
+
+  .timer--compact .timer__pick {
+    min-height: 32px;
+  }
+
+  /* The dropdown hangs from the foot of the strip rather than from frame 3a's
+     42px, because the strip is not 42px tall. */
+  .timer--compact .picker__panel {
+    top: calc(100% + 1px);
+  }
+
+  /* From the breakpoint up the strip has room for the note and the figures,
+     and the note is the same commit-on-blur field the full bar has. */
+  .timer--compact .timer__note {
+    order: 4;
+    display: block;
+    flex: 1 1 140px;
+    min-width: 0;
+    max-width: none;
+    min-height: 28px;
+    padding: 2px 8px;
+    font-size: 12px;
+    border-color: transparent;
+  }
+
+  .timer--compact .timer__note:hover,
+  .timer--compact .timer__note:focus-visible {
+    border-color: var(--color-accent-300);
+  }
+
+  .timer--compact .timer__meta {
+    order: 5;
+    display: flex;
+    flex: none;
+    flex-wrap: nowrap;
+    grid-column: auto;
+    margin-left: auto;
+    font-size: 12px;
+  }
+
+  /* The strip has room for the whole row here, so the receipt takes the
+     figures' place and nothing else moves. */
+  .timer--compact.timer--stopped .timer__elapsed {
+    display: block;
+  }
+
+  .timer--compact.timer--stopped .timer__picker {
+    display: flex;
+  }
+
+  .timer--compact.timer--picking .timer__meta {
+    display: none;
+  }
+
+  .timer--compact.timer--picking .timer__hint {
+    display: flex;
+    order: 5;
+    flex: none;
+    margin-left: auto;
   }
 }

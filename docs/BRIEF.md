@@ -115,6 +115,27 @@ frames exist:
   "Started · since 09:12" where Start and Swap were. The card gives up the solid accent fill while
   it is under way, so a started Today screen has none. With the Billing module on (ticket 20) Start
   will begin a timer and the bar will hold the elapsed time.
+- **The compact time header.** No frame draws it; it is frame 3a's running bar cut down to a strip
+  and uses nothing 3a does not — the accent tint, the accent hairline, the heading face's tabular
+  figures and the Client's rule. While a Time entry runs it shows on every Shell screen: a 44px
+  strip stuck to the top of the screen from 900px, and below it a 48px strip docked above the tab
+  bar, where a thumb is, which the screen clears in bottom padding. On the Today screen the full
+  bar is itself what takes those measurements once the page has scrolled past it (a sentinel and an
+  `IntersectionObserver`), and the dock waits until the card is out of view, so the timer is never
+  shown twice at once. Idle, the header is not drawn at all: only running time follows the user
+  around. Its square is not the solid accent fill — an accent hairline box with an `accent-700`
+  glyph — so the screen under it keeps its own single fill. Its bottom hairline carries **the
+  minute rule**: a 1px `accent-700` line drawn left to right once a minute, one CSS animation
+  started part-drawn from where the entry's minute already stands, so it agrees with the seconds
+  beside it and on every device; under `prefers-reduced-motion` it stands complete and still.
+- **The stop receipt and the start wash.** No frame draws either. Starting washes the tint across
+  the header from the square once, ~240ms, whether the press was made here or on another device.
+  Stopping holds the header for about 1.5s, still, reading "Stopped · 1h 42m logged to Meridian
+  Health" — billing software owes a receipt — and then the compact header leaves and the full bar
+  settles to idle. The hold is UI state only; the entry ended when the command said so.
+- **The browser tab while a timer runs**: "1:42 · Meridian Health — Crazy", rewritten when the
+  minute changes and put back on stop. It comes from the same derived moment as the bar, never
+  from a clock.
 - **An empty Priority stack** says "Nothing left for today." and the Take on now card is absent.
 - **The Circles screen on a phone.** The frame draws desktop only. The two columns fall into one:
   the heading, the figure at the width there is (it keeps its proportions), then the Overlaps and

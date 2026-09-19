@@ -85,6 +85,34 @@ export async function readTimer(
   }
 }
 
+/** Everything the Shell's timer query holds: the bar's rows and the picker's lists. */
+export interface TimerRead {
+  timer: TodayTimer | null
+  picker: TimerPicker | null
+}
+
+/**
+ * What the timer needs wherever it is drawn. It is the Shell's, not the Today
+ * screen's: while a Time entry runs the header shows it on every screen, so
+ * both read this one query and cannot disagree (ticket 27). With the Billing
+ * module off there is no timer and nothing to choose work for, and nothing is
+ * read at all.
+ */
+export async function readTimerAndPicker(
+  db: ReadDb,
+  userId: string,
+  now: Date,
+  timeZone: string,
+  billing: boolean,
+): Promise<TimerRead> {
+  if (!billing) return { timer: null, picker: null }
+  const [timer, picker] = await Promise.all([
+    readTimer(db, userId, now, timeZone),
+    readTimerPicker(db, userId, now, timeZone),
+  ])
+  return { timer, picker }
+}
+
 /** How many pieces of recently timed work the phone's sheet leads with (frame 3b). */
 const RECENT = 3
 

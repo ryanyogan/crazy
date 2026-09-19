@@ -10,6 +10,11 @@ import { useEffect, useState } from 'react'
  * It ticks only while something is running, so a screen with nothing to count
  * does not re-render every second, and it starts again from whatever moment the
  * next read hands it, so it can never drift far.
+ *
+ * A background tab may have its interval throttled to once a minute, which
+ * costs nothing — the count is a subtraction, not a tally — but the second it
+ * shows would be stale for as long as it took to come back. So it is read
+ * again the moment the tab is looked at.
  */
 export function useTicking(readAt: string, ticking: boolean): Date {
   // The count is kept beside the moment it was measured from, so a new read
@@ -19,11 +24,16 @@ export function useTicking(readAt: string, ticking: boolean): Date {
   useEffect(() => {
     if (!ticking) return
     const from = performance.now()
-    const id = setInterval(
-      () => setTicked({ readAt, seconds: Math.floor((performance.now() - from) / 1000) }),
-      1000,
-    )
-    return () => clearInterval(id)
+    const read = () => setTicked({ readAt, seconds: Math.floor((performance.now() - from) / 1000) })
+    const id = setInterval(read, 1000)
+    const looked = () => {
+      if (document.visibilityState === 'visible') read()
+    }
+    document.addEventListener('visibilitychange', looked)
+    return () => {
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', looked)
+    }
   }, [readAt, ticking])
 
   const seconds = ticked.readAt === readAt ? ticked.seconds : 0

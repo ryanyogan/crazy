@@ -63,6 +63,9 @@ body {
 /* ── Shell: phone ─────────────────────────────────────────────────────────── */
 
 .shell {
+  /* The fixed tab bar's own height, which anything above it sits on: the
+     timer's docked strip does, and the screen clears it with room to spare. */
+  --tabbar: 46px;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
@@ -101,8 +104,14 @@ body {
 .shell__main {
   flex: 1;
   min-width: 0;
-  /* Clear the fixed tab bar. */
-  padding-bottom: calc(58px + env(safe-area-inset-bottom));
+  /* Clear the fixed tab bar, with a little room under the last row. */
+  padding-bottom: calc(var(--tabbar) + 12px + env(safe-area-inset-bottom));
+}
+
+/* And the timer's docked strip above it, while it is there, so that the last
+   row of a long screen is never left underneath it (ticket 27). */
+.shell__main:has(> .timer--header) {
+  padding-bottom: calc(var(--tabbar) + var(--timer-dock) + 12px + env(safe-area-inset-bottom));
 }
 
 .tabbar {

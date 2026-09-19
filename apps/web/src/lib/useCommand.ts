@@ -13,7 +13,14 @@ import { sendCommand } from '#/server/functions'
 import { browserNow } from './clock'
 import { liveFor } from './live'
 import { notify } from './notices'
-import { applyToCache, integrationsQuery, projectsQuery, shellQuery, todayQuery } from './queries'
+import {
+  applyToCache,
+  integrationsQuery,
+  projectsQuery,
+  shellQuery,
+  timerQuery,
+  todayQuery,
+} from './queries'
 
 /** The Coordinator said no. Its reason is written for the user. */
 class CommandRefused extends Error {}
@@ -27,11 +34,11 @@ class CommandRefused extends Error {}
  * The Coordinator decides against every row in D1 regardless, so a command this
  * guess allows and the truth refuses is simply put back.
  */
-function timerFacts(today: {
+function timerFacts(held: {
   timer?: TodayTimer | null
   picker?: TimerPicker | null
 }): Partial<CommandState> {
-  const { timer, picker } = today
+  const { timer, picker } = held
   if (!timer) return {}
   const entries = [
     ...new Map(
@@ -73,6 +80,7 @@ function commandState(queryClient: QueryClient, command: Command): CommandState 
   const projects = queryClient.getQueryData(projectsQuery.queryKey)
   const integrations = queryClient.getQueryData(integrationsQuery.queryKey)
   const shell = queryClient.getQueryData(shellQuery.queryKey)
+  const timer = queryClient.getQueryData(timerQuery.queryKey)
   const named = signalsNamed(command)
   // A command that names no Signal is decided against the day if it has been
   // read, and otherwise against whatever the Projects screen read.
@@ -90,9 +98,10 @@ function commandState(queryClient: QueryClient, command: Command): CommandState 
     // Today's cache holds one.
     events: rows && 'events' in rows ? rows.events : [],
     connections: integrations?.connections ?? [],
-    // The timer is the Billing module's, and only the Today cache holds it.
+    // The timer is the Billing module's, and it has a cache of its own: the
+    // Shell loads it for every screen, because the header follows the user.
     billing: shell?.billing ?? false,
-    ...timerFacts(today ?? {}),
+    ...timerFacts(timer ?? {}),
   }
 }
 
@@ -111,6 +120,7 @@ export function useCommand() {
     void queryClient.invalidateQueries({ queryKey: todayQuery.queryKey })
     void queryClient.invalidateQueries({ queryKey: projectsQuery.queryKey })
     void queryClient.invalidateQueries({ queryKey: integrationsQuery.queryKey })
+    void queryClient.invalidateQueries({ queryKey: timerQuery.queryKey })
   }
 
   return useMutation({
@@ -124,10 +134,12 @@ export function useCommand() {
       await queryClient.cancelQueries({ queryKey: todayQuery.queryKey })
       await queryClient.cancelQueries({ queryKey: projectsQuery.queryKey })
       await queryClient.cancelQueries({ queryKey: integrationsQuery.queryKey })
+      await queryClient.cancelQueries({ queryKey: timerQuery.queryKey })
       const before = {
         today: queryClient.getQueryData(todayQuery.queryKey),
         projects: queryClient.getQueryData(projectsQuery.queryKey),
         integrations: queryClient.getQueryData(integrationsQuery.queryKey),
+        timer: queryClient.getQueryData(timerQuery.queryKey),
       }
       const decision = decide(commandState(queryClient, command), command, browserNow())
       if (decision.ok) applyToCache(queryClient, decision.ops)
@@ -144,10 +156,11 @@ export function useCommand() {
       if (context && !covers(context.guess, patch.ops)) readAgain()
     },
     onError: (error, _command, context) => {
-      const { today, projects, integrations } = context?.before ?? {}
+      const { today, projects, integrations, timer } = context?.before ?? {}
       if (today) queryClient.setQueryData(todayQuery.queryKey, today)
       if (projects) queryClient.setQueryData(projectsQuery.queryKey, projects)
       if (integrations) queryClient.setQueryData(integrationsQuery.queryKey, integrations)
+      if (timer) queryClient.setQueryData(timerQuery.queryKey, timer)
       notify(
         error instanceof CommandRefused
           ? error.message

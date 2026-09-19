@@ -13,7 +13,6 @@ import {
   writtenFor,
 } from '@crazy/shared'
 import type { ReadDb } from '../client'
-import { readTimer, readTimerPicker } from './timer'
 
 /**
  * The day's calendar, as the timeline and the Slot commands read it: meetings
@@ -53,21 +52,21 @@ export async function readDayEvents(
 /**
  * A user's day as D1 holds it at one moment. What the Today screen makes of it
  * (the Priority stack, the Take on now, the timeline) is `viewToday`'s to
- * derive. The timer comes with it only for a user whose Billing module is on:
- * with it off there is no timer, and the bar does not render.
+ * derive. The timer is not here: it belongs to the Shell, which shows it on
+ * every screen while it runs, and is read by `readTimer` into its own query
+ * (ticket 27) so that the header and the bar cannot disagree.
  */
 export async function readToday(
   db: ReadDb,
   userId: string,
   now: Date,
   timeZone: string,
-  billing = false,
 ): Promise<Today> {
   const { day } = wallClock(now, timeZone)
   const dayStart = startOfDay(day, timeZone)
   const dayEnd = startOfDay(addDays(day, 1), timeZone)
 
-  const [brief, todos, sentBack, events, hours, signals, timer, picker] = await Promise.all([
+  const [brief, todos, sentBack, events, hours, signals] = await Promise.all([
     db.brief.findUnique({
       where: { userId_kind_day: { userId, kind: 'daily', day } },
       select: { body: true, bodyShort: true },
@@ -86,10 +85,6 @@ export async function readToday(
     readDayEvents(db, userId, day, timeZone),
     db.timelineHour.findMany({ where: { userId, day }, orderBy: { hour: 'asc' } }),
     db.signal.findMany({ where: { userId, kind: 'mention' }, orderBy: { at: 'desc' } }),
-    billing ? readTimer(db, userId, now, timeZone) : null,
-    // The picker's lists come with the timer and for the same reason: with the
-    // Billing module off there is no timer, and nothing to choose work for.
-    billing ? readTimerPicker(db, userId, now, timeZone) : null,
   ])
 
   return {
@@ -149,7 +144,5 @@ export async function readToday(
       todoId: row.todoId,
     })),
     sentBack,
-    timer,
-    picker,
   }
 }

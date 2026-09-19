@@ -257,6 +257,15 @@ const ABOVE_THE_CLIENTS =
 const PICKER_FIGURES =
   "The picker's right-hand column: the hours each Client has had and what each Project last did. The frame quotes hours that are in no timesheet in the mockups (14h 05m for Meridian, 6h 30m for Quill), and gives each Project a line of a different kind — a meeting from the calendar, an hour left on a retainer. The app counts this week from Cori's seeded Time entries and says when the Project was last timed. A debt for the designer: the column needs one meaning"
 
+/*
+ * A note for Cori's other frames, when their tickets add them (2b, 2c, 4a):
+ * shoot them with `timer: 'idle'`. With a Time entry running the Shell draws
+ * the compact time header over every screen (ticket 27) — a 44px strip at the
+ * top on desktop, a 48px dock above the tab bar on a phone — and none of those
+ * frames draws it. Frame 2a is the exception: it is the Today screen, where the
+ * full bar is drawn and the header keeps away.
+ */
+
 /**
  * Frame 3a draws the timer bar on its own, at the width of the screen beside
  * the rail, and draws its idle and running states as separate cards. Each is

@@ -3,7 +3,7 @@ import { env } from 'cloudflare:test'
 import { beforeAll, expect, it } from 'vite-plus/test'
 import { createReadDb } from '../index'
 import { createDb, seedPersona } from '../write'
-import { readTimer, readTimerPicker } from './timer'
+import { readTimer, readTimerAndPicker, readTimerPicker } from './timer'
 
 // Frame 3a's moment: Wednesday 17 Sep 2025, 10:42 on Cori's wall clock, 1h 42m
 // into Meridian's synthesis.
@@ -81,4 +81,20 @@ it("groups the picker's Projects under their Clients, with this week's hours", a
     'Onboarding v3',
     'Checkout redesign',
   ])
+})
+
+it('reads the bar and the picker together for the Shell, and nothing at all with Billing off', async () => {
+  const db = createReadDb(env.DB)
+  // One query for both, because the header follows a running entry onto every
+  // screen and must not disagree with the bar it stands in for (ticket 27).
+  const on = await readTimerAndPicker(db, userId, now, timeZone, true)
+  expect(on.timer?.running).toMatchObject({ clientName: 'Meridian Health' })
+  expect(on.picker?.clients.map((client) => client.name)).toContain('Quill & Co')
+
+  // With the Billing module off there is no timer and nothing to choose work
+  // for, so nothing is read.
+  expect(await readTimerAndPicker(db, userId, now, timeZone, false)).toEqual({
+    timer: null,
+    picker: null,
+  })
 })

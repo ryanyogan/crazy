@@ -6,7 +6,6 @@ import {
   meetingCount,
   timeline,
 } from './timeline'
-import type { TimerPicker, TodayTimer } from './timer'
 import { type SignalKind, type Source, type TodayTodo, isSnoozed } from './todo'
 
 // The rules of the Today screen that need no database: what the Priority
@@ -143,10 +142,6 @@ export interface Today {
   signals: Signal[]
   /** How many Todos the last Rollover sent back. */
   sentBack: number
-  /** The timer's rows, with the Billing module on; null with it off, when there is no timer. */
-  timer: TodayTimer | null
-  /** What the timer's picker offers, read beside them and null for the same reason. */
-  picker: TimerPicker | null
 }
 
 /** A snoozed Todo, which always knows the moment it returns. */

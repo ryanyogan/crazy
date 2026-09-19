@@ -180,6 +180,17 @@ export function whenWorked(moment: string, now: Date, timeZone: string): string 
   return `${dayWorked(moment, now, timeZone)} ${clockTime(new Date(moment), timeZone)}`
 }
 
+/**
+ * When the running entry began, as the header says it after "since": the time
+ * alone on the day it started, and the day with it otherwise — a timer left on
+ * overnight reads "Tue 17:20" and should look like one.
+ */
+export function sinceWhen(startedAt: string, now: Date, timeZone: string): string {
+  const day = dayWorked(startedAt, now, timeZone)
+  const time = clockTime(new Date(startedAt), timeZone)
+  return day === 'today' ? time : `${day} ${time}`
+}
+
 /** "Meridian Health · Discovery research", or "Internal" where there is no Client. */
 export function workLine(work: TimerWork): { client: string; project: string | null } {
   return { client: work.clientName ?? INTERNAL, project: work.projectName }
@@ -200,6 +211,47 @@ export function formatElapsed(seconds: number): { clock: string; seconds: string
 export function formatTracked(seconds: number): string {
   const minutes = Math.max(0, Math.floor(seconds / 60))
   return `${Math.floor(minutes / 60)}h ${two(minutes % 60)}m`
+}
+
+/** How long a Time entry ran, in whole seconds; 0 while it is still running. */
+export function entrySeconds(entry: TimerEntry): number {
+  if (!entry.endedAt) return 0
+  return elapsedSince(entry.startedAt, new Date(entry.endedAt))
+}
+
+/**
+ * The receipt the header holds for a moment after Stop: billing software owes
+ * one. It names the hours and who they went to, because that is what was just
+ * decided about her money.
+ */
+export function stopReceipt(entry: TimerEntry): string {
+  return `Stopped · ${formatTracked(entrySeconds(entry))} logged to ${entry.clientName ?? INTERNAL}`
+}
+
+/**
+ * The browser tab while a Time entry runs: "1:42 · Meridian Health — Crazy".
+ * The hours are not padded — a tab is read at a glance, not lined up — and the
+ * minute is what changes, so the title is rewritten only when it does.
+ */
+export function timerTitle(seconds: number, clientName: string | null, base: string): string {
+  const minutes = Math.max(0, Math.floor(seconds / 60))
+  return `${Math.floor(minutes / 60)}:${two(minutes % 60)} · ${clientName ?? INTERNAL} — ${base}`
+}
+
+/** "Timer started, Meridian Health, Discovery research": the one line a screen reader hears. */
+export function saidAloud(kind: 'started' | 'stopped', entry: TimerEntry): string {
+  if (kind === 'stopped') {
+    const minutes = Math.floor(entrySeconds(entry) / 60)
+    const hours = Math.floor(minutes / 60)
+    const rest = minutes % 60
+    const said = [
+      hours === 0 ? null : `${hours} hour${hours === 1 ? '' : 's'}`,
+      rest === 0 && hours !== 0 ? null : `${rest} minute${rest === 1 ? '' : 's'}`,
+    ].filter((each) => each !== null)
+    return `Timer stopped, ${said.join(' ')}`
+  }
+  const work = [entry.clientName ?? INTERNAL, entry.projectName].filter((each) => each !== null)
+  return `Timer started, ${work.join(', ')}`
 }
 
 /** Every Time entry a cached timer holds, wherever it holds it. */

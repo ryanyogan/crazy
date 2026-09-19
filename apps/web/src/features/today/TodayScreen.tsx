@@ -29,15 +29,9 @@ export function TodayScreen() {
   return (
     <>
       {/* The bar sits across the top of the screen, where frame 2a draws it, and
-          only for a user who bills for their time. */}
-      {today.timer && (
-        <TimerBar
-          timer={today.timer}
-          picker={today.picker}
-          readAt={today.now}
-          timeZone={today.timeZone}
-        />
-      )}
+          only for a user who bills for their time. It reads the Shell's timer,
+          so that it and the header that follows her about cannot disagree. */}
+      {shell.billing && <TimerBar place="screen" />}
       <div className={shell.billing ? 'screen today today--billing' : 'screen today'}>
         <header className="today__head">
           <div>

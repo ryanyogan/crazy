@@ -76,8 +76,6 @@ function day(todos: TodayTodo[], signals: Signal[] = []): Today {
     hours: [],
     signals,
     sentBack: 0,
-    timer: null,
-    picker: null,
   }
 }
 

@@ -2,6 +2,8 @@ import { shellDestinations, tabBarDestinations } from '@crazy/shared'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
+import { TimerAside } from '#/features/timer/TimerAside'
+import { TimerBar } from '#/features/timer/TimerBar'
 import { useLive } from '#/lib/live'
 import { shellQuery } from '#/lib/queries'
 import { LiveIndicator } from './LiveIndicator'
@@ -11,6 +13,10 @@ import { UserBadge } from './UserBadge'
 /**
  * The single navigation frame around every screen. One DOM serves both widths:
  * below 900px the rail collapses to a top bar and the tab bar appears.
+ *
+ * The timer is the Shell's, not the Today screen's: while a Time entry runs its
+ * header comes first in the screen's tab order and stays in sight at every
+ * scroll position, on whatever screen the user is (ticket 27).
  */
 export function Shell({ children }: { children: ReactNode }) {
   const { data: shell } = useSuspenseQuery(shellQuery)
@@ -43,6 +49,12 @@ export function Shell({ children }: { children: ReactNode }) {
       </aside>
 
       <main className="shell__main">
+        {shell.billing && (
+          <>
+            <TimerAside />
+            <TimerBar place="header" />
+          </>
+        )}
         <Notices />
         {children}
       </main>
