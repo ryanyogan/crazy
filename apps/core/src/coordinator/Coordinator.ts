@@ -3,6 +3,7 @@ import {
   type CommandResult,
   type ServerMessage,
   type ProvisionInput,
+  type Realtime,
   type ReseedInput,
   type UserSettings,
   command,
@@ -14,7 +15,7 @@ import { type Clock, systemClock } from '../clock'
 import { provisionUser, reseedUser } from '../provision'
 import { PatchLog } from './patches'
 import { CoordinatorHost, type Socket } from './sdk'
-import { type Wake, type WakeCause, WakeLog } from './wakes'
+import { type WakeCause, WakeLog } from './wakes'
 
 /**
  * One per user, named by their Clerk user id. It holds no domain data: D1 is
@@ -27,14 +28,6 @@ import { type Wake, type WakeCause, WakeLog } from './wakes'
  * something does wake the Coordinator it notes when and why. The schedules
  * arrive with later tickets.
  */
-
-/** What the Integrations screen's Realtime panel will show. */
-export interface Realtime {
-  sockets: number
-  seq: number
-  lastWake: Wake | null
-  wakesSince: number
-}
 
 export class Coordinator extends CoordinatorHost<Env> {
   protected clock: Clock = systemClock

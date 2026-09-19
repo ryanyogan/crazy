@@ -1,5 +1,6 @@
-/** What brought a sleeping Coordinator back: the first thing asked of it after it was constructed. */
-export type WakeCause = 'request' | 'command' | 'socket' | 'message' | 'close' | 'schedule'
+import type { WakeCause } from '@crazy/shared'
+
+export type { WakeCause }
 
 export interface Wake {
   at: string

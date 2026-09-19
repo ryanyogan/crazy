@@ -3,10 +3,13 @@ import {
   SETTINGS_DEFAULTS,
   type Command,
   type CommandState,
+  type ConnectionFacts,
   type Op,
   type SignalFacts,
   type TodoFacts,
+  needsConnections,
   needsTheDay,
+  side,
   signalKind,
   signalsNamed,
   sourceKind,
@@ -111,7 +114,17 @@ export async function loadCommandState(
           },
   }))
 
-  return { day, todos, signals, events }
+  // A command about a Connection is decided against all the user has: they are few.
+  const connections = needsConnections(command)
+    ? (
+        await db.connection.findMany({
+          where: { userId },
+          select: { id: true, externalAccountId: true, defaultSide: true },
+        })
+      ).map((row): ConnectionFacts => ({ ...row, defaultSide: side.parse(row.defaultSide) }))
+    : []
+
+  return { day, todos, signals, events, connections }
 }
 
 /**
@@ -180,7 +193,18 @@ export async function persistOps(db: Db, userId: string, ops: readonly Op[]): Pr
             },
           })
         }
+        break
       }
+      case 'settings.set':
+        await db.userSettings.updateMany({ where: { userId }, data: op.set })
+        break
+      case 'connection.insert': {
+        const { createdAt, ...rest } = op.connection
+        await db.connection.create({ data: { ...rest, userId, createdAt: new Date(createdAt) } })
+        break
+      }
+      case 'connection.set':
+        await db.connection.updateMany({ where: { id: op.id, userId }, data: op.set })
     }
   }
 }

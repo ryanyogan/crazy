@@ -1,10 +1,11 @@
 import { createReadDb, readCircles, readToday, readWeek } from '@crazy/db'
-import { type CommandResult, command, initials } from '@crazy/shared'
+import { type CommandResult, SERVER_ONLY, command, initials } from '@crazy/shared'
 import { redirect } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { env } from 'cloudflare:workers'
 import { requestNow } from './clock'
 import { coordinatorFor } from './coordinator'
+import { integrationsFor } from './integrations'
 import { settingsFor } from './settings'
 import { viewerId, viewerName } from './viewer'
 
@@ -68,6 +69,15 @@ export const getCircles = createServerFn().handler(async () => {
   return readCircles(createReadDb(env.DB), userId, now, timeZone)
 })
 
+/** The Integrations screen: Connections as Clerk reports them, settings, and the Coordinator's counters. */
+export const getIntegrations = createServerFn().handler(async () => {
+  const userId = await viewerId()
+  if (!userId) throw redirect({ to: '/sign-in' })
+
+  const { timeZone } = await settingsFor(userId)
+  return integrationsFor(userId, requestNow(timeZone), timeZone)
+})
+
 /**
  * Every change the browser makes. The web app decides nothing and writes
  * nothing: the command goes to the user's Coordinator, and its answer comes
@@ -78,5 +88,7 @@ export const sendCommand = createServerFn({ method: 'POST' })
   .handler(async ({ data }): Promise<CommandResult> => {
     const userId = await viewerId()
     if (!userId) throw redirect({ to: '/sign-in' })
+    // What only Clerk can vouch for is not the browser's to say (`reconcile`).
+    if (SERVER_ONLY.includes(data.type)) return { ok: false, reason: 'That is not yours to send.' }
     return coordinatorFor(userId).command(data)
   })

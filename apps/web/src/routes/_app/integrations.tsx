@@ -1,6 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { EmptyScreen } from '#/features/screens/EmptyScreen'
+import { IntegrationsScreen } from '#/features/integrations/IntegrationsScreen'
+import { integrationsQuery } from '#/lib/queries'
 
 export const Route = createFileRoute('/_app/integrations')({
-  component: () => <EmptyScreen title="Integrations" />,
+  loader: ({ context }) => context.queryClient.ensureQueryData(integrationsQuery),
+  component: IntegrationsScreen,
 })

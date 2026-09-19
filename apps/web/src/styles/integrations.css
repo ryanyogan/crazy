@@ -1,0 +1,245 @@
+/* The Integrations screen, frame 1g. Measurements are the frame's; no frame
+   draws a phone, so below 900px everything falls into one column (docs/BRIEF.md). */
+
+.integrations {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-content: start;
+}
+
+.integrations__providers,
+.integrations__aside {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.integrations__aside {
+  gap: 16px;
+}
+
+.integrations .card {
+  padding: 12px 14px;
+}
+
+/* ── Providers ────────────────────────────────────────────────────────────── */
+
+.providers {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.provider {
+  gap: 4px;
+  align-content: start;
+}
+
+/* Nothing is connected here yet: the frame draws the box as an outline to fill. */
+.provider--open {
+  border-style: dashed;
+}
+
+.provider__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.provider__chip {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.provider__status {
+  font-size: 10px;
+}
+
+.provider .card-title,
+.provider .card-body,
+.provider .card-meta {
+  margin: 0;
+}
+
+/* Connect reads as the card's meta line, as the frame draws it, and is a button. */
+.provider__action {
+  justify-self: start;
+  align-self: flex-start;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--card-meta-size, 12px);
+  color: var(--color-neutral-700);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.provider__action[aria-disabled='true'],
+.provider__action:disabled {
+  text-decoration: none;
+  cursor: not-allowed;
+}
+
+.connection {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px 8px;
+}
+
+.connection__meta {
+  min-width: 0;
+}
+
+/* The Side a Todo lands on when it arrives with no Circle: small, beside the meta line. */
+.connection__side select {
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 1px solid var(--color-divider);
+  border-radius: 0;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  color: var(--color-neutral-700);
+  cursor: pointer;
+}
+
+/* ── Account ──────────────────────────────────────────────────────────────── */
+
+.account,
+.realtime {
+  gap: 6px;
+}
+
+.account__who {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.account__initials {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--color-divider);
+  font-family: var(--font-heading);
+  font-weight: 600;
+}
+
+.account__name {
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.account__how,
+.account__security {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-neutral-700);
+  overflow-wrap: anywhere;
+}
+
+.account__manage {
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+/* ── Realtime and the lifecycle settings ──────────────────────────────────── */
+
+.realtime__state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+/* Solid only while the socket is live, as the Shell's Live indicator is. */
+.realtime__dot {
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--color-accent);
+  border-radius: 50%;
+}
+
+.realtime__state[data-state='live'] .realtime__dot {
+  background: var(--color-accent);
+}
+
+.realtime__note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-neutral-700);
+}
+
+.realtime__settings {
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+.setting {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.setting__input {
+  width: auto;
+  min-width: 70px;
+  min-height: 26px;
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+/* Drawn off: the hourly status line is not built, and a switch must not say it is. */
+.switch {
+  position: relative;
+  flex: none;
+  width: 30px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid var(--color-neutral-400);
+  background: none;
+  cursor: not-allowed;
+}
+
+.switch::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 1px;
+  width: 12px;
+  height: 12px;
+  background: var(--color-neutral-400);
+}
+
+@media (min-width: 900px) {
+  .integrations {
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 28px;
+  }
+
+  .integrations .integrations__title {
+    font-size: 32px;
+    margin: 0;
+  }
+
+  .providers {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

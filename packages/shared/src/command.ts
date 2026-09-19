@@ -1,8 +1,10 @@
 import { z } from 'zod'
+import { LIFECYCLE_LIMITS } from './integrations'
 import { type DayEvent, LAST_HOUR, hoursIfSlottedAt, meetingHolds } from './timeline'
 import { type Signal, formatHour } from './today'
 import {
   OPEN_TODO_STATES,
+  type Side,
   type SignalKind,
   type Source,
   type TodayTodo,
@@ -10,6 +12,9 @@ import {
   isSnoozed,
   sameSource,
   source,
+  connectionStatus,
+  provider,
+  side,
   todoState,
 } from './todo'
 
@@ -35,6 +40,17 @@ export const SNOOZE_CHOICES = [
   { minutes: 24 * 60, label: '24 hours' },
 ] as const
 
+/** What a user may change about the lifecycle: at least one of them, each within its limits. */
+export const lifecycleChange = z
+  .object({
+    briefTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+    sentBackDays: z.number().int().min(1).max(LIFECYCLE_LIMITS.sentBackDays),
+    archiveDays: z.number().int().min(1).max(LIFECYCLE_LIMITS.archiveDays),
+  })
+  .partial()
+  .refine((set) => Object.keys(set).length > 0, 'Nothing to change')
+export type LifecycleChange = z.infer<typeof lifecycleChange>
+
 export const command = z.discriminatedUnion('type', [
   z.object({ type: z.literal('todo.complete'), todoId: id }),
   // The browser names the new Todo, so its optimistic row and the real one are the same row.
@@ -49,8 +65,17 @@ export const command = z.discriminatedUnion('type', [
   // the hour named and no other, on the day the user is looking at.
   z.object({ type: z.literal('todo.slot'), todoId: id, hour }),
   z.object({ type: z.literal('todo.clearSlot'), todoId: id }),
+  // The lifecycle settings, any of them: what is not named is left as it is.
+  z.object({ type: z.literal('settings.set'), set: lifecycleChange }),
+  // Sent by the server alone, once Clerk has said the external account is the
+  // user's (`SERVER_ONLY`). The row is bookkeeping: no token is in it, or anywhere.
+  z.object({ type: z.literal('connection.add'), id, provider, externalAccountId: id }),
+  z.object({ type: z.literal('connection.setSide'), connectionId: id, side }),
 ])
 export type Command = z.infer<typeof command>
+
+/** Commands a browser may not send: only the server knows what Clerk said. */
+export const SERVER_ONLY: readonly Command['type'][] = ['connection.add']
 
 /** What a command may change about a Todo. Moments are ISO strings: operations travel as JSON. */
 export const todoChange = z
@@ -77,6 +102,17 @@ export type NewTodo = z.infer<typeof newTodo>
 export const signalChange = z.object({ todoId: z.string().nullable() }).partial()
 export type SignalChange = z.infer<typeof signalChange>
 
+/** A Connection as it is born: the bookkeeping row, and nothing secret (ADR 0001). */
+export const newConnection = z.object({
+  id,
+  provider,
+  externalAccountId: id,
+  defaultSide: side,
+  status: connectionStatus,
+  createdAt: z.iso.datetime(),
+})
+export type NewConnection = z.infer<typeof newConnection>
+
 export const op = z.discriminatedUnion('type', [
   z.object({ type: z.literal('todo.set'), id, set: todoChange }),
   z.object({ type: z.literal('todo.insert'), todo: newTodo }),
@@ -90,6 +126,9 @@ export const op = z.discriminatedUnion('type', [
     /** When the Slots were given, which is what a new one is created at. */
     at: z.iso.datetime(),
   }),
+  z.object({ type: z.literal('settings.set'), set: lifecycleChange }),
+  z.object({ type: z.literal('connection.insert'), connection: newConnection }),
+  z.object({ type: z.literal('connection.set'), id, set: z.object({ defaultSide: side }) }),
 ])
 export type Op = z.infer<typeof op>
 
@@ -111,6 +150,13 @@ export interface TodoFacts {
 /** What `decide` needs to know of a Signal. */
 export type SignalFacts = Pick<Signal, 'id' | 'kind' | 'who' | 'text' | 'source' | 'todoId'>
 
+/** What `decide` needs to know of a Connection. */
+export interface ConnectionFacts {
+  id: string
+  externalAccountId: string
+  defaultSide: Side
+}
+
 /** The state a command is decided against: the rows it names, wherever they were loaded from. */
 export interface CommandState {
   /** Which day it is on the user's wall clock: the day a Slot falls on. */
@@ -119,6 +165,8 @@ export interface CommandState {
   signals: readonly SignalFacts[]
   /** The day's calendar, so that a command cannot displace a meeting; empty unless `needsTheDay`. */
   events: readonly DayEvent[]
+  /** The user's Connections; loaded only for a command about one (`needsConnections`). */
+  connections?: readonly ConnectionFacts[]
 }
 
 export type Decision = { ok: true; ops: Op[] } | { ok: false; reason: string }
@@ -141,6 +189,8 @@ export function todosNamed(input: Command): string[] {
       return [input.id]
     case 'signal.add':
       return [input.todoId]
+    default:
+      return []
   }
 }
 
@@ -161,6 +211,11 @@ export function signalsNamed(input: Command): string[] {
  */
 export function needsTheDay(input: Command): boolean {
   return input.type === 'todo.slot' || input.type === 'todo.clearSlot'
+}
+
+/** Whether a command is about a Connection, and so is decided against the user's Connections. */
+export function needsConnections(input: Command): boolean {
+  return input.type === 'connection.add' || input.type === 'connection.setSide'
 }
 
 /** What stands between a Todo and an hour, once there is something. */
@@ -381,6 +436,40 @@ export function decide(state: CommandState, input: Command, now: Date): Decision
       if (todo.state !== 'today') return { ok: true, ops: [] }
       return { ok: true, ops: slotOps(todo, state.day, [], at) }
     }
+
+    case 'settings.set':
+      return { ok: true, ops: [{ type: 'settings.set', set: input.set }] }
+
+    case 'connection.add': {
+      const connections = state.connections ?? []
+      // Reconciled twice, or from two tabs at once: it is a Connection, which is what was asked.
+      if (connections.some((each) => each.externalAccountId === input.externalAccountId)) {
+        return { ok: true, ops: [] }
+      }
+      if (connections.some((each) => each.id === input.id)) {
+        return refuse('That Connection already exists.')
+      }
+      // Work until the user says otherwise: a second account is theirs to call personal.
+      const connection: NewConnection = {
+        id: input.id,
+        provider: input.provider,
+        externalAccountId: input.externalAccountId,
+        defaultSide: 'work',
+        status: 'connected',
+        createdAt: at,
+      }
+      return { ok: true, ops: [{ type: 'connection.insert', connection }] }
+    }
+
+    case 'connection.setSide': {
+      const connection = state.connections?.find((each) => each.id === input.connectionId)
+      if (!connection) return refuse('That Connection no longer exists.')
+      if (connection.defaultSide === input.side) return { ok: true, ops: [] }
+      return {
+        ok: true,
+        ops: [{ type: 'connection.set', id: connection.id, set: { defaultSide: input.side } }],
+      }
+    }
   }
 }
 
@@ -402,7 +491,10 @@ function born(todo: NewTodo): TodayTodo {
 
 /** What a patch is laid over: the Today read model, the one cached state that holds Todos. */
 export interface Applicable {
-  todos: readonly TodayTodo[]
+  /** Absent from a read model that holds no Todos: the Integrations screen's. */
+  todos?: readonly TodayTodo[]
+  settings?: LifecycleChange
+  connections?: readonly { id: string; defaultSide: Side }[]
   signals?: readonly { id: string; todoId: string | null }[]
   /** The day these rows are of; a state that does not say which cannot hold Slots. */
   day?: string
@@ -418,16 +510,20 @@ export interface Applicable {
 export function apply<S extends Applicable>(state: S, ops: readonly Op[]): S {
   let todos = state.todos
   let signals = state.signals
+  let settings = state.settings
+  let connections = state.connections
   for (const each of ops) {
     switch (each.type) {
       case 'todo.set':
-        todos = todos.map((todo) => (todo.id === each.id ? { ...todo, ...each.set } : todo))
+        todos = todos?.map((todo) => (todo.id === each.id ? { ...todo, ...each.set } : todo))
         break
       case 'todo.insert': {
+        if (!todos) break
+        const held = todos
         const row = born(each.todo)
-        todos = todos.some((todo) => todo.id === row.id)
-          ? todos.map((todo) => (todo.id === row.id ? row : todo))
-          : [...todos, row]
+        todos = held.some((todo) => todo.id === row.id)
+          ? held.map((todo) => (todo.id === row.id ? row : todo))
+          : [...held, row]
         break
       }
       case 'signal.set':
@@ -439,19 +535,44 @@ export function apply<S extends Applicable>(state: S, ops: readonly Op[]): S {
       // not say which) is left alone.
       case 'slot.set': {
         if (state.day !== each.day) break
-        const held = todos.find((todo) => todo.id === each.todoId)
+        const held = todos?.find((todo) => todo.id === each.todoId)
         // A Todo the state does not hold, or one already on those hours, leaves
         // the cache as it is: an applied patch must not churn what nothing read.
         if (!held || sameHours(held.slotHours, each.hours)) break
-        todos = todos.map((todo) =>
+        todos = todos?.map((todo) =>
           todo.id === each.todoId ? { ...todo, slotHours: [...each.hours] } : todo,
         )
+        break
       }
+      case 'settings.set':
+        if (settings) settings = { ...settings, ...each.set }
+        break
+      // A Connection born elsewhere has Clerk's word to be read with it, which a
+      // patch does not carry: `bornElsewhere` is how a screen knows to read again.
+      case 'connection.insert':
+        break
+      case 'connection.set':
+        connections = connections?.map((connection) =>
+          connection.id === each.id ? { ...connection, ...each.set } : connection,
+        )
     }
   }
-  if (todos === state.todos && signals === state.signals) return state
+  if (
+    todos === state.todos &&
+    signals === state.signals &&
+    settings === state.settings &&
+    connections === state.connections
+  ) {
+    return state
+  }
   // The rows keep their own shapes; only the columns an operation names have changed.
-  return { ...state, todos, ...(signals === state.signals ? {} : { signals }) } as S
+  return {
+    ...state,
+    ...(todos === state.todos ? {} : { todos }),
+    ...(signals === state.signals ? {} : { signals }),
+    ...(settings === state.settings ? {} : { settings }),
+    ...(connections === state.connections ? {} : { connections }),
+  } as S
 }
 
 /**
@@ -464,6 +585,11 @@ export function namesAnotherDay(state: Pick<Applicable, 'day'>, ops: readonly Op
   const { day } = state
   if (day === undefined) return false
   return ops.some((each) => each.type === 'slot.set' && each.day !== day)
+}
+
+/** Whether operations bring a Connection a cached screen has never read. */
+export function bornElsewhere(ops: readonly Op[]): boolean {
+  return ops.some((each) => each.type === 'connection.insert')
 }
 
 /**
@@ -480,6 +606,12 @@ function rowTouched(each: Op): string {
       return `signal:${each.id}`
     case 'slot.set':
       return `slot:${each.todoId}:${each.day}`
+    case 'settings.set':
+      return 'settings'
+    case 'connection.insert':
+      return `connection:${each.connection.id}`
+    case 'connection.set':
+      return `connection:${each.id}`
   }
 }
 
