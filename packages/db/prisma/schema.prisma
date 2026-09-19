@@ -130,12 +130,86 @@ model Client {
   cadence          String // CLIENT_CADENCES: how often an invoice goes out
   /// The budget or retainer in hours, where the arrangement has one.
   budgetHours      Int?
+  /// Past a retainer's hours an hour is charged at this instead of the retainer
+  /// rate; null where the arrangement has no overage of its own.
+  overageRateCents Int?
   createdAt        DateTime
   projects         Project[]
   timeEntries      TimeEntry[]
+  invoices         Invoice[]
 
   @@index([userId])
   @@map("client")
+}
+
+/// One Client's bill for one period (Billing module). The arithmetic behind it
+/// is `draftInvoice` in @crazy/shared, over the Client's billable Time entries;
+/// this row is what that came to, kept so that an invoice says the same thing
+/// tomorrow as it said when it was drafted.
+///
+/// The terms are copied onto the row rather than read off the Client, because a
+/// rate that changes in October must not move September's bill. Every figure is
+/// an integer of cents or seconds: money never touches a float.
+model Invoice {
+  id       String @id
+  userId   String
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id])
+  /// The period it bills, as local days, both inclusive.
+  fromDay  String
+  toDay    String
+  status   String // INVOICE_STATUSES
+  /// What she and her Client call it: "INV-0042".
+  number   String
+  /// The local day it is issued on, and the day it falls due — the issue day
+  /// plus the payment terms, counted in days and never off a clock.
+  issuedDay String
+  dueDay    String
+  // The terms as they stood when it was drafted.
+  arrangement      String // CLIENT_ARRANGEMENTS
+  rateCents        Int
+  overageRateCents Int?
+  roundingMinutes  Int
+  paymentTermsDays Int
+  budgetHours      Int?
+  currency         String // ISO 4217: the currency its amounts are in
+  /// What it comes to, in cents, and the seconds actually tracked behind it.
+  totalCents Int
+  seconds    Int
+  createdAt  DateTime
+  lines      InvoiceLine[]
+
+  /// One invoice per Client per period: a second draft for September would be
+  /// two bills for the same work.
+  @@unique([userId, clientId, fromDay])
+  // The Invoices read model: a user's invoices for one period.
+  @@index([userId, fromDay])
+  @@map("invoice")
+}
+
+/// One line of an invoice: a piece of work, the hours billed for it after the
+/// Client's rounding, the rate they were charged at and what that came to.
+model InvoiceLine {
+  id          String  @id
+  userId      String
+  invoiceId   String
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  /// What the Client reads: the Project's name, or what the line stands for.
+  description String
+  /// The Project the line gathers, where it gathers one.
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id])
+  /// The seconds actually tracked behind the line, and the minutes billed for
+  /// it once the Client's rounding has been applied. The two differ on purpose.
+  seconds     Int
+  minutes     Int
+  rateCents   Int
+  amountCents Int
+  position    Int
+
+  @@unique([invoiceId, position])
+  @@index([userId])
+  @@map("invoice_line")
 }
 
 /// A span of tracked time. One with no end is the running timer, and a user has
@@ -184,6 +258,7 @@ model Project {
   todos        Todo[]
   tieIns       TieIn[]
   timeEntries  TimeEntry[]
+  invoiceLines InvoiceLine[]
 
   @@index([userId])
   @@map("project")

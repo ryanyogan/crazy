@@ -10,6 +10,7 @@ import { type QueryClient, queryOptions } from '@tanstack/react-query'
 import {
   getCircles,
   getIntegrations,
+  getInvoices,
   getMetrics,
   getProjects,
   getShell,
@@ -49,6 +50,17 @@ export const timeQuery = (view: TimeView, on?: string) =>
 
 /** What one of those periods holds, as `apply` takes it (`Applicable`). */
 type TimeCache = Awaited<ReturnType<typeof getTime>>
+
+/**
+ * One period of the invoices, with the invoice that is open. The Time screen
+ * draws the same column beside its timesheet (frame 2b is one page for the
+ * two), so both read this one query and cannot come to different figures.
+ */
+export const invoicesQuery = (on?: string, open?: string) =>
+  queryOptions({
+    queryKey: ['invoices', on ?? 'now', open ?? 'first'] as const,
+    queryFn: () => getInvoices({ data: { on, open } }),
+  })
 
 export const weekQuery = queryOptions({ queryKey: ['week'], queryFn: () => getWeek() })
 

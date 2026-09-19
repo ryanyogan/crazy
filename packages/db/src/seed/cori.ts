@@ -1,9 +1,17 @@
 import {
   type ClientArrangement,
   type ClientCadence,
+  type DraftEntry,
+  type DraftProject,
   type Energy,
+  type InvoiceStatus,
   addDays,
+  draftInvoice,
+  dueDay,
   localTimeToInstant,
+  periodOf,
+  startOfDay,
+  startOfWeek,
   wallClock,
 } from '@crazy/shared'
 import type { Prisma } from '../generated/prisma/client'
@@ -24,6 +32,12 @@ interface ClientSeed {
   paymentTermsDays: number
   cadence: ClientCadence
   budgetHours: number | null
+  /** Past a retainer's hours, what an hour is charged at instead. */
+  overageRateCents: number | null
+  /** Where her September invoice has got to (frame 2b's three tags). */
+  invoiceStatus: InvoiceStatus
+  /** What she and the Client call it; Meridian's is frame 2b's INV-0042. */
+  invoiceNumber: string
 }
 
 // Frame 2c's per-Client invoice settings, as terms rather than words.
@@ -38,6 +52,10 @@ const CLIENTS: ClientSeed[] = [
     paymentTermsDays: 30,
     cadence: 'monthly',
     budgetHours: 40,
+    overageRateCents: null,
+    // Frame 2b: "Ready to review", and the draft the second card opens.
+    invoiceStatus: 'review',
+    invoiceNumber: 'INV-0042',
   },
   {
     key: 'quill',
@@ -49,9 +67,12 @@ const CLIENTS: ClientSeed[] = [
     paymentTermsDays: 15,
     cadence: 'biweekly',
     budgetHours: null,
+    overageRateCents: null,
+    invoiceStatus: 'draft',
+    invoiceNumber: 'INV-0043',
   },
   {
-    // $3,600 for 20h a month; past the retainer an hour is $200, which is ticket 21's to charge.
+    // $3,600 for 20h a month, and $200 an hour past it (frame 2c's terms).
     key: 'bramble',
     name: 'Bramble',
     code: 'BRA',
@@ -61,8 +82,14 @@ const CLIENTS: ClientSeed[] = [
     paymentTermsDays: 30,
     cadence: 'first_of_month',
     budgetHours: 20,
+    overageRateCents: 200_00,
+    invoiceStatus: 'draft',
+    invoiceNumber: 'INV-0044',
   },
 ]
+
+/** Everything she bills in is dollars; the mockups quote no other currency. */
+const CURRENCY = 'USD'
 
 /** A Project with no Client is her own work: tracked, never billed. */
 const PROJECTS: { key: string; name: string; client: string | null }[] = [
@@ -392,12 +419,14 @@ export function cori(input: SeedInput) {
   /** A minute apart, so that the order she took them on is a real order. */
   const takenOn = (index: number) => new Date(started.getTime() + index * 60_000)
 
-  const clients: Prisma.ClientCreateManyInput[] = CLIENTS.map(({ key, ...client }, index) => ({
-    id: id('client', key),
-    userId,
-    ...client,
-    createdAt: takenOn(index),
-  }))
+  const clients: Prisma.ClientCreateManyInput[] = CLIENTS.map(
+    ({ key, invoiceStatus: _status, invoiceNumber: _number, ...client }, index) => ({
+      id: id('client', key),
+      userId,
+      ...client,
+      createdAt: takenOn(index),
+    }),
+  )
 
   const projects: Prisma.ProjectCreateManyInput[] = PROJECTS.map((project, index) => ({
     id: id('project', project.key),
@@ -446,6 +475,95 @@ export function cori(input: SeedInput) {
       suggestedClientId: entry.suggest ? id('client', entry.suggest) : null,
       suggestedProjectId: null,
       createdAt: startedAt,
+    }
+  })
+
+  /*
+   * September's invoices, one per Client, exactly as `draftInvoice` builds them
+   * from the Time entries above. Nothing here is a typed-in figure: the seed
+   * runs the same arithmetic the app runs, so the mockups' $5,880 is either
+   * what her timesheet comes to or it is wrong, and a test says which.
+   *
+   * When they go out is the cadence's: the monthly and the bi-weekly Clients go
+   * on this week's Friday, which is what her Brief says ("September invoices go
+   * out Friday"), and the retainer goes on the first of next month.
+   */
+  const month = periodOf('month', today)
+  const friday = addDays(startOfWeek(today), 4)
+  const firstOfNextMonth = addDays(month.to, 1)
+  const periodFrom = startOfDay(month.from, timeZone)
+  const periodTo = startOfDay(firstOfNextMonth, timeZone)
+
+  const draftProjects: DraftProject[] = PROJECTS.map((project) => ({
+    id: id('project', project.key),
+    name: project.name,
+    // No Project of hers is charged at its own rate; the Client's stands.
+    rateCents: null,
+  }))
+
+  const invoices: Prisma.InvoiceCreateManyInput[] = []
+  const invoiceLines: Prisma.InvoiceLineCreateManyInput[] = []
+
+  CLIENTS.forEach((client, index) => {
+    const clientId = id('client', client.key)
+    const entries: DraftEntry[] = timeEntries
+      .filter((entry) => entry.clientId === clientId)
+      .map((entry) => ({
+        id: entry.id as string,
+        projectId: (entry.projectId as string | null) ?? null,
+        billable: entry.billable as boolean,
+        startedAt: (entry.startedAt as Date).toISOString(),
+        endedAt: (entry.endedAt as Date | null)?.toISOString() ?? null,
+      }))
+    const terms = {
+      arrangement: client.arrangement,
+      rateCents: client.rateCents,
+      overageRateCents: client.overageRateCents,
+      roundingMinutes: client.roundingMinutes,
+      paymentTermsDays: client.paymentTermsDays,
+      budgetHours: client.budgetHours,
+      currency: CURRENCY,
+    }
+    const draft = draftInvoice({
+      entries,
+      projects: draftProjects,
+      terms,
+      from: periodFrom,
+      to: periodTo,
+      now,
+    })
+    if (draft.lines.length === 0) return
+
+    const issuedDay = client.cadence === 'first_of_month' ? firstOfNextMonth : friday
+    const invoiceId = id('invoice', client.key)
+    invoices.push({
+      id: invoiceId,
+      userId,
+      clientId,
+      fromDay: month.from,
+      toDay: month.to,
+      status: client.invoiceStatus,
+      number: client.invoiceNumber,
+      issuedDay,
+      dueDay: dueDay(issuedDay, client.paymentTermsDays),
+      ...terms,
+      totalCents: draft.totalCents,
+      seconds: draft.seconds,
+      createdAt: takenOn(index),
+    })
+    for (const line of draft.lines) {
+      invoiceLines.push({
+        id: `${invoiceId}/line/${line.position}`,
+        userId,
+        invoiceId,
+        description: line.description,
+        projectId: line.projectId,
+        seconds: line.seconds,
+        minutes: line.minutes,
+        rateCents: line.rateCents,
+        amountCents: line.amountCents,
+        position: line.position,
+      })
     }
   })
 
@@ -519,6 +637,8 @@ export function cori(input: SeedInput) {
     signals: [],
     metricSnapshots: [],
     timeEntries,
+    invoices,
+    invoiceLines,
   } satisfies PersonaRows
 }
 

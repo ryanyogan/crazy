@@ -109,6 +109,14 @@ _Avoid_: Non-billable (an entry for a Client can also be marked not billable), o
 A span of time a user worked, with a start, an end once stopped, and a note. It may name a Client, a Project and the Todo it was started from. The one Time entry without an end is the running timer.
 _Avoid_: Timer (the control, not the record), log, session, timesheet row
 
+**Invoice**:
+One Client's bill for one period, in exactly one state: `draft`, `review`, `sent` or `paid`. It is built from that Client's billable Time entries in the period and keeps the terms it was built under, so a rate changed later never moves a bill already drafted.
+_Avoid_: Bill, statement, charge; "draft" alone (a draft is an Invoice in the `draft` state)
+
+**Invoice line**:
+One piece of work on an Invoice: what the Client reads, the hours billed for it after that Client's rounding, the rate and what the two come to. An Invoice's total is the sum of its lines and is never counted any other way.
+_Avoid_: Item, row, entry (a Time entry is the record of work; a line is what a Client is charged for it)
+
 ## Circles
 
 **Circle**:

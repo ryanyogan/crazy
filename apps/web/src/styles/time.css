@@ -405,76 +405,12 @@
   gap: 8px;
 }
 
-/* ── Beside the timesheet: the period's figures, and where hours will go ──── */
+/* ── Beside the timesheet: the Invoices column (frame 2b, ticket 21) ─────── */
 
 .time__aside {
   display: grid;
   gap: 16px;
   align-content: start;
-}
-
-.time__summary,
-.time__sync {
-  padding: 12px 14px;
-  gap: 8px;
-}
-
-.time__figures {
-  display: flex;
-  gap: 18px;
-  margin: 0;
-}
-
-.time__figures dt {
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-neutral-700);
-}
-
-.time__figures dd {
-  margin: 0;
-}
-
-.time__figure {
-  font-family: var(--font-heading);
-  font-weight: var(--font-heading-weight);
-  font-size: 20px;
-  font-variant-numeric: tabular-nums;
-}
-
-.time__summary-note {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.35;
-  color: var(--color-neutral-800);
-}
-
-.time__targets {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-/* Drawn and plainly not wired: nothing has been sent anywhere. */
-.time__target {
-  font-size: 10px;
-  cursor: not-allowed;
-}
-
-.time__send {
-  align-self: flex-start;
-  font-size: 12px;
-  padding: 4px 10px;
-}
-
-.time__coming {
-  align-self: flex-start;
-  font-size: 10px;
-}
-
-[data-not-wired] {
-  opacity: 0.55;
 }
 
 /* ── A phone: one column, and an entry in two lines ───────────────────────── */

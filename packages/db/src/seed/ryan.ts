@@ -1872,5 +1872,7 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
     // Ryan bills nobody: the Billing module is off, and these stay empty.
     clients: [] as Prisma.ClientCreateManyInput[],
     timeEntries: [] as Prisma.TimeEntryCreateManyInput[],
+    invoices: [] as Prisma.InvoiceCreateManyInput[],
+    invoiceLines: [] as Prisma.InvoiceLineCreateManyInput[],
   }
 }

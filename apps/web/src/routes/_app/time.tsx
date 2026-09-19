@@ -2,7 +2,7 @@ import { timeView } from '@crazy/shared'
 import { createFileRoute, notFound } from '@tanstack/react-router'
 import { z } from 'zod'
 import { TimeScreen } from '#/features/time/TimeScreen'
-import { shellQuery, timeQuery } from '#/lib/queries'
+import { invoicesQuery, shellQuery, timeQuery } from '#/lib/queries'
 
 /**
  * Which period the timesheet is on lives in the URL, so last week can be
@@ -29,7 +29,12 @@ export const Route = createFileRoute('/_app/time')({
   loader: async ({ context, deps }) => {
     const shell = await context.queryClient.ensureQueryData(shellQuery)
     if (!shell.billing) throw notFound()
-    await context.queryClient.ensureQueryData(timeQuery(deps.view, deps.on))
+    await Promise.all([
+      context.queryClient.ensureQueryData(timeQuery(deps.view, deps.on)),
+      // Frame 2b's right-hand column is the Invoices screen's, drawn beside the
+      // timesheet and read from the same query as that screen (ticket 21).
+      context.queryClient.ensureQueryData(invoicesQuery(deps.on)),
+    ])
   },
   component: TimeScreen,
 })

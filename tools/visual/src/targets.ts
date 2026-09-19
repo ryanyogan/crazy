@@ -333,10 +333,24 @@ const STILL_RUNNING =
   "What says the first entry is still running: the dash after 09:00, the word under the note, and Wednesday's caption. The shot is taken with the timer stopped, because a running entry puts the Shell's compact header over every screen (ticket 27) and frame 2b draws none — the only way to see this screen at the frame's pinned moment (ticket 17's Comments). The hours the entry came to are the same either way and are compared"
 
 const RAIL_FOOT_2B =
-  'The foot of the rail. Frame 2b puts the accounting targets there ("Synced to · QuickBooks · 09:00"); the Shell follows frame 1a on every screen (Live, then the user), and the targets are the Time screen\'s own, where the app draws them — plainly not wired, because Crazy has sent nothing anywhere'
+  'The foot of the rail. Frame 2b puts the accounting targets there ("Synced to · QuickBooks · 09:00"); the Shell follows frame 1a on every screen (Live, then the user), and the targets are drawn on the opened invoice instead, beside Send — which is where a thing is sent from — plainly not wired, because Crazy has sent nothing anywhere'
 
-const THE_INVOICES_HALF =
-  "The right-hand column. Frame 2b is one page for Time and Invoices — its rail marks both destinations — and the Shell has a screen for each. The Invoices column is ticket 21's; until then the column holds what the Time screen itself can say: the period's figures, and where the hours are meant to go"
+/*
+ * Frame 2b's right-hand column is the Invoices half of the page. The Shell has
+ * a screen for each half, and the column is the Invoices screen's own two cards
+ * drawn beside the timesheet, off the same read model (ticket 21) — so it is
+ * compared rather than masked. What is masked inside it is what the frame says
+ * from somewhere other than Cori's rows.
+ */
+
+const INVOICE_SENTENCE =
+  'What Crazy says under an invoice, and the buttons under that. The frame quotes a timesheet that is not Cori\'s ("31 entries into 3 lines" where her September holds nine), tells Bramble it auto-sends via QuickBooks, which is not connected, and words the first button "Review & send" — sending is not wired, so the button opens the invoice and says so. The frame also fills that button with the accent, and the Time screen has already spent its one solid fill on the chosen view'
+
+const STATUS_IS_A_STATUS =
+  'The second invoice\'s tag. The frame words its tags from three different things — a status ("Ready to review"), a cadence ("Drafting Fri") and an arrangement ("Retainer"); in the app the tag is the invoice\'s status and says which of the four it is, so that where an invoice has got to is never told by colour alone. Meridian\'s "Ready to review" is the one the two agree on, and it is compared'
+
+const THIRD_MERIDIAN_LINE =
+  "Everything below the second invoice's figures: the rest of the list, and the opened draft. Frame 2b's draft has three lines, the third of them \"Project management & reporting\" — which is not one of Cori's Projects, and cannot become one, because frame 3a's picker draws Meridian with exactly two and is frozen at 0.00%. The app gathers her September by Project into the two she has, so the draft is a line shorter and everything under it sits a line higher. The figures are the frame's own and a read-model test pins them: 28.0h, $4,620 + $1,260 = $5,880.00, net 30, due 19 Oct. A debt for the designer"
 
 const PERIOD_NAV =
   'The way between periods. Frame 2b draws none: it shows week 38 and no way to reach week 37. A timesheet that cannot go back to last week is no use at month-end, so the app puts previous, "this week" and next between the heading and the views (derived, docs/BRIEF.md)'
@@ -616,12 +630,17 @@ export const TARGETS: Target[] = [
         entries: { x: 196, y: 194, width: 528, height: 375 },
         flag: { x: 196, y: 583, width: 528, height: 40 },
         'add an entry': { x: 196, y: 637, width: 528, height: 36 },
+        // The Invoices half: the card is a blueprint, measured with its corner
+        // marks 6px beyond the box, down to the second invoice's figures.
+        invoices: { x: 746, y: 16, width: 412, height: 238 },
       },
       masks: [
         { x: 16, y: 196, width: 140, height: 28, why: BOTH_DESTINATIONS },
         { x: 16, y: 232, width: 140, height: 96, why: RAIL_CIRCLES },
         { x: 8, y: 690, width: 152, height: 130, why: RAIL_FOOT_2B },
-        { x: 724, y: 0, width: 456, height: 820, why: THE_INVOICES_HALF },
+        { x: 760, y: 118, width: 384, height: 70, why: INVOICE_SENTENCE },
+        { x: 1068, y: 212, width: 64, height: 16, why: STATUS_IS_A_STATUS },
+        { x: 740, y: 256, width: 424, height: 564, why: THIRD_MERIDIAN_LINE },
         { x: 396, y: 28, width: 130, height: 34, why: PERIOD_NAV },
         ...DAY_CARD_FIGURES,
         { x: 246, y: 242, width: 16, height: 22, why: STILL_RUNNING },

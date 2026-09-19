@@ -16,9 +16,9 @@ import { useState } from 'react'
 import { timeQuery, timerQuery } from '#/lib/queries'
 import { useTicking } from '#/features/timer/useTicking'
 import { useWide } from '#/lib/useWide'
+import { InvoicesAside } from '#/features/invoices/InvoicesAside'
 import { EntriesTable } from './EntriesTable'
 import { EntryEditor } from './EntryEditor'
-import { TimeAside } from './TimeAside'
 import { TimeCards } from './TimeCards'
 import { type Draft, draftOf, newDraft } from './draft'
 
@@ -180,7 +180,9 @@ export function TimeScreen() {
         {wide && draft?.id === null && <div className="time__new">{editor}</div>}
       </section>
 
-      <TimeAside view={screen} />
+      {/* Frame 2b is one page for Time and Invoices: this column is the
+          Invoices screen's own two cards, read from the same query (ticket 21). */}
+      <InvoicesAside on={on} />
 
       {/* A phone has no room to edit inside a row, so the same editor rises
           from the bottom edge instead (derived, docs/BRIEF.md). */}

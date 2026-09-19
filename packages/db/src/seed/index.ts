@@ -35,6 +35,8 @@ export async function seedPersona(db: Db, input: SeedInput): Promise<void> {
   const { userId } = input
   const rows = PERSONA_SEEDS[input.persona](input)
 
+  await db.invoiceLine.deleteMany({ where: { userId } })
+  await db.invoice.deleteMany({ where: { userId } })
   await db.timeEntry.deleteMany({ where: { userId } })
   await db.metricSnapshot.deleteMany({ where: { userId } })
   await db.signal.deleteMany({ where: { userId } })
@@ -72,4 +74,7 @@ export async function seedPersona(db: Db, input: SeedInput): Promise<void> {
   // What Crazy modelled for the Metrics screen, beside the figures it counts.
   await db.metricSnapshot.createMany({ data: rows.metricSnapshots })
   await db.timeEntry.createMany({ data: rows.timeEntries })
+  // The period's invoices, and the lines `draftInvoice` built from those entries.
+  await db.invoice.createMany({ data: rows.invoices })
+  await db.invoiceLine.createMany({ data: rows.invoiceLines })
 }

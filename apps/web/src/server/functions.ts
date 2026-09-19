@@ -1,6 +1,7 @@
 import {
   createReadDb,
   readCircles,
+  readInvoices,
   readMetrics,
   readProjects,
   readTime,
@@ -111,6 +112,30 @@ export const getTime = createServerFn()
       // the same way it reaches the timer's.
       time: await readTime(createReadDb(env.DB), userId, now, timeZone, data.view, data.on),
       seq,
+      now: now.toISOString(),
+      timeZone,
+    }
+  })
+
+/**
+ * The Invoices screen's read model: one period's invoices, and the one that is
+ * open. Both the period and which invoice is open come off the URL, so both
+ * are validated here as well as there — a server function is a door — and the
+ * period arrives as a local day rather than a pair of moments a browser
+ * worked out. It is read by the Time screen too, which draws the same column.
+ */
+export const getInvoices = createServerFn()
+  .validator(z.object({ on: z.string().optional(), open: z.string().optional() }))
+  .handler(async ({ data }) => {
+    const userId = await viewerId()
+    if (!userId) throw redirect({ to: '/sign-in' })
+
+    const { timeZone, billing } = await settingsFor(userId)
+    // Part of the Billing module: with it off there is no such screen.
+    if (!billing) throw notFound()
+    const now = requestNow(timeZone)
+    return {
+      invoices: await readInvoices(createReadDb(env.DB), userId, now, timeZone, data.on, data.open),
       now: now.toISOString(),
       timeZone,
     }
