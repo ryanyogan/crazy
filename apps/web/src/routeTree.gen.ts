@@ -25,6 +25,7 @@ import { Route as AppTimeRouteImport } from './routes/_app/time'
 import { Route as AppWeekRouteImport } from './routes/_app/week'
 import { Route as AttachmentsIdRouteImport } from './routes/attachments.$id'
 import { Route as DevSeedRouteImport } from './routes/dev/seed'
+import { Route as WebhooksClerkRouteImport } from './routes/webhooks.clerk'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -105,6 +106,11 @@ const DevSeedRoute = DevSeedRouteImport.update({
   path: '/dev/seed',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WebhooksClerkRoute = WebhooksClerkRouteImport.update({
+  id: '/webhooks/clerk',
+  path: '/webhooks/clerk',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -122,6 +128,7 @@ export interface FileRoutesByFullPath {
   '/week': typeof AppWeekRoute
   '/attachments/$id': typeof AttachmentsIdRoute
   '/dev/seed': typeof DevSeedRoute
+  '/webhooks/clerk': typeof WebhooksClerkRoute
 }
 export interface FileRoutesByTo {
   '/attachments': typeof AttachmentsRouteWithChildren
@@ -138,6 +145,7 @@ export interface FileRoutesByTo {
   '/week': typeof AppWeekRoute
   '/attachments/$id': typeof AttachmentsIdRoute
   '/dev/seed': typeof DevSeedRoute
+  '/webhooks/clerk': typeof WebhooksClerkRoute
   '/': typeof AppIndexRoute
 }
 export interface FileRoutesById {
@@ -157,6 +165,7 @@ export interface FileRoutesById {
   '/_app/week': typeof AppWeekRoute
   '/attachments/$id': typeof AttachmentsIdRoute
   '/dev/seed': typeof DevSeedRoute
+  '/webhooks/clerk': typeof WebhooksClerkRoute
   '/_app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
@@ -177,6 +186,7 @@ export interface FileRouteTypes {
     | '/week'
     | '/attachments/$id'
     | '/dev/seed'
+    | '/webhooks/clerk'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/attachments'
@@ -193,6 +203,7 @@ export interface FileRouteTypes {
     | '/week'
     | '/attachments/$id'
     | '/dev/seed'
+    | '/webhooks/clerk'
     | '/'
   id:
     | '__root__'
@@ -211,6 +222,7 @@ export interface FileRouteTypes {
     | '/_app/week'
     | '/attachments/$id'
     | '/dev/seed'
+    | '/webhooks/clerk'
     | '/_app/'
   fileRoutesById: FileRoutesById
 }
@@ -221,6 +233,7 @@ export interface RootRouteChildren {
   SignInRoute: typeof SignInRoute
   SsoCallbackRoute: typeof SsoCallbackRoute
   DevSeedRoute: typeof DevSeedRoute
+  WebhooksClerkRoute: typeof WebhooksClerkRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -337,6 +350,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DevSeedRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/webhooks/clerk': {
+      id: '/webhooks/clerk'
+      path: '/webhooks/clerk'
+      fullPath: '/webhooks/clerk'
+      preLoaderRoute: typeof WebhooksClerkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -385,6 +405,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignInRoute: SignInRoute,
   SsoCallbackRoute: SsoCallbackRoute,
   DevSeedRoute: DevSeedRoute,
+  WebhooksClerkRoute: WebhooksClerkRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

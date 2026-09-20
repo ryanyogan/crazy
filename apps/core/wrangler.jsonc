@@ -22,4 +22,45 @@
       "migrations_dir": "../../packages/db/migrations",
     },
   ],
+  // Attachments and archives. The web Worker moves an Attachment's bytes
+  // because it authenticates the request and holds the body; this Worker is
+  // bound to the same bucket for the archive Workflow, which is the one job
+  // that will carry a Todo's files out of D1 with it (ADR 0002, spec: "Moving
+  // archived Todos to R2"). Nothing here reads or writes it yet.
+  "r2_buckets": [{ "binding": "ATTACHMENTS", "bucket_name": "crazy-attachments" }],
+  // The Provider-pull Queue: short, idempotent, high-volume jobs that must not
+  // keep a Coordinator awake (ADR 0002). Nothing sends to it yet and the
+  // consumer only logs. Producer and consumer are the same Worker on purpose —
+  // a pull is started from here and lands here.
+  "queues": {
+    "producers": [{ "binding": "PROVIDER_PULL", "queue": "crazy-provider-pull" }],
+    "consumers": [
+      {
+        "queue": "crazy-provider-pull",
+        "max_batch_size": 10,
+        "max_batch_timeout": 30,
+        "max_retries": 3,
+        // No dead-letter queue yet: it would be a second queue for messages
+        // nothing sends. It wants deciding with the first real pull.
+      },
+    ],
+  },
+  // The three Workflows, each an empty run. Multi-step jobs whose steps must
+  // not repeat, or that wait on a person (ADR 0002).
+  "workflows": [
+    { "name": "crazy-brief", "binding": "BRIEF", "class_name": "BriefWorkflow" },
+    { "name": "crazy-invoice", "binding": "INVOICE", "class_name": "InvoiceWorkflow" },
+    { "name": "crazy-archive", "binding": "ARCHIVE", "class_name": "ArchiveWorkflow" },
+  ],
+  // Every model call Crazy makes will go through an AI Gateway, from a Workflow
+  // or the Queue consumer and never from the Coordinator (src/ai.ts). The
+  // binding deploys with no gateway in existence; the id is only read when
+  // something asks for a model, and nothing does.
+  "ai": { "binding": "AI" },
+  "vars": {
+    // The AI Gateway the owner creates in the dashboard (docs/BRIEF.md). Blank
+    // means no gateway is configured, and `aiGateway` says so rather than
+    // quietly calling a model outside one.
+    "AI_GATEWAY_ID": "",
+  },
 }

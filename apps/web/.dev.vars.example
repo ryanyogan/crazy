@@ -1,0 +1,10 @@
+# Copy to .dev.vars. These reach the Worker's own environment (bindings and
+# secrets), which is not the same place as .env.local — that one holds the
+# Clerk keys the app is built with (see .env.example).
+#
+# The signing secret of the Clerk webhook endpoint that sends `user.deleted`,
+# from the Clerk dashboard. In production it is a wrangler secret:
+#   pnpm --filter @crazy/web exec wrangler secret put CLERK_WEBHOOK_SECRET
+# Leave it out and POST /webhooks/clerk refuses every request, which is the
+# point: an endpoint that cannot tell Clerk from anyone else deletes nothing.
+CLERK_WEBHOOK_SECRET=

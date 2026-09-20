@@ -64,6 +64,15 @@ export abstract class CoordinatorHost<Env extends Cloudflare.Env> extends Agent<
     await this.schedule(when, callback)
   }
 
+  /**
+   * Cancels everything waiting to be called. Through the SDK rather than the
+   * alarm, because the SDK owns the alarm slot: a schedule left behind would
+   * wake a Coordinator for a user who no longer exists.
+   */
+  protected async cancelEverySchedule(): Promise<void> {
+    for (const held of await this.listSchedules()) await this.cancelSchedule(held.id)
+  }
+
   /** When `callback` is next due to be called, or null when nothing is waiting to call it. */
   protected async dueAt(callback: keyof this & string): Promise<Date | null> {
     const times = (await this.listSchedules())
@@ -79,5 +88,46 @@ export abstract class CoordinatorHost<Env extends Cloudflare.Env> extends Agent<
 
   protected socketCount(): number {
     return [...this.getConnections()].length
+  }
+
+  /** Closes every open socket, with a reason the client can show. */
+  protected closeEverySocket(reason: string): void {
+    // 1000 is a normal close: there is nothing wrong, there is simply no more
+    // to say, so a client is not to reconnect and try again.
+    for (const socket of this.getConnections()) socket.close(1000, reason)
+  }
+
+  /**
+   * Empties this instance's own storage: every row in its SQLite, whichever
+   * table holds it — ours and the SDK's — every key on the key-value side, and
+   * the alarm behind them.
+   *
+   * It *empties* rather than drops, which is why neither
+   * `ctx.storage.deleteAll()` nor the SDK's `destroy()` is used here. Both drop
+   * the tables: `deleteAll` takes the SDK's own tables with it and leaves this
+   * instance unable to answer another call (`no such table: cf_agents_jobs`),
+   * and `destroy` goes further and aborts the isolate, which would take with it
+   * the very call that asked. Account deletion arrives as a webhook that is
+   * redelivered until it is answered, so the one thing it must not do is fail
+   * to answer. Emptying leaves exactly the same nothing behind, and leaves the
+   * instance able to speak.
+   */
+  protected async forgetStorage(): Promise<void> {
+    const { sql } = this.ctx.storage
+    // Everything but the runtime's own: `sqlite_*` is SQLite's catalogue and
+    // `_cf_*` is where the key-value side is kept, which is emptied below
+    // through its own API rather than behind its back.
+    const tables = sql
+      .exec<{ name: string }>(
+        `SELECT name FROM sqlite_master WHERE type = 'table'
+           AND name NOT LIKE 'sqlite\\_%' ESCAPE '\\'
+           AND name NOT LIKE '\\_cf\\_%' ESCAPE '\\'`,
+      )
+      .toArray()
+    for (const { name } of tables) sql.exec(`DELETE FROM "${name}"`)
+
+    const keys = await this.ctx.storage.list()
+    if (keys.size > 0) await this.ctx.storage.delete([...keys.keys()])
+    await this.ctx.storage.deleteAlarm()
   }
 }

@@ -8,9 +8,21 @@ export const REPLAY_BUFFER = 200
  * so they survive hibernation. It is bookkeeping about what was broadcast, not
  * domain data: D1 already holds everything a patch says (ADR 0002).
  */
+const TABLE = 'CREATE TABLE IF NOT EXISTS patch (seq INTEGER PRIMARY KEY, ops TEXT NOT NULL)'
+
 export class PatchLog {
   constructor(private readonly sql: SqlStorage) {
-    sql.exec('CREATE TABLE IF NOT EXISTS patch (seq INTEGER PRIMARY KEY, ops TEXT NOT NULL)')
+    sql.exec(TABLE)
+  }
+
+  /**
+   * Throws the log away and starts from nothing, whether or not the table is
+   * still there: `deleteAll` may have taken it, and this instance goes on
+   * living either way.
+   */
+  empty(): void {
+    this.sql.exec(TABLE)
+    this.sql.exec('DELETE FROM patch')
   }
 
   /** The sequence number of the last patch committed; 0 before the first. */

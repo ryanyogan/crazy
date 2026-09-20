@@ -33,7 +33,8 @@ browser ── apps/web (TanStack Start, SSR) ──reads──▶ D1 (Prisma)
 - **Clerk is the only credential store.** A Connection is a Clerk external account plus one
   bookkeeping row. Tokens are fetched from Clerk at the moment of use and never stored.
 - Provider pulls will run on a Queue, the Brief, invoice cycle and archive as Workflows, and LLM
-  calls through AI Gateway, so the Coordinator never waits on the outside world.
+  calls through AI Gateway, so the Coordinator never waits on the outside world. All five are bound
+  and empty today ("Shells for what comes later").
 
 ## What is real, seeded and scaffolded
 
@@ -81,6 +82,8 @@ Updated as tickets land.
 | Cori's invoices and their lines, one per Client per month she worked                                                                                                                                                                                                              | Seeded, and not typed in: the seed runs `draftInvoice` over the seeded Time entries, so the mockup's $5,880, $4,275 and $3,600 are what her September timesheet comes to. July's and August's were billed and paid, which is what makes "unbilled" on Metrics mean this month's money and nothing older                                                                                                                                                                                                                           |
 | Cori's five weeks before September, and the finished Todos behind some of them                                                                                                                                                                                                    | Seeded (ticket 22), so that "hours per week by Client" reaches back eight weeks and "estimate vs actual" has Todos that carry both an estimate and a timer. Nothing falls on or after 1 September, so her Meridian 28.0h, Quill 22.5h and Bramble 17h 50m are exactly what they were                                                                                                                                                                                                                                              |
 | The Attachment seam: the private R2 bucket (`ATTACHMENTS` → `crazy-attachments`), the `attachment` row (migration 0015), `POST /attachments?todoId=…` and `GET /attachments/:id`                                                                                                  | Real, and with no interface: none is drawn (see "The Attachment seam" below). The web Worker moves the bytes; the Coordinator decides `attachment.add` and records the metadata, and never touches the bucket                                                                                                                                                                                                                                                                                                                     |
+| The Provider-pull Queue, the Brief, invoice and archive Workflows, the AI Gateway binding                                                                                                                                                                                         | Shells: declared, bound, and running locally under `pnpm dev`. Each logs and returns; none writes a row, reaches a Provider or calls a model (see "Shells for what comes later" below)                                                                                                                                                                                                                                                                                                                                            |
+| Account deletion: `POST /webhooks/clerk` verifies Clerk's signature, then the Coordinator deletes every row the user has and this Worker empties their R2 prefix                                                                                                                  | Real, and exercised only locally: no Clerk endpoint exists yet, and with no `CLERK_WEBHOOK_SECRET` configured every request is refused (see "Deleting an account" below)                                                                                                                                                                                                                                                                                                                                                          |
 | Everything else in the spec                                                                                                                                                                                                                                                       | Not started                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 
 ## Derived layouts
@@ -436,10 +439,106 @@ Its limits, which a drawn interface has to live inside:
   again (`attachment.remove`), so a row never points at bytes that are not there. Nothing deletes
   an Attachment on purpose yet — no interface asks to — and `POST /dev/seed` empties the rows but
   not the bucket, so a reseeded development bucket keeps objects nothing points at.
-- The bucket is named `crazy-attachments` and is bound to the **web** Worker as `ATTACHMENTS`
-  (`apps/web/wrangler.jsonc`). The Coordinator holds no binding to it and never will: it decides
-  and records, and never awaits the outside world (ADR 0002). Moving archived Todos to R2 is the
-  archive Workflow's, and will bind the bucket in `apps/core` when it is written.
+- The bucket is named `crazy-attachments` and is bound as `ATTACHMENTS` to the **web** Worker
+  (`apps/web/wrangler.jsonc`), which moves the bytes, and to the **core** Worker
+  (`apps/core/wrangler.jsonc`) for the archive Workflow, which is the one job that will carry a
+  Todo's files out of D1 with it. The **Coordinator** holds no binding to it and never will: it
+  decides and records, and never awaits the outside world (ADR 0002).
+- **Deleting an account takes the files too**: `POST /webhooks/clerk` empties `users/<userId>/`
+  once the Coordinator has confirmed the rows are gone (see "Deleting an account").
+
+## Shells for what comes later
+
+Each later feature has a declared, bound and deployable place to go, and nothing in it yet. Every
+one of them lives in the **core** Worker, because ADR 0002 puts anything that waits on a Provider
+or a model out here — billed on CPU — and keeps the Coordinator, billed on wall-clock time while
+it is awake, out of the waiting. Each hands its writes to `coordinatorFor(userId)` as commands
+when it has any; nothing but the Coordinator writes to D1. None of them calls a Provider or a
+model today, in any path, commented out or otherwise.
+
+- **The Provider-pull Queue** — `crazy-provider-pull`, producer `PROVIDER_PULL`, consumer
+  `providerPull` (`apps/core/src/queue/provider-pull.ts`). Will carry pulling a user's items from
+  a Provider and inbound Provider webhooks: short, idempotent, high-volume jobs. Today it logs
+  each message and acks it.
+- **The Brief Workflow** — `crazy-brief`, binding `BRIEF`, class `BriefWorkflow`
+  (`apps/core/src/workflows/brief.ts`). Will write the Brief and order the Priority stack with a
+  reason per Todo. The Coordinator's schedule fires the trigger, because it is the one place that
+  knows the user's Brief time, and then goes back to sleep.
+- **The invoice Workflow** — `crazy-invoice`, binding `INVOICE`, class `InvoiceWorkflow`
+  (`apps/core/src/workflows/invoice.ts`). Will run one Client's cycle: draft on their cadence,
+  review, send, paid. Steps that must not repeat, and a wait on a person between two of them.
+- **The archive Workflow** — `crazy-archive`, binding `ARCHIVE`, class `ArchiveWorkflow`
+  (`apps/core/src/workflows/archive.ts`). Will move archived Todos out of D1 into R2 and let the
+  archive be searched. It is why `ATTACHMENTS` is now bound on the **core** Worker as well as the
+  web one: a Todo's files go where the Todo goes. Nothing on core reads or writes the bucket yet.
+- **The AI Gateway** — binding `AI`, reached through `aiGateway(env)` (`apps/core/src/ai.ts`), which
+  nothing calls. Every model call will go through it so that logging, caching, rate limits and cost
+  live in one place. The gateway's id is the var `AI_GATEWAY_ID`, blank until the owner creates one;
+  `aiGateway` says so rather than quietly calling a model outside a gateway.
+
+Each Workflow takes one `step.do('nothing yet', …)`, because a Workflow with no step is not a
+Workflow. All three start and complete locally under `pnpm dev` and in the workerd tests
+(`apps/core/src/shells.test.ts`), which also holds the one assertion worth keeping: none of them
+adds a row to D1.
+
+## Deleting an account
+
+Clerk owns the account (ADR 0001), so Clerk is the only thing that can say one is gone, and
+`user.deleted` is the only webhook Crazy answers.
+
+- **`POST /webhooks/clerk`** (`apps/web/src/routes/webhooks.clerk.ts`) is on the **web** Worker, not
+  the core one. The core Worker has no public route by design (`workers_dev: false`), Clerk is the
+  web Worker's to speak to, and deleting an account needs both the user's Coordinator and the
+  Attachment bucket, which only this Worker holds. Inbound **Provider** webhooks are a different
+  thing and belong on core, beside the Queue that will carry what they say.
+- It verifies the signature with `verifyWebhook` from `@clerk/tanstack-react-start/webhooks`
+  against `CLERK_WEBHOOK_SECRET`. **With no secret configured every request is refused**, never
+  waved through. A missing header, a wrong signature and a timestamp outside five minutes are all
+  `401` with the same wording; what went wrong goes to the log, not to the sender.
+- Then the rows, then the files. The Coordinator's `forget()` deletes every table carrying that
+  `userId` in dependency order (`deleteUser`, `USER_TABLES` in `@crazy/db/write`), cancels every
+  schedule so a deleted user's Rollover can never fire, closes their sockets and empties its own
+  storage; the route then empties `users/<userId>/` in R2, because the Coordinator never touches a
+  bucket. A second delivery deletes nothing and answers `200`.
+- `packages/db/src/delete.test.ts` reads the database's own tables, so a table added later with a
+  `userId` on it cannot be forgotten. `apps/web/src/server/webhooks.test.ts` is the refusals.
+- `forget()` empties the Durable Object's storage rather than calling `ctx.storage.deleteAll()` or
+  the Agents SDK's `destroy()`. Both of those _drop_ the tables: `deleteAll` takes the SDK's own
+  with it and leaves the instance unable to answer another call, and `destroy` also aborts the
+  isolate. A webhook is redelivered until it is answered, so the one thing it must not do is fail
+  to answer.
+
+## Before this can be deployed
+
+Nothing here has run against a real Cloudflare account. Beyond the D1 database, the R2 bucket
+(`wrangler r2 bucket create crazy-attachments`, kept private) and the Clerk keys, this ticket adds:
+
+```sh
+# The Provider-pull Queue. Deploying crazy-core fails until it exists.
+pnpm --filter @crazy/core exec wrangler queues create crazy-provider-pull
+
+# The Attachment bucket is now bound on crazy-core too, so it must exist
+# before that Worker deploys, not only before crazy-web does.
+pnpm --filter @crazy/web exec wrangler r2 bucket create crazy-attachments
+
+# The webhook's signing secret, from the Clerk dashboard endpoint below.
+pnpm --filter @crazy/web exec wrangler secret put CLERK_WEBHOOK_SECRET
+```
+
+Then in the Clerk dashboard, **Configure → Webhooks → Add Endpoint**: the URL is
+`https://<the web Worker's domain>/webhooks/clerk`, and **`user.deleted` is the only event to
+subscribe to**. Copy the endpoint's Signing Secret into the wrangler secret above.
+
+An **AI Gateway** is created in the Cloudflare dashboard (**AI → AI Gateway → Create Gateway**);
+there is no wrangler command for it. Put its id in `AI_GATEWAY_ID` in `apps/core/wrangler.jsonc`.
+Nothing calls a model, so this can wait: **the `AI` binding deploys with no gateway in existence**,
+and so does the Worker with no webhook secret set — the endpoint simply refuses everything until
+there is one.
+
+The three Workflows need no command: `wrangler deploy` creates them from the `workflows` block.
+
+Locally, copy `apps/web/.dev.vars.example` to `apps/web/.dev.vars` to give the webhook a secret;
+without one the local endpoint refuses every request, which is the same rule.
 
 ## Seeded data
 
@@ -482,7 +581,10 @@ technical notes, partly overruled by the ADRs), and the Industry system's `style
 The tickets in `.scratch/foundation/issues/`: 03–04 the Today screen
 → 05 complete a Todo → 06 live across devices → 07–09 add, snooze, slot, start and Swap → 10 the
 Rollover → 11–15 Week, Projects and Signals, Circles, Metrics, Integrations → 16–23 the Billing
-module → 24 the Attachment seam → 25 shells for the Queue, Workflows and AI Gateway.
+module → 24 the Attachment seam → 25 shells for the Queue, Workflows and AI Gateway, and account
+deletion. The foundation is complete.
 
-Not in the foundation at all: pulling from Providers, generating any text or ordering, invoice
-PDFs and sending, moving archives to R2, deployment and CI.
+Not in the foundation at all, and each now with somewhere to go: pulling from Providers
+(the Queue), generating any text or ordering (the Brief Workflow through the AI Gateway), invoice
+PDFs and sending (the invoice Workflow), moving archives to R2 (the archive Workflow), deployment
+("Before this can be deployed") and CI.

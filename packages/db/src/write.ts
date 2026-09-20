@@ -14,3 +14,4 @@ export function createDb(d1: D1): Db {
 
 export { type SeedInput, type SeedTimer, seedPersona } from './seed'
 export { loadCommandState, persistOps } from './commands'
+export { type UserTable, USER_TABLES, deleteUser } from './delete'

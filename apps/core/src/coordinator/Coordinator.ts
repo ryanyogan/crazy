@@ -1,4 +1,4 @@
-import { createDb, loadCommandState, persistOps } from '@crazy/db/write'
+import { createDb, deleteUser, loadCommandState, persistOps } from '@crazy/db/write'
 import {
   type CommandResult,
   type ServerMessage,
@@ -185,6 +185,42 @@ export class Coordinator extends CoordinatorHost<Env> {
 
   protected socketClosed(): void {
     this.wakes.note('close', this.clock())
+  }
+
+  /**
+   * Clerk says this account is gone. Clerk owns the account (ADR 0001), so this
+   * is the only thing that ever deletes a user, and it arrives as the
+   * `user.deleted` webhook and nowhere else.
+   *
+   * Every row of theirs goes, in one order, through the one write path; then
+   * nothing of theirs is left waiting to fire, their open tabs are told, and
+   * this Coordinator forgets everything it held about them. It answers how many
+   * rows there were.
+   *
+   * Their files in R2 are not deleted here: the Coordinator never touches a
+   * bucket (ADR 0002). The Worker that holds it empties `users/<userId>/` once
+   * this has returned.
+   *
+   * Asking twice is not an error — the second time there is nothing to delete
+   * and it answers 0 — because a webhook is redelivered until it is answered.
+   */
+  async forget(): Promise<number> {
+    await this.ready()
+    // Not `awake`: a wake is a note about a user, and this user is about to
+    // have none. Noting one would only be deleted a line later.
+    const rows = await this.inTurn(() => deleteUser(createDb(this.env.DB), this.name))
+
+    // Before the storage goes, and through the SDK, so the alarm behind the
+    // schedules goes with them: a deleted user's Rollover must never fire.
+    await this.cancelEverySchedule()
+    this.closeEverySocket('This account is gone.')
+    await this.forgetStorage()
+    this.patches.empty()
+    this.wakes.empty()
+    // An instance that has forgotten is one that never was: were this name ever
+    // used again, its first request would provision it from nothing.
+    this.rolloverChecked = false
+    return rows
   }
 
   /**

@@ -57,12 +57,21 @@ export function declaredType(header: string | null): string {
  * nothing can be escaped by putting one in an id.
  */
 export function attachmentKey(userId: string, todoId: string, attachmentId: string): string {
-  return `users/${userId}/todos/${todoId}/${attachmentId}`
+  return `${userPrefix(userId)}todos/${todoId}/${attachmentId}`
+}
+
+/**
+ * Everything one user has in the bucket sits under this. It is what makes
+ * "delete this person's files" a listing rather than a search, which is what
+ * the account-deletion webhook needs.
+ */
+export function userPrefix(userId: string): string {
+  return `users/${userId}/`
 }
 
 /** Whether a key belongs to this user, which is what "per-user prefix" means. */
 export function keyBelongsTo(key: string, userId: string): boolean {
-  return key.startsWith(`users/${userId}/`)
+  return key.startsWith(userPrefix(userId))
 }
 
 const starts = (bytes: Uint8Array, signature: readonly number[], at = 0): boolean =>
