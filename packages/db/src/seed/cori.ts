@@ -554,6 +554,17 @@ const DAY: {
 /** The one meeting on her day: Quill's weekly, which the 11:00 hour is drawn around. */
 const MEETING = { key: 'quill-weekly', title: 'Quill weekly', from: '11:30', until: '12:00' }
 
+/**
+ * What Crazy wrote to prepare Cori for that meeting (ticket 28): generated
+ * text with the Brief's standing, true of the rows around it — the synthesis
+ * writeup due Thursday, and the timer still sitting on Meridian.
+ */
+const PREP = {
+  body: "The synthesis writeup for Thursday is what Quill will ask about, and it hasn't started — give them a day for it rather than a maybe. Your timer is still on Meridian's synthesis, so switch before you join or the half hour lands on the wrong Client.",
+  bodyShort:
+    "Quill will ask about Thursday's synthesis writeup. Switch the timer off Meridian before you join.",
+}
+
 const BRIEF = {
   body: "You're 1h 42m into Meridian's synthesis; the timer hasn't moved projects since 09:00, so I'll ask before your 11:30 with Quill. Bramble's retainer hits 20h at about 15:00 today. September invoices go out Friday and Meridian's is ready to review.",
   bodyShort:
@@ -864,6 +875,17 @@ export function cori(input: SeedInput) {
     createdAt: past(today, '06:00'),
   }))
 
+  const meetingPreps: Prisma.MeetingPrepCreateManyInput[] = [
+    {
+      id: id('prep', `${today}-${MEETING.key}`),
+      userId,
+      calendarEventId: id('event', MEETING.key),
+      day: today,
+      ...PREP,
+      createdAt: past(today, '06:00'),
+    },
+  ]
+
   const timelineHours: Prisma.TimelineHourCreateManyInput[] = DAY.map((hour) => ({
     id: id('hour', `${today}-${hour.hour}`),
     userId,
@@ -901,6 +923,7 @@ export function cori(input: SeedInput) {
     weekDayNotes: [],
     tieIns: [],
     calendarEvents,
+    meetingPreps,
     timelineHours,
     signals: [],
     metricSnapshots,

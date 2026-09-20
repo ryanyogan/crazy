@@ -112,6 +112,15 @@ export interface Part {
    * a frame of its foot, so its height is counted back from the bottom edge.
    */
   from?: 'top' | 'bottom'
+  /**
+   * Where inside the drawn frame the part is, for a frame that draws a whole
+   * screen. The frame is cut to this rectangle and the app is cut to the same
+   * size where the part actually sits, so a part can still be compared to the
+   * pixel after the screen around it has been re-laid out (ADR 0003).
+   */
+  crop?: Rect
+  /** Where inside the app's element the crop begins; its top-left corner by default. */
+  at?: { x: number; y: number }
 }
 
 /**
@@ -165,9 +174,6 @@ const RYANS_MORNING = '2025-09-17T08:41'
 
 const WOKE_AT =
   'When the Coordinator last woke is read off the real clock, not the pinned one: the frame says 08:59'
-
-const BELOW_THE_STACK =
-  'The phone frame stops at the Priority stack. On a phone, Mentions and the place to add a Todo follow it (derived, docs/BRIEF.md); this is not a debt'
 
 const FOOT_UNDRAWN =
   'This frame leaves the foot of the rail empty; frame 1a draws it (Live and the user), and the Shell follows 1a'
@@ -298,26 +304,8 @@ const PICKER_FIGURES =
 const RAIL_CIRCLES =
   "The foot of the rail's nav. Frame 2a lists seven destinations and leaves Circles out; the Shell keeps Circles with the Billing module on, because a Circle is how work and life are told apart and turning on billing does not stop a person having both (ticket 16). The five destinations above it are compared"
 
-const WOKE_AT_2A =
-  'The Live line. Frame 2a writes "Live" alone where frame 1a writes "Live · woke 08:59"; the Shell follows 1a, and when the Coordinator last woke is read off the real clock rather than the pinned one'
-
-const LOGGED_ON_THE_HOUR =
-  'The tracked figures on the two hours the running entry spans. The frame puts the whole spell — 1:42 — on the hour it began and leaves the next blank; the app counts each hour\'s own share of it (1:00 and 0:42), which is what "logged time per hour" means and what makes the column add up to the day. The other seven hours\' figures are compared'
-
 const WHOSE_MEETING =
   "The meeting hour's Client rule and chip. The frame says the 11:00 hour is Quill's, from the meeting in the calendar; the app says whose an hour is from what was tracked in it and what is slotted on it, and Crazy never reads a Client off a Provider's calendar. The hour's words and its tint are compared"
-
-const START_GLYPH =
-  "The glyph inside the control on each Todo. The frame draws the character ▸; the app draws Lucide's play at stroke 1.5, as every other icon in the app is drawn, and the Todo the timer is on wears a solid mark in its place. The control's box is compared"
-
-const PAST_THE_FRAME =
-  "The 17:00 hour. Frame 2a's card is 780px tall and its timeline runs out at 16:00; the app draws the day to 17:00 as frame 1a does, and the row falls where the frame has nothing"
-
-const WEEK_FIGURES =
-  'The rows of "This week by Client". The frame quotes hours from no timesheet in the mockups (14h 05m for Meridian against a 28h month, 17h 50m for Bramble) and lists three Clients; the app counts Cori\'s seeded Time entries since Monday, orders them by hours, and lists Internal as well, because work for nobody is still work. The card\'s heading and its edges are compared'
-
-const BELOW_THE_WEEK =
-  'Below the two cards frame 2a draws. Mentions and the place to add a Todo follow them on the Today screen, as they do in frame 1a; this frame has nothing there'
 
 /*
  * A note for Cori's other frames, when their tickets add them (2b, 2c, 4a):
@@ -459,34 +447,161 @@ function timerBar(frame: string, title: string, card: number, masks: Mask[]): Ta
   }
 }
 
-export const TARGETS: Target[] = [
-  {
-    frame: '1a',
-    title: 'Today',
+/*
+ * Today is a rundown now (ticket 28, ADR 0003): at the owner's direction the
+ * screen is a reading column of chapters with a sticky aside beside it, not
+ * frames 1a and 2a's two columns, so neither whole frame is a thing the app can
+ * be compared against any more. What those frames still settle is how each
+ * *part* is drawn, and each part is compared here on its own: the frame is cut
+ * to the part and the app is cut to the same size where that part now sits,
+ * inside its chapter. What stopped being comparable, and why:
+ *
+ *  - The whole of either frame, at either width. The day line, the heading and
+ *    the Brief are where they were; the day ribbon follows them and the
+ *    chapters follow that, so nothing below the Brief falls where the frames
+ *    draw it. Both are screenshots now, looked at rather than counted.
+ *  - The right-hand end of a Priority stack row — the Source chip with the
+ *    Billing module off, the control that starts a timer with it on. The rows
+ *    are drawn exactly as the frames draw them, but the card is now 588px wide
+ *    in the reading column rather than 340px in a column of its own, so
+ *    anything laid out from the row's right edge is 248px further right. The
+ *    tick, the Todo and its line are compared; the right-hand end is left out
+ *    of the crop rather than masked, because it is not a debt — it is where the
+ *    thing now is.
+ *  - Everything in the Mentions card and in "This week by Client" below their
+ *    first row, for the same reason: a Mention's words wrap at 588px where the
+ *    frame wraps them at 340px, and a Client's bar is as wide as its card. The
+ *    card's edges, its corner marks, its heading and the row under it are
+ *    compared.
+ *  - Frame 1a's "3 carried over · 1 sent back" foot under the Priority stack.
+ *    What the last Rollover did is the Catch up chapter's now, and by name;
+ *    saying it twice on one screen would be saying it twice.
+ *  - Frame 1a's "Your day · 7 todos · 3 meetings" heading over the timeline.
+ *    The chapter's own head says the day and what shape it is in, in a sentence
+ *    derived from the day's rows; only the line that says how to slot a Todo is
+ *    left on the card.
+ */
+
+/** A blueprint is measured with its corner marks, 6px beyond the box it draws. */
+const CORNERS = { x: -6, y: -6 }
+
+/**
+ * One part of frame 1a or 2a, compared where it now sits. The rectangle is the
+ * part's own place in the frame, measured on the frame itself; the app is cut
+ * to the same size from its element's top-left corner, or from `at` inside it.
+ *
+ * To measure one: draw the frame with `drawFrame` (src/frame.ts) at 1180px,
+ * which is what the harness compares against, and read the element's own
+ * `getBoundingClientRect()` in that page. Measuring it any other way — with the
+ * frozen stylesheet unserved, or at a viewport of a different height — gives
+ * numbers tens of pixels out.
+ */
+function part(
+  frame: string,
+  title: string,
+  option: string,
+  persona: keyof typeof PERSONAS,
+  now: string,
+  selector: string,
+  crop: Rect,
+  masks: Mask[] = [],
+  at?: { x: number; y: number },
+): Target {
+  return {
+    frame,
+    option,
+    title,
     route: '/',
-    persona: 'ryan',
-    now: RYANS_MORNING,
-    // Blueprint cards are measured with their corner marks, 6px beyond the box.
-    desktop: desktop(870, 'drawn', {
-      brief: { x: 168, y: 0, width: 632, height: 196 },
-      'take on now': { x: 805, y: 15, width: 354, height: 174 },
-      timeline: { x: 168, y: 196, width: 632, height: 454 },
-      'priority stack': { x: 805, y: 198, width: 354, height: 404 },
-      mentions: { x: 805, y: 602, width: 354, height: 198 },
-      'add a todo': { x: 805, y: 800, width: 354, height: 40 },
-    }),
-    phone: {
-      regions: {
-        'top bar': { x: 0, y: 0, width: 390, height: 42 },
-        brief: { x: 0, y: 42, width: 390, height: 90 },
-        'take on now': { x: 0, y: 132, width: 390, height: 106 },
-        timeline: { x: 0, y: 238, width: 390, height: 50 },
-        'priority stack': { x: 0, y: 288, width: 390, height: 396 },
-        'tab bar': { x: 0, y: 825, width: 390, height: 45 },
-      },
-      masks: [{ x: 0, y: 684, width: 390, height: 141, why: BELOW_THE_STACK }],
-    },
-  },
+    persona,
+    now,
+    part: { selector, width: DESKTOP, crop, at },
+    desktop: { regions: {}, masks },
+    phone: null,
+  }
+}
+
+/**
+ * Frames 1a and 2a, part by part. Every part is the very component the frame
+ * settled, restyled only in what holds it.
+ */
+const RUNDOWN_PARTS: Target[] = [
+  part(
+    '1a-take-on-now',
+    'Today · Take on now',
+    '1a',
+    'ryan',
+    RYANS_MORNING,
+    '.ton',
+    // The whole card, edge to edge: it is still 340px wide, in the sticky aside.
+    { x: 806, y: 16, width: 352, height: 172 },
+    [],
+    CORNERS,
+  ),
+  part(
+    '1a-stack',
+    "Today · the Priority stack's rows",
+    '1a',
+    'ryan',
+    RYANS_MORNING,
+    '.stack',
+    // The kicker, the tick, the Todo and its line, down to the last Todo.
+    { x: 806, y: 200, width: 300, height: 351 },
+    [],
+    CORNERS,
+  ),
+  part(
+    '1a-mentions',
+    "Today · the Mentions card's head",
+    '1a',
+    'ryan',
+    RYANS_MORNING,
+    '.mentions',
+    { x: 806, y: 605, width: 300, height: 58 },
+    [],
+    CORNERS,
+  ),
+  part('1a-timeline', "Today · the day's hours", '1a', 'ryan', RYANS_MORNING, 'ol.tl', {
+    x: 196,
+    y: 232,
+    width: 588,
+    height: 405,
+  }),
+  part(
+    '2a-stack',
+    "Today · the Priority stack's rows, the Billing module on",
+    '2a',
+    'cori',
+    CORIS_MORNING,
+    '.stack',
+    { x: 806, y: 95, width: 300, height: 286 },
+    [],
+    CORNERS,
+  ),
+  part(
+    '2a-week',
+    "Today · the This week by Client card's head",
+    '2a',
+    'cori',
+    CORIS_MORNING,
+    '.weeks',
+    { x: 806, y: 386, width: 300, height: 56 },
+    [],
+    CORNERS,
+  ),
+  part(
+    '2a-timeline',
+    "Today · the day's hours, the Billing module on",
+    '2a',
+    'cori',
+    CORIS_MORNING,
+    'ol.tl',
+    { x: 196, y: 239, width: 588, height: 405 },
+    [{ x: 59, y: 149, width: 529, height: 42, why: WHOSE_MEETING }],
+  ),
+]
+
+export const TARGETS: Target[] = [
+  ...RUNDOWN_PARTS,
   drawn(
     '1c',
     'Week',
@@ -594,64 +709,6 @@ export const TARGETS: Target[] = [
         { x: 184, y: 60, width: 424, height: 40, why: SEARCH_FOCUSED },
       ],
     },
-    phone: null,
-  },
-  {
-    frame: '2a',
-    title: 'Today · the Billing module on',
-    route: '/',
-    persona: 'cori',
-    now: CORIS_MORNING,
-    // Frame 3a's running bar in place of frame 2a's segmented picker, which is
-    // a control the app does not have. The band keeps the hairline onto the
-    // screen that 2a gives it, which is the one the app draws too.
-    compose: {
-      replace: 'main > div:first-child',
-      with: { option: '3a', card: 1, width: TIMER_BAR },
-      band: 'width:auto;border-bottom:1px solid var(--color-accent-300)',
-    },
-    desktop: {
-      regions: {
-        rail: { x: 0, y: 0, width: 168, height: 780 },
-        brief: { x: 168, y: 101, width: 632, height: 160 },
-        timeline: { x: 190, y: 261, width: 600, height: 350 },
-        // The two cards are blueprints: measured with their corner marks, 6px
-        // beyond the box.
-        'priority stack': { x: 805, y: 115, width: 354, height: 290 },
-        'this week by client': { x: 805, y: 405, width: 354, height: 285 },
-      },
-      masks: [
-        { x: 308, y: 20, width: 30, height: 26, why: SEEDED_FIGURES },
-        { x: 852, y: 20, width: 296, height: 26, why: SEEDED_FIGURES },
-        { x: 194, y: 60, width: 416, height: 28, why: SEEDED_NOTE },
-        {
-          x: 610,
-          y: 60,
-          width: 302,
-          height: 28,
-          why: "The sentence beside the note field, which frame 3a's running card draws as a note about the mockup",
-        },
-        { x: 16, y: 232, width: 140, height: 96, why: RAIL_CIRCLES },
-        { x: 16, y: 704, width: 140, height: 26, why: WOKE_AT_2A },
-        { x: 745, y: 298, width: 45, height: 72, why: LOGGED_ON_THE_HOUR },
-        { x: 255, y: 388, width: 470, height: 28, why: WHOSE_MEETING },
-        { x: 1114, y: 163, width: 26, height: 212, why: START_GLYPH },
-        { x: 190, y: 608, width: 600, height: 80, why: PAST_THE_FRAME },
-        { x: 804, y: 446, width: 354, height: 250, why: WEEK_FIGURES },
-        { x: 804, y: 690, width: 354, height: 90, why: BELOW_THE_WEEK },
-      ],
-    },
-    /*
-     * Frame 2a's phone card is not compared, and is a screenshot instead. It
-     * draws the timer as a solid accent card with Stop and Switch project on
-     * it, where frame 3b draws the same control as a tinted card with the
-     * square — and 3b is the one ticket 17 built and the one frozen here, so
-     * the two frames cannot both be met. Everything below the card sits at a
-     * different height for that reason alone, and a comparison of it would be
-     * masks and nothing else. Frame 2a's phone also leaves the Brief out
-     * altogether; the app keeps it, because a Brief is the first thing the
-     * screen is for. Listed as derived in docs/BRIEF.md.
-     */
     phone: null,
   },
   {
@@ -827,4 +884,10 @@ export const TARGETS: Target[] = [
 ]
 
 /** Routes no frame draws at any width. Screenshotted on a phone, never compared. */
-export const UNDRAWN: { title: string; route: string }[] = [{ title: 'More', route: '/more' }]
+export const UNDRAWN: { title: string; route: string }[] = [
+  // The rundown itself. No frame draws it (ADR 0003), so it is looked at rather
+  // than counted; its parts are compared above, and `src/shoot.ts` takes the
+  // wider and the longer shots of it that a person reads.
+  { title: 'Today · the rundown', route: '/' },
+  { title: 'More', route: '/more' },
+]

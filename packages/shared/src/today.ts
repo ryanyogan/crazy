@@ -7,6 +7,7 @@ import {
   timeline,
 } from './timeline'
 import { type SignalKind, type Source, type TodayTodo, isSnoozed } from './todo'
+import type { TieIn } from './week'
 
 // The rules of the Today screen that need no database: what the Priority
 // stack is, which Todo is the Take on now, and how the moment is worded.
@@ -125,9 +126,47 @@ export interface Signal {
 }
 
 /**
+ * A Todo the last Rollover sent back. It has left the day, so the rundown
+ * needs no more of it than its name (CONTEXT.md, "Sent back").
+ */
+export interface SentBackTodo {
+  id: string
+  title: string
+}
+
+/**
+ * What one of the day's calendar events is tied to. The rows themselves are
+ * not repeated here — only which of the day's Todos and Signals belong to the
+ * event — so that a Todo ticked in one chapter changes what the meeting says
+ * about it in another, from the one copy the cache holds.
+ */
+export interface EventLinks {
+  /** The `DayEvent` these belong to. */
+  eventId: string
+  /** The Todos whose Source is this event. */
+  todoIds: string[]
+  /** The Signals whose person the event names. */
+  signalIds: string[]
+  /** The Client the event's title names, with the Billing module on; null otherwise. */
+  clientId: string | null
+  /** What Crazy wrote to prepare for it, if it wrote anything. Never a placeholder. */
+  prep: { body: string; bodyShort: string } | null
+}
+
+/** Where the day is leading: what the rest of the week holds, and what tomorrow opens with. */
+export interface Later {
+  /** This week's tie-ins, as the Week screen reads them. */
+  tieIns: TieIn[]
+  /** The Projects whose next milestone falls in the rest of this week. */
+  milestones: { project: string; milestone: string; day: string }[]
+  /** Tomorrow's first meeting, if the calendar holds one. */
+  nextMeeting: { title: string; who: string | null; day: string; at: string } | null
+}
+
+/**
  * What the Today screen holds of a user's day: the rows as D1 has them. It is
  * what loaders cache and what commands are applied to, so everything the
- * screen shows beyond it is derived, by `viewToday`.
+ * screen shows beyond it is derived, by `viewToday` and `viewRundown`.
  */
 export interface Today {
   /** The user's local date. */
@@ -138,10 +177,14 @@ export interface Today {
   todos: TodayTodo[]
   events: DayEvent[]
   hours: HourWording[]
-  /** The day's Signals, newest first: every Mention, for now. */
+  /** The day's Signals, newest first: the Mentions, and what came in since yesterday. */
   signals: Signal[]
-  /** How many Todos the last Rollover sent back. */
-  sentBack: number
+  /** The Todos the last Rollover sent back, by name (ticket 28). */
+  sentBack: SentBackTodo[]
+  /** One per calendar event of the day: the rows tied to it, and Crazy's prep note. */
+  links: EventLinks[]
+  /** What the rest of the week is leading to, and tomorrow's first meeting. */
+  later: Later
 }
 
 /** A snoozed Todo, which always knows the moment it returns. */

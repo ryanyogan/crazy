@@ -400,11 +400,34 @@ model CalendarEvent {
   endsAt       DateTime
   createdAt    DateTime
   weekDayLines WeekDayLine[]
+  preps        MeetingPrep[]
 
   @@unique([userId, connectionId, itemId])
   // The Today and Week read models: a user's events over a span of days.
   @@index([userId, startsAt])
   @@map("calendar_event")
+}
+
+/// What Crazy wrote to prepare a user for one meeting: the few first-person
+/// lines the Meetings chapter of Today shows under the event (ticket 28).
+/// Generated text with the Brief's standing — written for a day, never derived
+/// and never a placeholder, so a meeting with no row simply shows no note.
+model MeetingPrep {
+  id              String        @id
+  userId          String
+  calendarEventId String
+  calendarEvent   CalendarEvent @relation(fields: [calendarEventId], references: [id], onDelete: Cascade)
+  /// The day it was written for, as the user's local date: a weekly meeting is
+  /// prepared for afresh each time it comes round.
+  day             String
+  body            String
+  bodyShort       String // the same, said in a phone's width
+  createdAt       DateTime
+
+  @@unique([userId, calendarEventId, day])
+  // The Today read model: a user's prep notes for one day.
+  @@index([userId, day])
+  @@map("meeting_prep")
 }
 
 /// How Crazy worded one hour of a day's timeline when it last planned the day.

@@ -42,6 +42,7 @@ export async function seedPersona(db: Db, input: SeedInput): Promise<void> {
   await db.signal.deleteMany({ where: { userId } })
   await db.weekDayLine.deleteMany({ where: { userId } })
   await db.weekDayNote.deleteMany({ where: { userId } })
+  await db.meetingPrep.deleteMany({ where: { userId } })
   await db.tieIn.deleteMany({ where: { userId } })
   await db.timelineHour.deleteMany({ where: { userId } })
   await db.calendarEvent.deleteMany({ where: { userId } })
@@ -71,6 +72,8 @@ export async function seedPersona(db: Db, input: SeedInput): Promise<void> {
   await db.weekDayNote.createMany({ data: rows.weekDayNotes })
   await db.tieIn.createMany({ data: rows.tieIns })
   await db.calendarEvent.createMany({ data: rows.calendarEvents })
+  // What Crazy wrote to prepare for each of the day's meetings (ticket 28).
+  await db.meetingPrep.createMany({ data: rows.meetingPreps })
   // A day's wording is kept beside the Todo or the meeting it words.
   await db.weekDayLine.createMany({ data: rows.weekDayLines })
   await db.timelineHour.createMany({ data: rows.timelineHours })

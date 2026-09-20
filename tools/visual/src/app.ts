@@ -37,8 +37,16 @@ async function clipFor(tab: Page, part: Part) {
   if (!box) throw new Error(`Nothing on the page matches ${part.selector}`)
   // A frame of something that rises from the bottom of the screen is a frame of
   // its foot: the crop ends where the element does (frame 3b's sheet).
-  const y = part.from === 'bottom' ? box.y + box.height - part.height : box.y
-  return { x: box.x, y, width: box.width, height: part.height }
+  const y = part.from === 'bottom' ? box.y + box.height - part.height : box.y + (part.at?.y ?? 0)
+  // To the nearest whole pixel: a screenshot is a whole number of rows, and an
+  // element that lands on a half — Industry's spacing scale is in fractions of
+  // a pixel — would otherwise be cropped from a different half each run.
+  return {
+    x: Math.round(box.x + (part.at?.x ?? 0)),
+    y: Math.round(y),
+    width: part.width ?? box.width,
+    height: part.height,
+  }
 }
 
 export interface Shot {
@@ -58,6 +66,10 @@ export interface Part {
   height: number
   /** Which edge of the element the frame's height is measured from; the top by default. */
   from?: 'top' | 'bottom'
+  /** The frame's own width, where the frame draws part of the element rather than all of it. */
+  width?: number
+  /** Where inside the element the crop begins; its top-left corner by default. */
+  at?: { x: number; y: number }
 }
 
 export async function shootRoute(
@@ -120,7 +132,12 @@ export async function shootRoute(
     // it sits, cropped to the frame's own height: the frames' last line is often
     // a note about the mockup rather than anything the app says, and a target
     // masks that band with its reason.
-    const png = await tab.screenshot(part ? { clip: await clipFor(tab, part) } : undefined)
+    // `fullPage` so that a part further down the screen than the viewport is
+    // still cropped from where it sits; the page is never scrolled, so the
+    // clip's coordinates are the element's own either way.
+    const png = await tab.screenshot(
+      part ? { clip: await clipFor(tab, part), fullPage: true } : undefined,
+    )
     return { picture: toPicture(png), png, servedAt, overflow: Math.max(0, overflow) }
   } finally {
     await context.close()

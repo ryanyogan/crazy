@@ -11,7 +11,7 @@ import {
   hourChoice,
   slotRefusal,
 } from '@crazy/shared'
-import { Blueprint, Button, NotWired, SourceChip, Tag } from '@crazy/ui'
+import { Blueprint, Button, NotWired, SourceChip } from '@crazy/ui'
 import { useId, useState } from 'react'
 import { StartOnTodo } from '#/features/timer/StartOnTodo'
 import { useCommand } from '#/lib/useCommand'
@@ -186,15 +186,17 @@ interface PriorityStackProps {
   done: TodayTodo[]
   snoozed: SnoozedTodo[]
   timeZone: string
-  carriedOver: number
-  sentBack: number
   hours: number[]
   events: DayEvent[]
   now: Date
   onDrag: (todo: TodayTodo | null) => void
 }
 
-/** The `today` Todos in the order Crazy recommends, and what the last Rollover did. */
+/**
+ * The `today` Todos in the order Crazy recommends. What the last Rollover did
+ * is not said here: it is the Catch up chapter's, by name (ticket 28), and
+ * frame 1a's foot of counts would be saying it a second time on one screen.
+ */
 export function PriorityStack({
   stack,
   billing,
@@ -202,8 +204,6 @@ export function PriorityStack({
   done,
   snoozed,
   timeZone,
-  carriedOver,
-  sentBack,
   hours,
   events,
   now,
@@ -255,12 +255,6 @@ export function PriorityStack({
             ))}
           </ul>
         </details>
-      )}
-      {(carriedOver > 0 || sentBack > 0) && (
-        <div className="stack__foot">
-          {carriedOver > 0 && <Tag tone="accent">{carriedOver} carried over</Tag>}
-          {sentBack > 0 && <span>{sentBack} sent back</span>}
-        </div>
       )}
     </Blueprint>
   )

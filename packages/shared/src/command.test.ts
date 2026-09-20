@@ -80,7 +80,9 @@ function day(todos: TodayTodo[], signals: Signal[] = []): Today {
     events: [],
     hours: [],
     signals,
-    sentBack: 0,
+    sentBack: [],
+    links: [],
+    later: { tieIns: [], milestones: [], nextMeeting: null },
   }
 }
 

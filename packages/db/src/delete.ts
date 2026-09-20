@@ -47,6 +47,11 @@ export const USER_TABLES: readonly UserTable[] = [
     name: 'timeline_hour',
     erase: (db, userId) => db.timelineHour.deleteMany({ where: { userId } }),
   },
+  // Before the events it prepares for: a prep note points at one (ticket 28).
+  {
+    name: 'meeting_prep',
+    erase: (db, userId) => db.meetingPrep.deleteMany({ where: { userId } }),
+  },
   {
     name: 'calendar_event',
     erase: (db, userId) => db.calendarEvent.deleteMany({ where: { userId } }),

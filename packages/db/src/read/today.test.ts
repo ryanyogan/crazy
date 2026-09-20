@@ -68,7 +68,8 @@ it('counts what the last Rollover carried over and what it sent back', async () 
   const { stack, carriedOver, sentBack } = await today()
 
   expect(carriedOver).toBe(3)
-  expect(sentBack).toBe(1)
+  // Named rather than counted, since ticket 28: the Catch up chapter says which.
+  expect(sentBack.map((todo) => todo.title)).toEqual(['August expense report'])
   expect(stack.filter((todo) => todo.carryCount > 0).map((todo) => todo.carryCount)).toEqual([
     1, 2, 1,
   ])
@@ -79,7 +80,7 @@ it("reads the Brief written for the user's day", async () => {
   // Thursday has no Brief yet, and Wednesday's Rollover is no longer the last one.
   const thursday = await today(at('2025-09-18T08:41'))
   expect(thursday.brief).toBeNull()
-  expect(thursday.sentBack).toBe(0)
+  expect(thursday.sentBack).toEqual([])
 })
 
 it('reads only the rows of the user asking', async () => {
@@ -88,11 +89,13 @@ it('reads only the rows of the user asking', async () => {
     takeOnNow: null,
     stack: [],
     carriedOver: 0,
-    sentBack: 0,
+    sentBack: [],
     events: [],
     hours: [],
     signals: [],
     snoozed: [],
+    links: [],
+    later: { tieIns: [], milestones: [], nextMeeting: null },
   })
 })
 
@@ -126,9 +129,10 @@ it("places a meeting on the user's wall clock, whatever zone the server is in", 
 
 it('lists who is waiting on Ryan, newest first, and knows which Mention he already added', async () => {
   const { signals, stack } = await today()
+  const mentions = signals.filter((signal) => signal.kind === 'mention')
 
   expect(
-    signals.map((mention) => [
+    mentions.map((mention) => [
       mention.who,
       formatAge(new Date(mention.at), now),
       mention.source.kind,
@@ -140,7 +144,7 @@ it('lists who is waiting on Ryan, newest first, and knows which Mention he alrea
     ['Northside Movers', '2d', 'gmail_message'],
   ])
   const reply = stack.find((todo) => todo.title === 'Reply to Priya on edge rate limits')!
-  expect(signals.map((mention) => mention.todoId)).toEqual([reply.id, null, null, null])
+  expect(mentions.map((mention) => mention.todoId)).toEqual([reply.id, null, null, null])
 })
 
 it("leaves yesterday's meetings and wording off today's timeline", async () => {
@@ -366,4 +370,86 @@ it('keeps a Todo completed today on the day, out of the stack, and drops it the 
   expect(after.takeOnNow?.todo.title).toBe('Reply to Priya on edge rate limits')
 
   expect((await today(at('2025-09-18T08:41'), user)).done).toEqual([])
+})
+
+// ── The rundown's rows (ticket 28) ──────────────────────────────────────────
+
+it('ties each meeting to the Todos whose Source it is, and to the people it names', async () => {
+  const { events, links, todos, signals } = await today()
+  const linked = (title: string) => {
+    const event = events.find((each) => each.title === title)!
+    return links.find((each) => each.eventId === event.id)!
+  }
+  const signalWho = (id: string) => signals.find((signal) => signal.id === id)!.who
+
+  // "Prep 1:1 notes for Devon" was made from the calendar item the 1:1 is.
+  const oneToOne = linked('1:1 with Devon')
+  expect(oneToOne.todoIds.map((id) => todos.find((todo) => todo.id === id)!.title)).toEqual([
+    'Prep 1:1 notes for Devon',
+  ])
+  // Devon is named in its title and in who it is with, so both of his Signals
+  // belong to it. A whole word and nothing looser: the standup names nobody.
+  expect(new Set(oneToOne.signalIds.map(signalWho))).toEqual(new Set(['Devon']))
+  expect(linked('Platform standup').signalIds).toEqual([])
+  // Design is in the design review, but the promise Ryan made them is six days
+  // old — the Catch up chapter is about since yesterday, so it is not read, and
+  // a meeting can only be tied to a Signal the day actually holds.
+  expect(linked('Onboarding design review').signalIds).toEqual([])
+  // Ryan has no Clients: the Billing module is off, so no meeting names one.
+  expect(links.every((link) => link.clientId === null)).toBe(true)
+})
+
+it('shows the prep note Crazy wrote for a meeting, and none where it wrote none', async () => {
+  const { events, links } = await today()
+  const noteOn = (title: string) =>
+    links.find((link) => link.eventId === events.find((each) => each.title === title)!.id)!.prep
+
+  expect(noteOn('1:1 with Devon')?.body).toContain('Q4 Priorities')
+  expect(noteOn('1:1 with Devon')?.bodyShort).toContain('Devon')
+  // A focus block is not a meeting and Crazy prepares for none of them.
+  expect(noteOn('Focus')).toBeNull()
+})
+
+it('names the Todos the last Rollover carried over and the ones it sent back', async () => {
+  const { stack, sentBack } = await today()
+
+  expect(stack.filter((todo) => todo.carryCount > 0).map((todo) => todo.title)).toEqual([
+    "Review Sam's onboarding PR",
+    'Draft Q4 priorities, section 2',
+    'Send movers deposit',
+  ])
+  expect(sentBack.map((todo) => todo.title)).toEqual(['August expense report'])
+})
+
+it('reads the Promises and Waiting-on that came in since yesterday, and every Mention', async () => {
+  const { signals } = await today()
+  // Yesterday's local midnight is the line, and it is derived from the moment:
+  // nothing records when the user last looked. Of Ryan's Signals only Devon's
+  // Waiting-on falls inside it; the promise he made Design six days ago does not.
+  expect(
+    signals
+      .filter((signal) => signal.kind !== 'mention')
+      .map((signal) => [signal.kind, signal.who]),
+  ).toEqual([['waiting_on', 'Devon']])
+  const yesterday = at('2025-09-16T00:00').toISOString()
+  expect(
+    signals.filter((signal) => signal.kind !== 'mention').every((signal) => signal.at >= yesterday),
+  ).toBe(true)
+  expect(signals.some((signal) => signal.text === 'Share the migration runbook')).toBe(false)
+})
+
+it("reads what the week is leading to, and tomorrow's first meeting", async () => {
+  const { later } = await today()
+
+  expect(later.tieIns.map((tieIn) => tieIn.project)).toEqual([
+    'Auth migration',
+    'Onboarding redesign',
+    'Q4 planning',
+    'Apartment move',
+  ])
+  expect(later.milestones.map((each) => [each.project, each.milestone])).toEqual([
+    ['Auth migration', 'Edge sessions live'],
+    ['Onboarding redesign', 'v2 ships'],
+  ])
+  expect(later.nextMeeting).toMatchObject({ day: '2025-09-18', at: '14:00' })
 })

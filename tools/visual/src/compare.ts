@@ -64,6 +64,21 @@ function paint(
   }
 }
 
+/**
+ * A rectangle of a picture, as a picture of its own. How a frame that draws a
+ * whole screen is compared with one part of it: the frame is cut to the part,
+ * and the app is cut to the same size where that part actually sits.
+ */
+export function cropPicture(picture: Picture, rect: Rect): Picture {
+  const { x, y, width, height } = clip(rect, picture)
+  const data = new Uint8Array(width * height * 4)
+  for (let row = 0; row < height; row++) {
+    const from = ((y + row) * picture.width + x) * 4
+    data.set(picture.data.subarray(from, from + width * 4), row * width * 4)
+  }
+  return { width, height, data }
+}
+
 function area(rect: Rect, within: Picture): number {
   const { width, height } = clip(rect, within)
   return width * height

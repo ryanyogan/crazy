@@ -1,18 +1,81 @@
 import {
   type DayEvent,
+  type EventLinks,
+  type Later,
   type Today,
   type TodayTodo,
   addDays,
   calendarEventKind,
+  clockTime,
   energy,
   signalKind,
   sourceKind,
   startOfDay,
+  startOfWeek,
   todoState,
   wallClock,
   writtenFor,
 } from '@crazy/shared'
 import type { ReadDb } from '../client'
+
+/** A calendar row of the day, with what it is at the Provider: how a Todo's Source finds it. */
+type EventRow = {
+  id: string
+  connectionId: string
+  itemId: string
+  kind: string
+  title: string
+  who: string | null
+  startsAt: Date
+  endsAt: Date
+}
+
+async function eventRows(
+  db: ReadDb,
+  userId: string,
+  day: string,
+  timeZone: string,
+): Promise<EventRow[]> {
+  const dayStart = startOfDay(day, timeZone)
+  const dayEnd = startOfDay(addDays(day, 1), timeZone)
+  return db.calendarEvent.findMany({
+    where: { userId, startsAt: { lt: dayEnd }, endsAt: { gt: dayStart } },
+    orderBy: { startsAt: 'asc' },
+    select: {
+      id: true,
+      connectionId: true,
+      itemId: true,
+      kind: true,
+      title: true,
+      who: true,
+      startsAt: true,
+      endsAt: true,
+    },
+  })
+}
+
+/** The rows placed in minutes into the user's day, clipped to it. */
+function placeEvents(rows: readonly EventRow[], day: string, timeZone: string): DayEvent[] {
+  const dayStart = startOfDay(day, timeZone)
+  const dayEnd = startOfDay(addDays(day, 1), timeZone)
+
+  /** Minutes into this day, for a moment that may fall outside it. */
+  const minuteOfDay = (moment: Date) => {
+    if (moment <= dayStart) return 0
+    if (moment >= dayEnd) return 24 * 60
+    const { hour, minute } = wallClock(moment, timeZone)
+    return hour * 60 + minute
+  }
+
+  return rows.map((row): DayEvent => ({
+    id: row.id,
+    kind: calendarEventKind.parse(row.kind),
+    title: row.title,
+    who: row.who,
+    from: minuteOfDay(row.startsAt),
+    until: minuteOfDay(row.endsAt),
+  }))
+}
 
 /**
  * The day's calendar, as the timeline and the Slot commands read it: meetings
@@ -24,29 +87,24 @@ export async function readDayEvents(
   day: string,
   timeZone: string,
 ): Promise<DayEvent[]> {
-  const dayStart = startOfDay(day, timeZone)
-  const dayEnd = startOfDay(addDays(day, 1), timeZone)
-  const events = await db.calendarEvent.findMany({
-    where: { userId, startsAt: { lt: dayEnd }, endsAt: { gt: dayStart } },
-    orderBy: { startsAt: 'asc' },
-  })
+  return placeEvents(await eventRows(db, userId, day, timeZone), day, timeZone)
+}
 
-  /** Minutes into this day, for a moment that may fall outside it. */
-  const minuteOfDay = (moment: Date) => {
-    if (moment <= dayStart) return 0
-    if (moment >= dayEnd) return 24 * 60
-    const { hour, minute } = wallClock(moment, timeZone)
-    return hour * 60 + minute
-  }
+/** A word on its own, whatever the case: "Quill" in "Quill weekly", never in "Quills". */
+function namesWord(haystack: string, word: string): boolean {
+  const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}($|[^\\p{L}\\p{N}])`, 'iu').test(haystack)
+}
 
-  return events.map((row): DayEvent => ({
-    id: row.id,
-    kind: calendarEventKind.parse(row.kind),
-    title: row.title,
-    who: row.who,
-    from: minuteOfDay(row.startsAt),
-    until: minuteOfDay(row.endsAt),
-  }))
+/**
+ * Whether the event names this person. Whole words only, on the title and on
+ * who the Provider says it is with, and only their full name or their first
+ * name — a meeting is never guessed at from a fragment.
+ */
+function eventNames(event: EventRow, person: string): boolean {
+  const said = `${event.title} ${event.who ?? ''}`
+  const first = person.split(/\s+/)[0] ?? person
+  return namesWord(said, person) || (first.length > 2 && namesWord(said, first))
 }
 
 /**
@@ -66,7 +124,11 @@ export async function readToday(
   const dayStart = startOfDay(day, timeZone)
   const dayEnd = startOfDay(addDays(day, 1), timeZone)
 
-  const [brief, todos, sentBack, events, hours, signals] = await Promise.all([
+  // "Since yesterday" is derived from the moment and the zone, here as in the
+  // rundown: nothing records when the user last looked at the screen.
+  const yesterdayStart = startOfDay(addDays(day, -1), timeZone)
+
+  const [brief, todos, sentBack, rows, hours, signals, preps, clients, later] = await Promise.all([
     db.brief.findUnique({
       where: { userId_kind_day: { userId, kind: 'daily', day } },
       select: { body: true, bodyShort: true },
@@ -86,11 +148,76 @@ export async function readToday(
         slots: { where: { day }, select: { hour: true }, orderBy: { hour: 'asc' } },
       },
     }),
-    db.todo.count({ where: { userId, state: 'backlog', sentBackAt: { gte: dayStart } } }),
-    readDayEvents(db, userId, day, timeZone),
+    // The Todos the last Rollover sent back, by name: the Catch up chapter
+    // says which they were, not only how many (ticket 28).
+    db.todo.findMany({
+      where: { userId, state: 'backlog', sentBackAt: { gte: dayStart } },
+      select: { id: true, title: true },
+      orderBy: { sentBackAt: 'asc' },
+    }),
+    eventRows(db, userId, day, timeZone),
     db.timelineHour.findMany({ where: { userId, day }, orderBy: { hour: 'asc' } }),
-    db.signal.findMany({ where: { userId, kind: 'mention' }, orderBy: { at: 'desc' } }),
+    // Every Mention, and the Promises and Waiting-on that came in since
+    // yesterday's local midnight: what the Catch up chapter is a catch-up of.
+    db.signal.findMany({
+      where: {
+        userId,
+        OR: [
+          { kind: 'mention' },
+          { kind: { in: ['promise', 'waiting_on'] }, at: { gte: yesterdayStart } },
+        ],
+      },
+      orderBy: { at: 'desc' },
+    }),
+    db.meetingPrep.findMany({
+      where: { userId, day },
+      select: { calendarEventId: true, body: true, bodyShort: true },
+    }),
+    // Only a name is wanted, to tell whether a meeting's title says whose work
+    // it is. A user with the Billing module off has none, and this is empty.
+    db.client.findMany({ where: { userId }, select: { id: true, name: true } }),
+    readLater(db, userId, day, timeZone),
   ])
+
+  const events = placeEvents(rows, day, timeZone)
+
+  /**
+   * The Client an event's title names, where the user has any. The Client's
+   * own name, or its first word when no other Client of theirs begins with it
+   * — "Quill weekly" is Quill & Co's; a fuzzy guess is never made, because a
+   * meeting put against the wrong Client is a wrong invoice later.
+   */
+  const clientNamed = (event: EventRow): string | null => {
+    const named = clients.find((client) => namesWord(event.title, client.name))
+    if (named) return named.id
+    const byFirst = clients.filter((client) => {
+      const first = client.name.split(/\s+/)[0] ?? client.name
+      return first.length > 2 && namesWord(event.title, first)
+    })
+    return byFirst.length === 1 ? byFirst[0]!.id : null
+  }
+
+  const links: EventLinks[] = rows.map((event): EventLinks => {
+    const prep = preps.find((each) => each.calendarEventId === event.id)
+    return {
+      eventId: event.id,
+      // A Todo made from the meeting: its Source is the very item the calendar
+      // row came from, matched on the Connection and the Provider's own id.
+      todoIds: todos
+        .filter(
+          (todo) =>
+            todo.sourceKind === 'calendar_event' &&
+            todo.sourceConnectionId === event.connectionId &&
+            todo.sourceItemId === event.itemId,
+        )
+        .map((todo) => todo.id),
+      signalIds: signals
+        .filter((signal) => eventNames(event, signal.person))
+        .map((signal) => signal.id),
+      clientId: clientNamed(event),
+      prep: prep ? { body: prep.body, bodyShort: prep.bodyShort } : null,
+    }
+  })
 
   return {
     day,
@@ -152,5 +279,77 @@ export async function readToday(
       todoId: row.todoId,
     })),
     sentBack,
+    links,
+    later,
+  }
+}
+
+/**
+ * Where the day is leading: what the rest of this week holds and what tomorrow
+ * opens with. The tie-ins and milestones are the Week read model's own rows,
+ * read here for the last chapter of the rundown rather than counted a second
+ * way; only the part of the week still ahead is asked for, because prep for
+ * today is about what today is leading to.
+ */
+async function readLater(
+  db: ReadDb,
+  userId: string,
+  day: string,
+  timeZone: string,
+): Promise<Later> {
+  const monday = startOfWeek(day)
+  const sunday = addDays(monday, 6)
+  const tomorrow = addDays(day, 1)
+
+  const [projects, meetings] = await Promise.all([
+    db.project.findMany({
+      where: {
+        userId,
+        OR: [
+          { milestoneDay: { gte: day, lte: sunday } },
+          { tieIns: { some: { userId, week: monday } } },
+        ],
+      },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        name: true,
+        milestone: true,
+        milestoneDay: true,
+        tieIns: { where: { userId, week: monday }, select: { text: true, when: true } },
+      },
+    }),
+    db.calendarEvent.findMany({
+      where: {
+        userId,
+        kind: 'meeting',
+        startsAt: {
+          gte: startOfDay(tomorrow, timeZone),
+          lt: startOfDay(addDays(tomorrow, 1), timeZone),
+        },
+      },
+      orderBy: { startsAt: 'asc' },
+      take: 1,
+      select: { title: true, who: true, startsAt: true },
+    }),
+  ])
+
+  const first = meetings[0]
+  return {
+    tieIns: projects.flatMap((row) =>
+      row.tieIns.map((tieIn) => ({ project: row.name, text: tieIn.text, when: tieIn.when })),
+    ),
+    milestones: projects.flatMap((row) =>
+      row.milestoneDay === null || row.milestoneDay < day || row.milestoneDay > sunday
+        ? []
+        : [{ project: row.name, milestone: row.milestone ?? '', day: row.milestoneDay }],
+    ),
+    nextMeeting: first
+      ? {
+          title: first.title,
+          who: first.who,
+          day: tomorrow,
+          at: clockTime(first.startsAt, timeZone),
+        }
+      : null,
   }
 }

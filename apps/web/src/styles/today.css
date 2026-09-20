@@ -1,5 +1,6 @@
-/* The Today screen, frame 1a. Measurements are the frame's: the phone frame
-   first, the desktop frame from 900px. */
+/* The Today screen: the rundown (ticket 28, ADR 0003) and, inside its
+   chapters, the parts frames 1a and 2a draw, at the frames' own measurements.
+   The phone first, the desktop from 900px. */
 
 .today {
   display: grid;
@@ -9,12 +10,38 @@
   align-content: start;
 }
 
-/* On a phone the header and body are not boxes of their own: their children
-   fall into the one column, in the phone frame's order. */
-.today__head,
+/* On a phone the body and its two halves are not boxes of their own: their
+   children fall into the one column, in the order the rundown is read in —
+   the intro, the ribbon, the index, Take on now, the chapters, and the place
+   to add a Todo at the foot, where a thumb ends up. */
 .today__body,
-.today__side {
+.rundown,
+.today__aside {
   display: contents;
+}
+
+.today__intro {
+  order: 0;
+}
+
+.ribbon {
+  order: 1;
+}
+
+.today__aside > .index {
+  order: 2;
+}
+
+.today__aside > .ton {
+  order: 3;
+}
+
+.rundown > .ch {
+  order: 4;
+}
+
+.today__aside > .addtodo {
+  order: 5;
 }
 
 .today__dayline {
@@ -425,16 +452,6 @@ button.stack__what {
   margin-top: var(--space-2);
 }
 
-/* The phone frame draws no footer; the short Brief says what was carried over. */
-.stack__foot {
-  display: none;
-  gap: 8px;
-  align-items: center;
-  margin-top: 6px;
-  font-size: 12px;
-  color: var(--color-neutral-700);
-}
-
 /* ── Mentions ─────────────────────────────────────────────────────────────── */
 
 .mentions {
@@ -500,6 +517,474 @@ button.stack__what {
   color: var(--color-neutral-700);
 }
 
+/* ── The day ribbon ───────────────────────────────────────────────────────── */
+
+/*
+ * The timeline said in one line, and the one pretty thing on the page: a
+ * measured rule in the blueprint's own vernacular, the hours written at its
+ * ends. A meeting is an accent tint, a focus block is framed, a Todo's Slot is
+ * a plain hairline box and a free hour is dashed — exactly the vocabulary the
+ * timeline's own rows use, so the two cannot say different things about an
+ * hour. With the Billing module on, what was actually tracked is drawn solid
+ * along the foot of the block it happened in.
+ *
+ * It says nothing to assistive technology: the Your day chapter's sentence is
+ * the same day in words, and every chapter it dives into is in the index.
+ */
+.ribbon {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 2px 0 6px;
+}
+
+.ribbon__edge {
+  flex: none;
+  font-family: var(--font-heading);
+  font-size: 11px;
+  line-height: 26px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-neutral-600);
+}
+
+.ribbon__rule {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 2px;
+  padding-bottom: 14px;
+}
+
+.ribbon__block {
+  position: relative;
+  flex: var(--span) 1 0;
+  min-width: 0;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--color-divider);
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.ribbon__block--meeting {
+  border-color: var(--color-accent-300);
+  background: var(--color-accent-100);
+}
+
+.ribbon__block--focus {
+  border-color: var(--color-neutral-500);
+}
+
+.ribbon__block--free {
+  border-style: dashed;
+  border-color: var(--color-neutral-400);
+}
+
+/* What the hour actually became, under what was planned for it. */
+.ribbon__logged {
+  position: absolute;
+  inset: auto 0 0 0;
+  width: calc(var(--logged) * 100%);
+  height: 3px;
+  background: var(--color-accent-700);
+}
+
+/* Confined to its own block, so two labels can never run into each other. */
+.ribbon__label {
+  position: absolute;
+  inset: calc(100% + 4px) 0 auto 0;
+  overflow: hidden;
+  font-size: 10px;
+  line-height: 1;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--color-neutral-700);
+}
+
+/* An hour with no room for words keeps the rule clean instead. */
+.ribbon__block[data-span='1'] .ribbon__label {
+  display: none;
+}
+
+/* Now, from the moment the loader handed over and moved by `useTicking`. */
+.ribbon__now {
+  position: absolute;
+  inset: -4px auto 12px var(--into);
+  width: 1px;
+  background: var(--color-accent-700);
+}
+
+.ribbon__now::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto auto -2px;
+  width: 5px;
+  height: 3px;
+  background: var(--color-accent-700);
+}
+
+/* ── A chapter ────────────────────────────────────────────────────────────── */
+
+.ch {
+  border-top: 1px solid var(--color-divider);
+}
+
+.ch__title {
+  margin: 0;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: normal;
+}
+
+.ch__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 16px;
+  gap: 2px 10px;
+  width: 100%;
+  padding: 11px 0 13px;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ch__name {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ch__kicker {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-neutral-700);
+}
+
+.ch__count {
+  font-family: var(--font-heading);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-accent-700);
+}
+
+.ch__sentence {
+  grid-column: 1 / -1;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--color-text);
+  text-wrap: pretty;
+}
+
+.ch__chev {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
+  color: var(--color-neutral-600);
+}
+
+.ch--open .ch__chev {
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ch__chev {
+    transition: transform 120ms ease;
+  }
+
+  /* The one quick ease on the page besides the ribbon's tick: a chapter
+     arrives rather than appearing. */
+  .ch--open > .ch__body {
+    animation: ch-open 130ms ease-out;
+  }
+}
+
+@keyframes ch-open {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+
+.ch__body {
+  display: grid;
+  /* A column that may be narrower than what it holds: the timeline is a strip
+     that scrolls sideways on a phone, and it must scroll rather than widen the page. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  padding-bottom: 16px;
+}
+
+/* A closed chapter is closed: `display` here would otherwise beat the
+   browser's own rule for `hidden`. */
+.ch__body[hidden] {
+  display: none;
+}
+
+/* ── The chapter index ────────────────────────────────────────────────────── */
+
+/* On a phone it is a row of chips under the ribbon; on a desktop a column in
+   the sticky aside. The chapter in view is marked, by an IntersectionObserver
+   and never a scroll listener. */
+.index__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.index__link {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 5px 9px;
+  border: 1px solid var(--color-divider);
+  font-family: var(--font-heading);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-neutral-700);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.index__link--here {
+  border-color: var(--color-accent-400);
+  color: var(--color-accent-800);
+}
+
+.index__count {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-accent-700);
+}
+
+/* ── Catch up ─────────────────────────────────────────────────────────────── */
+
+.catchup {
+  display: grid;
+  gap: 12px;
+}
+
+.catchup__signals {
+  display: grid;
+  gap: 12px;
+}
+
+.catchup__kicker {
+  margin: 0 0 4px;
+  font-family: var(--font-body);
+  font-weight: 400;
+  line-height: inherit;
+}
+
+.catchup__list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+
+.catchup__list > li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: baseline;
+  padding: 5px 0;
+  border-top: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent);
+}
+
+.catchup__what {
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.catchup__age {
+  color: var(--color-neutral-700);
+  white-space: nowrap;
+}
+
+/* ── Meetings ─────────────────────────────────────────────────────────────── */
+
+.meetings {
+  display: grid;
+  gap: 12px;
+}
+
+.meeting {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+}
+
+.meeting__when {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.meeting__at {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 20px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.meeting__starts {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-accent-700);
+}
+
+.meeting__title {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.meeting__who {
+  margin: 0;
+  font-size: 11px;
+  color: var(--color-neutral-700);
+}
+
+/* Generated text, drawn as the Brief is: a paragraph, not a note in a box. */
+.meeting__prep {
+  margin: 4px 0 2px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--color-neutral-800);
+  text-wrap: pretty;
+}
+
+.meeting__prep--long {
+  display: none;
+}
+
+.meeting__part {
+  margin-top: 6px;
+}
+
+.meeting__kicker {
+  margin: 0 0 3px;
+  font-family: var(--font-body);
+  font-weight: 400;
+  line-height: inherit;
+}
+
+.meeting__list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+
+.meeting__list > li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: baseline;
+  padding: 4px 0;
+  border-top: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent);
+}
+
+.meeting__list .tick {
+  align-self: center;
+}
+
+.meeting__done .meeting__what {
+  color: var(--color-neutral-600);
+  text-decoration: line-through;
+}
+
+.meeting__what {
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.meeting__meta {
+  color: var(--color-neutral-700);
+  white-space: nowrap;
+}
+
+.meeting__client {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-neutral-700);
+}
+
+.meeting__start {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.meeting__running {
+  margin: 6px 0 0;
+}
+
+/* ── Later this week ──────────────────────────────────────────────────────── */
+
+.later {
+  display: grid;
+  gap: 8px;
+}
+
+.later__list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+
+.later__list > li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: baseline;
+  padding: 5px 0;
+  border-top: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent);
+}
+
+.later__what {
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.later__tomorrow {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--color-neutral-800);
+}
+
+.later__more {
+  justify-self: start;
+  font-size: 12px;
+}
+
 /* ── Add a Todo ───────────────────────────────────────────────────────────── */
 
 .addtodo {
@@ -511,21 +996,52 @@ button.stack__what {
 
 @media (min-width: 900px) {
   .today {
-    gap: 18px;
+    gap: 14px;
   }
 
-  .today__head,
+  /*
+   * The reading column and the sticky aside. The aside is 340px because that
+   * is the width frames 1a and 2a draw their cards at, and they are still those
+   * cards; the reading column takes what is left, which is about 590px — a
+   * measure of 70 to 80 characters, which is what a page meant to be read
+   * wants (ticket 28).
+   */
   .today__body {
     display: grid;
-    grid-template-columns: 1fr 340px;
+    grid-template-columns: minmax(0, 1fr) 340px;
     gap: 28px;
     align-items: start;
   }
 
-  .today__side {
+  /* The phone's reading order is the phone's: here the DOM's own order is
+     right, so nothing is moved. */
+  .today__intro,
+  .ribbon,
+  .rundown > .ch,
+  .today__aside > .index,
+  .today__aside > .ton,
+  .today__aside > .addtodo {
+    order: 0;
+  }
+
+  .rundown {
+    display: grid;
+    align-content: start;
+    min-width: 0;
+  }
+
+  .today__aside {
+    position: sticky;
+    /* Clear of the strip the timer bar condenses into, so the two never
+       overlap while the page is scrolled (ticket 27). */
+    top: 14px;
     display: grid;
     gap: 16px;
     align-content: start;
+  }
+
+  .today--billing .today__aside {
+    top: calc(var(--timer-strip) + 14px);
   }
 
   .today__dayline {
@@ -555,6 +1071,8 @@ button.stack__what {
     min-height: 0;
   }
 
+  /* The chapter's own head names the day and says what shape it is in, so all
+     that is left for the card is the line that says how to slot a Todo. */
   .day__head {
     position: static;
     width: auto;
@@ -563,8 +1081,17 @@ button.stack__what {
     clip-path: none;
     white-space: normal;
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: baseline;
+  }
+
+  .day__title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   .ton {
@@ -619,12 +1146,99 @@ button.stack__what {
     padding-block: 0;
   }
 
-  .stack__foot {
-    display: flex;
-  }
-
   .mentions {
     padding: 12px 14px;
+  }
+
+  /* ── The rundown, at a desktop's measure ───────────────────────────────── */
+
+  .ribbon {
+    margin: 6px 0 10px;
+  }
+
+  .ribbon__edge {
+    line-height: 28px;
+  }
+
+  .ribbon__block {
+    height: 28px;
+  }
+
+  .ribbon__block[data-span='1'] .ribbon__label {
+    display: block;
+  }
+
+  /*
+   * The head's three parts on one line, the kicker in a column of its own so
+   * that every chapter's sentence begins at the same x — which is what makes
+   * six sentences read as a page rather than as six cards.
+   */
+  .ch__head {
+    grid-template-columns: 120px minmax(0, 1fr) 16px;
+    gap: 12px;
+    align-items: baseline;
+    padding: 13px 0 15px;
+  }
+
+  .ch__name {
+    justify-content: space-between;
+  }
+
+  .ch__sentence {
+    grid-column: 2;
+    grid-row: 1;
+    font-size: 15px;
+  }
+
+  /* The chevron belongs beside the sentence it turns, not under the count. */
+  .ch__chev {
+    grid-column: 3;
+  }
+
+  /* The body takes the whole column: the kicker's gutter is for the heads, so
+     that six sentences begin at one x, and a card wants every pixel it can get. */
+  .ch__body {
+    padding: 2px 0 20px;
+  }
+
+  .index__list {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .index__link {
+    justify-content: space-between;
+    padding: 6px 0;
+    border: 0;
+    border-top: 1px solid var(--color-divider);
+  }
+
+  .index__link--here {
+    color: var(--color-accent-800);
+  }
+
+  .index__link--here .index__name {
+    box-shadow: inset 0 -1px 0 var(--color-accent-400);
+  }
+
+  .catchup,
+  .catchup__signals,
+  .meetings {
+    gap: 14px;
+  }
+
+  /* Two columns where there are two kinds of Signal to show, one where the
+     day only brought one of them. */
+  .catchup__signals {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  }
+
+  .meeting__prep--long {
+    display: block;
+  }
+
+  .meeting__prep--short {
+    display: none;
   }
 
   /* Frame 2a's own measurements. Its header is inside the day's column, its
@@ -648,10 +1262,6 @@ button.stack__what {
 
   .today--billing .today__brief {
     font-size: 14px;
-  }
-
-  .today--billing .day__head {
-    display: none;
   }
 
   .weeks {

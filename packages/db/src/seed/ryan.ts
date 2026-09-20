@@ -1229,6 +1229,29 @@ const ARCHIVE_SOON = [
 /** How long before it crossed the archive period each of those was last touched. */
 const ARCHIVE_SOON_TOUCHED_DAYS_AGO = 78
 
+/**
+ * What Crazy wrote to prepare Ryan for each of the day's meetings (ticket 28):
+ * generated text with the Brief's standing, in the Brief's first-person voice,
+ * and true of the rows around it — Devon's comment on Q4, Sam's PR before the
+ * design review, Priya's question at standup. A meeting with no entry here
+ * shows no note at all.
+ */
+const PREPS: Record<string, { body: string; bodyShort: string }> = {
+  standup: {
+    body: "Priya has asked twice in #platform about the edge worker's rate limit. If the session-token spike lands before 11 you can answer her here and close the thread rather than carrying it into the afternoon.",
+    bodyShort: "Priya's asked twice about the rate limit; answer it here if the spike has landed.",
+  },
+  'design-review': {
+    body: "You're the last reviewer on Sam's onboarding PR, and this is where it is decided whether v2 ships before he's out on Friday. Read HAL-198 first; going in without having read it turns an hour into a second meeting.",
+    bodyShort: "You're the last reviewer on Sam's PR. Read HAL-198 before you go in.",
+  },
+  'one-to-one-devon': {
+    body: 'Devon commented on your section of Q4 Priorities yesterday and still owes you feedback on section 1. Section 2 is yours and he reads the doc on Monday, so agree the day it lands rather than leaving it open.',
+    bodyShort:
+      "Devon's commented on Q4 and owes you feedback on section 1. Agree when section 2 lands.",
+  },
+}
+
 const BRIEF = {
   body: "You've got a lighter morning than usual: two meetings, both after 11. I'd take the Cloudflare session spike first while you're fresh; Priya pinged you about it twice in #platform yesterday. Three items carried over from Tuesday. I moved the August expense report back to the backlog since nobody touched it for a day.",
   bodyShort:
@@ -1720,6 +1743,24 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
     endsAt: at(0, event.until),
     createdAt: past(7, '09:00'),
   }))
+  // Crazy prepares for the meetings of the day it planned, as it writes the
+  // Brief for it. The days around today have none: a prep note is for a day.
+  const meetingPreps: Prisma.MeetingPrepCreateManyInput[] = EVENTS.flatMap((event) => {
+    const prep = PREPS[event.key]
+    return prep === undefined
+      ? []
+      : [
+          {
+            id: id('prep', `${today}-${event.key}`),
+            userId,
+            calendarEventId: id('event', event.key),
+            day: today,
+            ...prep,
+            createdAt: past(0, '06:00'),
+          },
+        ]
+  })
+
   for (const { day, meetings } of weekDays) {
     const away = back(day)
     for (const event of meetings) {
@@ -1866,6 +1907,7 @@ export function ryan({ userId, now, timeZone }: SeedInput) {
     weekDayNotes,
     tieIns,
     calendarEvents,
+    meetingPreps,
     timelineHours,
     signals,
     metricSnapshots,

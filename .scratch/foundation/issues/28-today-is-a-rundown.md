@@ -8,7 +8,7 @@ what is left fits in the day — and every line of that read opens into the plac
 
 **Blocked by:** 19 — Timers from Todos (its Today), 27 — The time header
 
-**Status:** ready-for-agent
+**Status:** built
 
 ## The one idea
 
@@ -110,11 +110,118 @@ LATER THIS WEEK · 2 Auth migration's milestone is Friday; Q4 planning is due Th
 
 ## Done when
 
-- [ ] Closed, Today reads as six (Billing off: five) true sentences at 1180px and 390px, for both personas
-- [ ] Every sentence is a tested pure function, including the empty day and "it fits / more than fits"
-- [ ] Each chapter opens into its working part; ticking, slotting, snoozing, adding and starting still work as before
-- [ ] Meetings show only what rows support; the prep note is a seeded generated row, absent when there is none
-- [ ] The ribbon agrees with the timeline and with the header's running timer
-- [ ] `#chapter` links open and scroll; the index marks the chapter in view; closed chapters stay closed on the device
+- [x] Closed, Today reads as six (Billing off: five) true sentences at 1180px and 390px, for both personas
+- [x] Every sentence is a tested pure function, including the empty day and "it fits / more than fits"
+- [x] Each chapter opens into its working part; ticking, slotting, snoozing, adding and starting still work as before
+- [x] Meetings show only what rows support; the prep note is a seeded generated row, absent when there is none
+- [x] The ribbon agrees with the timeline and with the header's running timer
+- [x] `#chapter` links open and scroll; the index marks the chapter in view; closed chapters stay closed on the device
 - [ ] ADR 0003 and `docs/BRIEF.md` record the change; `1a`/`2a` targets are re-scoped to their parts and noise-only; all other targets unchanged
-- [ ] Keyboard: every chapter head, index link and working control reachable in reading order
+- [x] Keyboard: every chapter head, index link and working control reachable in reading order
+
+## Comments
+
+### 2026-09-19 — built
+
+**Built.** Today is a rundown. The day line, the heading and the Brief lead as they did; under them
+the **day ribbon** — the working day on one 28px rule, a meeting an accent tint, a focus block
+framed, a Slot a plain hairline box, a free hour dashed, and with the Billing module on what was
+tracked drawn solid along the foot of the block it happened in, with one tick for now that
+`useTicking` moves from the loader's moment. Under that a reading column of chapters (Catch up,
+Meetings, What's left, Your day, This week by Client with the module on, Later this week), each a
+`<button aria-expanded>` head of kicker, count and one sentence, and a sticky aside 340px wide
+holding Take on now (module off), the place to add a Todo and the index of the chapters, marked by
+an `IntersectionObserver`. On a phone one column, the index as a row of chips under the ribbon,
+Take on now above the chapters, Add a Todo at the foot, ordered with `order` on the one grid.
+
+**Shared first.** `packages/shared/src/rundown.ts` is the whole of what the screen says:
+`viewRundown(today, view, extras, now, timeZone)` returns each chapter's count, sentence and
+`filled`, the Catch up model, a `MeetingPrep` per meeting left today and the ribbon's blocks. Pure
+and clock-free; 30 tests pin every sentence — the empty day, singular and plural, it fits / more
+than fits / two with no estimate / nothing estimated, a meeting over and one under way, Billing on
+and off, and the ribbon's runs, its now and its logged shares. Nothing is stored except the Brief
+and a meeting's prep note.
+
+**Rows.** `readToday` gained: the Todos the last Rollover sent back **by name** (`sentBack` is a
+list now, not a count), the Promises and Waiting-on since yesterday's local midnight beside every
+Mention, a `links` row per calendar event (the Todos whose Source is that very Provider item, the
+Signals whose person the event names on a whole-word match of their full or first name, the Client
+its title names, and the prep note), and `later` — this week's tie-ins, the milestones still ahead
+and tomorrow's first meeting. `links` carries ids, not rows, so a Todo ticked in What's left
+changes what the meeting says about it in the same render. Migration `0016_meeting_prep.sql` (hand
+written from `migration:diff` less its `DROP INDEX`, as 0012–0015 were); `meeting_prep` is in
+`USER_TABLES` before `calendar_event`. Both personas are seeded with a first-person prep note per
+meeting on the seed day, in the Brief's voice and true of the rows around them.
+
+**Checked.** `check` (no warnings), `typecheck`, `test` (425 in 38 files), `build`. `pnpm visual`:
+every other target unchanged — 1c/1d/1e/2b/2c/3a-running/3b/4a 0.00%, 3a 0.01%, 3a-open 0.03%, and
+the two known ones 1f 0.13%, 1g 2.45%. The re-scoped parts: `2a-stack` 0.00%, `2a-timeline` 0.33%,
+`1a-take-on-now` 0.34%, `2a-week` 1.08%, `1a-stack` 1.38%, `1a-mentions` 2.17%, `1a-timeline`
+3.21%. The last two are not noise and the box stays unticked: `1a-mentions` is the card's head
+(kicker, edges and the first row) because a Mention's words wrap at 588px where the frame wraps
+them at 340px; `1a-timeline` differs on the two focus rows' box borders, where the app's timeline
+starts at a different absolute y than the frame's and a fractional row height snaps the other way —
+Cori's identical timeline, three rows lower, is at 0.33%.
+
+By hand, against the screenshots in
+`/tmp/claude-1000/-home-ryan-code-crazy/2b7de30a-4494-455f-b726-ce3dc6a9a0a2/scratchpad/t28/`:
+
+- **Ryan, Billing off** — `ryan-desktop-closed` and `ryan-phone-closed` (the rundown: five true
+  sentences, all two lines or fewer), `ryan-desktop` and `ryan-desktop-all` / `ryan-phone-all` (every
+  chapter open), `ryan-desktop-only-catch-up`, `-meetings`, `-whats-left`, `-your-day`, `-later`
+  (each chapter open alone), `ryan-desktop-focus-chapter` (the accent focus ring on a chapter head),
+  `ryan-desktop-empty` (a day with every row deleted: "Nobody is waiting on you and nothing carried
+  over.", "Nothing in the calendar today.", "Nothing left for today.").
+- **Cori, Billing on** — `cori-desktop-all` / `cori-phone-running` (the timer bar leading, the
+  ribbon's logged bars under 08–10 agreeing with the timeline's 0:20, 1:00 and 0:42, the next-meeting
+  card with Quill & Co's week and Start the timer on Quill & Co), `cori-desktop-scrolled` and
+  `cori-phone-scrolled` (the bar condensed into the sticky strip with the sticky aside clear
+  underneath it), `cori-desktop-idle` / `cori-phone-idle`.
+- **Keyboard**, one walk at 1180px: rail, then each chapter head in reading order with its own
+  controls inside it (Mentions' rows, the meeting's tick, every stack row's tick and title, the
+  timeline), then Take on now's Start and Swap, the place to add a Todo, and the index.
+- **Two tabs**: ticking the session spike in one changed the other's What's left sentence from
+  "About 4h 30m of work…" to "About 2h 30m…" without a reload.
+- **`#your-day`** on a closed chapter opened it and brought it to the top (3px); a chapter closed by
+  hand was still closed after a reload.
+
+**Decisions taken.**
+- The reading column is 588px, not the ticket's ~640px, and the aside is 340px: 340 is the width
+  frames 1a and 2a draw the cards in it at, so Take on now is still frame 1a's card to the pixel,
+  and 588 is exactly the width those frames give the timeline. Both parts keep their frame.
+- The chapter head is a 120px kicker gutter and the sentence beside it, so six sentences begin at
+  one x; the body takes the whole column rather than the gutter's indent, because a card wants the
+  pixels more than the rhythm does.
+- A meeting's Client line says the week's hours and that Client's terms (`clientTerms`, the line
+  "This week by Client" already draws), not the ticket's "$4,275 unbilled". Money is counted in one
+  place — `draftInvoice` and `monthEndHold`, per period — and quoting a dollar figure here would be
+  a second arithmetic for it. The hours are `readWeekByClient`'s own.
+- The Rollover's carried-over and sent-back Todos are named in Catch up and frame 1a's foot of
+  counts under the Priority stack is gone: saying it twice on one screen is saying it twice.
+- The ribbon's blocks are `<button tabIndex={-1}>` inside the `aria-hidden` rule: pressing one is a
+  pointer's shortcut into Your day, and everything it reaches is reachable by keyboard through the
+  index and the chapter heads. The Your day sentence is its text alternative.
+- A chapter opens with one quick 130ms fade-and-rise rather than a height ease, and stays `hidden`
+  when closed: `hidden` keeps a closed chapter out of the tab order and out of layout, which a
+  height transition cannot do without `inert`.
+- Catch up's sentence carries at most three clauses; what merely arrived since yesterday goes in a
+  short second sentence, and only while the first is short enough to carry one. Two lines is what a
+  chapter head has, and the chapter lists every Promise and Waiting-on underneath either way.
+- Which chapters are open is `useSyncExternalStore` over `localStorage`, not an effect: the server
+  snapshot is "nothing decided", so hydration draws the defaults and never flashes, and a `storage`
+  listener makes two tabs of the screen agree.
+- `Part.crop` is new in the harness: a frame that draws a whole screen can now be cut to one part
+  and the app cut to the same size where that part sits. `app.ts` screenshots `fullPage` for a part,
+  so a card further down than the viewport is still cropped from where it is.
+- Today is in `UNDRAWN` now, so `pnpm visual` still leaves a phone screenshot of the rundown behind;
+  the wider shots are `tools/visual/src/shoot.ts`'s.
+
+**Open.**
+- `1a-timeline` at 3.21% and `1a-mentions` at 2.17% are not noise (above). Neither is a drawing
+  debt — the rows and the card are the frames' — but neither is a clean figure either.
+- Ryan's seed has no Promise inside yesterday's local midnight (his newest is two days old), so the
+  Catch up chapter shows one Waiting-on and no "You said you'd" section for him, and the design
+  review is tied to no Signal although Design is in it. It is the ticket's window, honestly applied;
+  a seed with a fresher promise would show more of the chapter.
+- The meetings' prep notes are seeded rows waiting for the Brief Workflow (ticket 25's shell) to
+  write them, exactly as the Brief is.

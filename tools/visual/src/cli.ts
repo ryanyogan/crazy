@@ -3,7 +3,7 @@ import { join, relative } from 'node:path'
 import { parseArgs } from 'node:util'
 import { chromium } from 'playwright'
 import { seedApp, shootRoute } from './app.ts'
-import { compare } from './compare.ts'
+import { compare, cropPicture } from './compare.ts'
 import { canvasPage, drawFrame } from './frame.ts'
 import { type Result, percent, reportPage, sideBySide, toPng } from './report.ts'
 import { ensureApp } from './server.ts'
@@ -64,7 +64,7 @@ async function compareAt(target: Target, width: Width): Promise<Result> {
   // A frame that draws one part of a screen is drawn at that part's width, and
   // the app is cropped to where the part sits; the rest is drawn whole.
   const { part } = target
-  const frame = await drawFrame(
+  const drawn = await drawFrame(
     browser,
     page,
     target.option ?? target.frame,
@@ -72,6 +72,14 @@ async function compareAt(target: Target, width: Width): Promise<Result> {
     target.card,
     target.compose,
   )
+  // A frame that draws a whole screen but is compared one part at a time is cut
+  // to that part first; the app is then cut to the same size where the part sits.
+  const frame = part?.crop
+    ? {
+        picture: cropPicture(drawn.picture, part.crop),
+        png: toPng(cropPicture(drawn.picture, part.crop)),
+      }
+    : drawn
   const { height } = frame.picture
   const app = await shootRoute(
     browser,
@@ -79,7 +87,13 @@ async function compareAt(target: Target, width: Width): Promise<Result> {
     target.route,
     now,
     { width, height: part ? PART_VIEWPORT : height },
-    part && { selector: part.selector, height, from: part.from },
+    part && {
+      selector: part.selector,
+      height,
+      from: part.from,
+      width: part.crop?.width,
+      at: part.at,
+    },
     target.open,
   )
   const { whole, regions, diff } = compare(frame.picture, app.picture, view.regions, view.masks)
