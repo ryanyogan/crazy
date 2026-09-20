@@ -1,4 +1,11 @@
 import { z } from 'zod'
+import {
+  ATTACHMENT_LIMITS,
+  ATTACHMENT_REFUSALS,
+  type AttachmentType,
+  attachmentType,
+  isAttachmentType,
+} from './attachment'
 import { addDays, clockTime, startOfDay } from './clock'
 import { type ClientInvoicing, INVOICING_LIMITS, LIFECYCLE_LIMITS } from './integrations'
 import { type InvoiceStatus, dueDay, isUnsent } from './invoice'
@@ -213,6 +220,23 @@ export const command = z.discriminatedUnion('type', [
   // they have to pay, whether Crazy drafts it for her, and whether it may ever
   // go out without her reading it. The Billing module's, like the timer.
   z.object({ type: z.literal('client.setInvoicing'), clientId: id, set: invoicingChange }),
+  // A file put against a Todo (`SERVER_ONLY`). The route that takes the bytes
+  // names the Attachment and asks for this before it stores a single one, so
+  // that the rule — the Todo is the user's, the type is a picture, the size is
+  // within the cap — is decided in the one place every rule is decided. The
+  // content type and the size are loose here on purpose: a file that is too
+  // big or the wrong sort is a refusal a person can read, not a parse error.
+  z.object({
+    type: z.literal('attachment.add'),
+    id,
+    todoId: id,
+    contentType: z.string().trim().min(1).max(200),
+    size: z.number().int().min(0),
+  }),
+  // The metadata taken out again (`SERVER_ONLY`). Its one caller is the upload
+  // route putting itself right when the bytes could not be stored after the row
+  // was: a row pointing at an object that is not there would be a lie.
+  z.object({ type: z.literal('attachment.remove'), attachmentId: id }),
   // The Coordinator's own, at the user's local midnight (`SERVER_ONLY`): each
   // `today` Todo is carried over or sent back, and the backlog ages.
   z.object({ type: z.literal('rollover') }),
@@ -222,11 +246,18 @@ export const command = z.discriminatedUnion('type', [
 ])
 export type Command = z.infer<typeof command>
 
-/** Commands a browser may not send: only the server knows what Clerk said. */
+/**
+ * Commands a browser may not send: only the server knows what Clerk said, and
+ * only the route that moves the bytes may say an Attachment exists — a row
+ * without an object behind it, or an object nothing points at, would both be
+ * lies a browser could tell.
+ */
 export const SERVER_ONLY: readonly Command['type'][] = [
   'connection.add',
   'rollover',
   'source.completed',
+  'attachment.add',
+  'attachment.remove',
 ]
 
 /** What a command may change about a Todo. Moments are ISO strings: operations travel as JSON. */
@@ -311,6 +342,22 @@ export const newProject = z.object({
 })
 export type NewProject = z.infer<typeof newProject>
 
+/**
+ * An Attachment as it is born. The key is not here: it is derived from the
+ * owner, the Todo and the id where the row is written and where the bytes are
+ * put (`attachmentKey`), so no caller can name where a file lands. The content
+ * type is the narrow set by the time it is an operation — `decide` has held it
+ * to `ATTACHMENT_LIMITS` — so nothing downstream checks again.
+ */
+export const newAttachment = z.object({
+  id,
+  todoId: id,
+  contentType: attachmentType,
+  size: z.number().int().min(1),
+  createdAt: z.iso.datetime(),
+})
+export type NewAttachment = z.infer<typeof newAttachment>
+
 /** A Connection as it is born: the bookkeeping row, and nothing secret (ADR 0001). */
 export const newConnection = z.object({
   id,
@@ -357,6 +404,10 @@ export const op = z.discriminatedUnion('type', [
     id,
     set: z.object({ paymentTermsDays: z.number().int().min(0), dueDay: day }),
   }),
+  // A file stored against a Todo, and one taken out again. No cached read model
+  // holds Attachments — no screen draws one — so neither reaches `apply`.
+  z.object({ type: z.literal('attachment.insert'), attachment: newAttachment }),
+  z.object({ type: z.literal('attachment.delete'), id }),
 ])
 export type Op = z.infer<typeof op>
 
@@ -441,6 +492,17 @@ export interface CommandState {
    * moving a Client's payment terms moves the day their draft falls due.
    */
   invoices?: readonly InvoiceFacts[]
+  /**
+   * The Attachments a command names, if they are the user's
+   * (`attachmentsNamed`). Loaded only for a command about one.
+   */
+  attachments?: readonly AttachmentFacts[]
+}
+
+/** What `decide` needs to know of an Attachment: that it is the user's, and which Todo it is on. */
+export interface AttachmentFacts {
+  id: string
+  todoId: string
 }
 
 /** What `decide` needs to know of a Client. */
@@ -490,6 +552,9 @@ export function todosNamed(input: Command): string[] {
     case 'timer.start':
     case 'timer.switch':
       return input.todoId ? [input.todoId] : []
+    // A file is attached to a Todo, so the Todo is what says whose file it is.
+    case 'attachment.add':
+      return [input.todoId]
     default:
       return []
   }
@@ -614,6 +679,15 @@ export function workNamed(
  */
 export function clientNamed(input: Command): string | null {
   return input.type === 'client.setInvoicing' ? input.clientId : null
+}
+
+/**
+ * The Attachment ids a command names. Only the user's own are ever loaded, so
+ * one that is not there is gone or somebody else's — which is the whole of the
+ * rule for taking one out.
+ */
+export function attachmentsNamed(input: Command): string[] {
+  return input.type === 'attachment.remove' ? [input.attachmentId] : []
 }
 
 /** A snoozed Todo has left the day: nothing that plans or takes on the day applies to it. */
@@ -1430,6 +1504,44 @@ export function decide(state: CommandState, input: Command, now: Date): Decision
       }
     }
 
+    // A file stored against a Todo. Decided before a single byte is stored, so
+    // that nothing a user does not own, nothing that is not a picture and
+    // nothing over the cap ever reaches the bucket. The size is the one the
+    // caller has counted off the body itself, never a header it was handed.
+    case 'attachment.add': {
+      const todo = state.todos.find((each) => each.id === input.todoId)
+      // Only the user's own Todos are ever loaded: one that is not here is
+      // gone or somebody else's, and the two are not told apart on purpose.
+      if (!todo) return refuse(ATTACHMENT_REFUSALS.notYourTodo)
+      if (!isAttachmentType(input.contentType)) return refuse(ATTACHMENT_REFUSALS.type)
+      if (input.size < 1) return refuse(ATTACHMENT_REFUSALS.empty)
+      if (input.size > ATTACHMENT_LIMITS.maxBytes) return refuse(ATTACHMENT_REFUSALS.size)
+      const contentType: AttachmentType = input.contentType
+      return {
+        ok: true,
+        ops: [
+          {
+            type: 'attachment.insert',
+            attachment: {
+              id: input.id,
+              todoId: todo.id,
+              contentType,
+              size: input.size,
+              createdAt: at,
+            },
+          },
+        ],
+      }
+    }
+
+    // The metadata taken out again: the upload route's way of putting itself
+    // right when the bytes could not be stored after the row was.
+    case 'attachment.remove': {
+      const held = state.attachments?.find((each) => each.id === input.attachmentId)
+      if (!held) return refuse(ATTACHMENT_REFUSALS.notYours)
+      return { ok: true, ops: [{ type: 'attachment.delete', id: held.id }] }
+    }
+
     // How one Client is billed (frame 2c). A Client exists only with the
     // Billing module on, so the settings do too; and only the user's own
     // Clients are ever loaded, so one that is not there is not theirs.
@@ -1615,6 +1727,12 @@ export function apply<S extends Applicable>(state: S, ops: readonly Op[]): S {
       // this over. It is written to D1 and read back with the screen.
       case 'invoice.set':
         break
+      // No screen draws an Attachment yet, so no cached state holds one and
+      // there is nothing to lay these over. They are written to D1 and read
+      // back by the route that serves the file (docs/BRIEF.md).
+      case 'attachment.insert':
+      case 'attachment.delete':
+        break
     }
   }
   if (
@@ -1720,6 +1838,10 @@ function rowTouched(each: Op): string {
       return `client:${each.id}`
     case 'invoice.set':
       return `invoice:${each.id}`
+    case 'attachment.insert':
+      return `attachment:${each.attachment.id}`
+    case 'attachment.delete':
+      return `attachment:${each.id}`
   }
 }
 

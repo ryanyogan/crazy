@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
+import { Route as AttachmentsRouteImport } from './routes/attachments'
 import { Route as LiveRouteImport } from './routes/live'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as SsoCallbackRouteImport } from './routes/sso-callback'
@@ -22,10 +23,16 @@ import { Route as AppMoreRouteImport } from './routes/_app/more'
 import { Route as AppProjectsRouteImport } from './routes/_app/projects'
 import { Route as AppTimeRouteImport } from './routes/_app/time'
 import { Route as AppWeekRouteImport } from './routes/_app/week'
+import { Route as AttachmentsIdRouteImport } from './routes/attachments.$id'
 import { Route as DevSeedRouteImport } from './routes/dev/seed'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AttachmentsRoute = AttachmentsRouteImport.update({
+  id: '/attachments',
+  path: '/attachments',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LiveRoute = LiveRouteImport.update({
@@ -88,6 +95,11 @@ const AppWeekRoute = AppWeekRouteImport.update({
   path: '/week',
   getParentRoute: () => AppRoute,
 } as any)
+const AttachmentsIdRoute = AttachmentsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AttachmentsRoute,
+} as any)
 const DevSeedRoute = DevSeedRouteImport.update({
   id: '/dev/seed',
   path: '/dev/seed',
@@ -96,6 +108,7 @@ const DevSeedRoute = DevSeedRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/attachments': typeof AttachmentsRouteWithChildren
   '/live': typeof LiveRoute
   '/sign-in': typeof SignInRoute
   '/sso-callback': typeof SsoCallbackRoute
@@ -107,9 +120,11 @@ export interface FileRoutesByFullPath {
   '/projects': typeof AppProjectsRoute
   '/time': typeof AppTimeRoute
   '/week': typeof AppWeekRoute
+  '/attachments/$id': typeof AttachmentsIdRoute
   '/dev/seed': typeof DevSeedRoute
 }
 export interface FileRoutesByTo {
+  '/attachments': typeof AttachmentsRouteWithChildren
   '/live': typeof LiveRoute
   '/sign-in': typeof SignInRoute
   '/sso-callback': typeof SsoCallbackRoute
@@ -121,12 +136,14 @@ export interface FileRoutesByTo {
   '/projects': typeof AppProjectsRoute
   '/time': typeof AppTimeRoute
   '/week': typeof AppWeekRoute
+  '/attachments/$id': typeof AttachmentsIdRoute
   '/dev/seed': typeof DevSeedRoute
   '/': typeof AppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
+  '/attachments': typeof AttachmentsRouteWithChildren
   '/live': typeof LiveRoute
   '/sign-in': typeof SignInRoute
   '/sso-callback': typeof SsoCallbackRoute
@@ -138,6 +155,7 @@ export interface FileRoutesById {
   '/_app/projects': typeof AppProjectsRoute
   '/_app/time': typeof AppTimeRoute
   '/_app/week': typeof AppWeekRoute
+  '/attachments/$id': typeof AttachmentsIdRoute
   '/dev/seed': typeof DevSeedRoute
   '/_app/': typeof AppIndexRoute
 }
@@ -145,6 +163,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/attachments'
     | '/live'
     | '/sign-in'
     | '/sso-callback'
@@ -156,9 +175,11 @@ export interface FileRouteTypes {
     | '/projects'
     | '/time'
     | '/week'
+    | '/attachments/$id'
     | '/dev/seed'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/attachments'
     | '/live'
     | '/sign-in'
     | '/sso-callback'
@@ -170,11 +191,13 @@ export interface FileRouteTypes {
     | '/projects'
     | '/time'
     | '/week'
+    | '/attachments/$id'
     | '/dev/seed'
     | '/'
   id:
     | '__root__'
     | '/_app'
+    | '/attachments'
     | '/live'
     | '/sign-in'
     | '/sso-callback'
@@ -186,12 +209,14 @@ export interface FileRouteTypes {
     | '/_app/projects'
     | '/_app/time'
     | '/_app/week'
+    | '/attachments/$id'
     | '/dev/seed'
     | '/_app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
+  AttachmentsRoute: typeof AttachmentsRouteWithChildren
   LiveRoute: typeof LiveRoute
   SignInRoute: typeof SignInRoute
   SsoCallbackRoute: typeof SsoCallbackRoute
@@ -205,6 +230,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/attachments': {
+      id: '/attachments'
+      path: '/attachments'
+      fullPath: '/attachments'
+      preLoaderRoute: typeof AttachmentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/live': {
@@ -291,6 +323,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppWeekRouteImport
       parentRoute: typeof AppRoute
     }
+    '/attachments/$id': {
+      id: '/attachments/$id'
+      path: '/$id'
+      fullPath: '/attachments/$id'
+      preLoaderRoute: typeof AttachmentsIdRouteImport
+      parentRoute: typeof AttachmentsRoute
+    }
     '/dev/seed': {
       id: '/dev/seed'
       path: '/dev/seed'
@@ -327,8 +366,21 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
+interface AttachmentsRouteChildren {
+  AttachmentsIdRoute: typeof AttachmentsIdRoute
+}
+
+const AttachmentsRouteChildren: AttachmentsRouteChildren = {
+  AttachmentsIdRoute: AttachmentsIdRoute,
+}
+
+const AttachmentsRouteWithChildren = AttachmentsRoute._addFileChildren(
+  AttachmentsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
+  AttachmentsRoute: AttachmentsRouteWithChildren,
   LiveRoute: LiveRoute,
   SignInRoute: SignInRoute,
   SsoCallbackRoute: SsoCallbackRoute,

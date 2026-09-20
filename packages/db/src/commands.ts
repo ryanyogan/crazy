@@ -11,6 +11,8 @@ import {
   type TodoFacts,
   type ProjectFacts,
   type TimeEntryFacts,
+  attachmentKey,
+  attachmentsNamed,
   clientNamed,
   invoiceStatus,
   needsConnections,
@@ -285,6 +287,17 @@ export async function loadCommandState(
           })
         ).map((row) => ({ ...row, status: invoiceStatus.parse(row.status) }))
 
+  // The Attachments a command names, and only the user's own: one that is not
+  // here is gone or somebody else's, which is the whole rule for removing one.
+  const attachmentIds = attachmentsNamed(command)
+  const attachments =
+    attachmentIds.length === 0
+      ? []
+      : await db.attachment.findMany({
+          where: { userId, id: { in: attachmentIds } },
+          select: { id: true, todoId: true },
+        })
+
   const [projects, clients] = await Promise.all([
     wanted.length > 0
       ? db.project.findMany({
@@ -312,6 +325,7 @@ export async function loadCommandState(
     projects,
     clients,
     invoices,
+    attachments,
     settings: {
       timeZone,
       sentBackDays: settings?.sentBackDays ?? SETTINGS_DEFAULTS.sentBackDays,
@@ -456,6 +470,30 @@ export async function persistOps(db: Db, userId: string, ops: readonly Op[]): Pr
       // be sent under, and the day it now falls due (`client.setInvoicing`).
       case 'invoice.set':
         await db.invoice.updateMany({ where: { id: op.id, userId }, data: op.set })
+        break
+      // A file stored against a Todo. The key is worked out here, from the user
+      // this write is for and the operation's own ids — it is never carried in
+      // the operation and never taken from a caller, so every object a user has
+      // sits under their own prefix. `create` fails on a key already used,
+      // which is what keeps one user's insert off another's object.
+      case 'attachment.insert': {
+        const { createdAt, ...rest } = op.attachment
+        await db.attachment.create({
+          data: {
+            ...rest,
+            userId,
+            key: attachmentKey(userId, op.attachment.todoId, op.attachment.id),
+            createdAt: new Date(createdAt),
+          },
+        })
+        break
+      }
+      // The metadata taken out again. `deleteMany` with the user on it is what
+      // keeps one user's removal from landing on another's row. The object in
+      // R2 is not this package's to delete: the Worker that moved the bytes
+      // does that, because the Coordinator never touches a bucket (ADR 0002).
+      case 'attachment.delete':
+        await db.attachment.deleteMany({ where: { id: op.id, userId } })
         break
     }
   }

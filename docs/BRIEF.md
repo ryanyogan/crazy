@@ -80,6 +80,7 @@ Updated as tickets land.
 | Invoice and invoice line (migration 0013), and the arithmetic behind them (`draftInvoice` in `@crazy/shared`)                                                                                                                                                                     | Real. A draft's lines are its Client's billable Time entries in the period, gathered by Project, each line rounded up once under the Client's rounding and priced at the Project's rate where it overrides the Client's; a retainer is its fee plus an overage. Integer cents and seconds throughout                                                                                                                                                                                                                              |
 | Cori's invoices and their lines, one per Client per month she worked                                                                                                                                                                                                              | Seeded, and not typed in: the seed runs `draftInvoice` over the seeded Time entries, so the mockup's $5,880, $4,275 and $3,600 are what her September timesheet comes to. July's and August's were billed and paid, which is what makes "unbilled" on Metrics mean this month's money and nothing older                                                                                                                                                                                                                           |
 | Cori's five weeks before September, and the finished Todos behind some of them                                                                                                                                                                                                    | Seeded (ticket 22), so that "hours per week by Client" reaches back eight weeks and "estimate vs actual" has Todos that carry both an estimate and a timer. Nothing falls on or after 1 September, so her Meridian 28.0h, Quill 22.5h and Bramble 17h 50m are exactly what they were                                                                                                                                                                                                                                              |
+| The Attachment seam: the private R2 bucket (`ATTACHMENTS` → `crazy-attachments`), the `attachment` row (migration 0015), `POST /attachments?todoId=…` and `GET /attachments/:id`                                                                                                  | Real, and with no interface: none is drawn (see "The Attachment seam" below). The web Worker moves the bytes; the Coordinator decides `attachment.add` and records the metadata, and never touches the bucket                                                                                                                                                                                                                                                                                                                     |
 | Everything else in the spec                                                                                                                                                                                                                                                       | Not started                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 
 ## Derived layouts
@@ -393,6 +394,52 @@ How the moment is pinned: each frame names the wall-clock time it shows (`2025-0
 Ryan). The harness sends it as the `crazy-now` cookie; `requestNow` reads it in the user's time
 zone and answers with an `x-crazy-now` header, and the harness fails if that header is missing, so
 a pin is never silently ignored. A production build does not contain the cookie's name.
+
+## The Attachment seam
+
+**The interface awaits a frame.** No mockup draws an Attachment, so nothing in the app adds one or
+shows one: there is no button, no thumbnail and no list. What exists is the seam a drawn interface
+will sit on, and it is finished — a file can be stored against a Todo and read back, and by nobody
+else.
+
+Where the seam is:
+
+- **`POST /attachments?todoId=…`** (`apps/web/src/routes/attachments.ts`) takes the file as the
+  request body, with `Content-Type` saying what it is. It answers the Attachment's metadata as
+  JSON, `201`.
+- **`GET /attachments/:id`** (`apps/web/src/routes/attachments.$id.ts`) hands the file back to its
+  owner: `Content-Disposition: inline`, `X-Content-Type-Options: nosniff`,
+  `Cache-Control: private, no-store`.
+- Both are four lines: resolve the user as every other route does — the Clerk user, or the demo
+  user with no keys — and hand the bindings to `storeAttachment` / `sendAttachment`
+  (`apps/web/src/server/attachments.ts`), which is where everything happens and what the tests
+  exercise (`src/server/attachments.test.ts`, inside workerd against a real R2, D1 and Coordinator).
+- The rule is `decide` like every other rule: `attachment.add` refuses a Todo that is not the
+  user's, a content type outside `ATTACHMENT_LIMITS` and anything over the cap. Both Attachment
+  commands are `SERVER_ONLY`; only the Worker that moved the bytes may say a file exists.
+
+Its limits, which a drawn interface has to live inside:
+
+- **Pictures only, 10 MB at most**: `image/png`, `image/jpeg`, `image/webp`, `image/gif`
+  (`ATTACHMENT_LIMITS` in `@crazy/shared`). **SVG is deliberately out** — it is a document that can
+  carry script, and an Attachment is served inline from this app's own origin. The body is counted
+  while it is read, never trusted from `Content-Length`, and the file's first bytes must be the
+  picture it claims to be.
+- **The body is the file.** `--data-binary`, not a multipart form: `curl -F` is answered `415`. A
+  multipart parse would have to buffer a body before the cap could be applied to it.
+- **There is no public URL.** The bucket is private; no URL is signed, no r2.dev domain is enabled,
+  and the only way to the bytes is the route above, behind the user's own row. A read by anyone
+  else is `404`, not `403`, so that no answer says whether someone else's file exists.
+- **The key is derived, never supplied**: `users/<userId>/todos/<todoId>/<attachmentId>`
+  (`attachmentKey`), and the Attachment's id is named by the route, not by whoever is uploading.
+- **The order is decide, then store.** A put that fails after its row was written takes the row out
+  again (`attachment.remove`), so a row never points at bytes that are not there. Nothing deletes
+  an Attachment on purpose yet — no interface asks to — and `POST /dev/seed` empties the rows but
+  not the bucket, so a reseeded development bucket keeps objects nothing points at.
+- The bucket is named `crazy-attachments` and is bound to the **web** Worker as `ATTACHMENTS`
+  (`apps/web/wrangler.jsonc`). The Coordinator holds no binding to it and never will: it decides
+  and records, and never awaits the outside world (ADR 0002). Moving archived Todos to R2 is the
+  archive Workflow's, and will bind the bucket in `apps/core` when it is written.
 
 ## Seeded data
 

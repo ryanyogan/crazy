@@ -75,9 +75,11 @@ export default defineConfig({
           exclude: ['packages/db/**'],
         },
       },
-      // The Coordinator seam and the read-model seam, inside workerd against a local D1.
+      // The Coordinator seam, the read-model seam and the web app's Attachment
+      // seam, inside workerd against a local D1 (and, for the last, a local R2).
       'apps/core/vite.config.ts',
       'packages/db/vite.config.ts',
+      'apps/web/vitest.config.ts',
     ],
   },
 })

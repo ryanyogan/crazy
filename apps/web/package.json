@@ -31,6 +31,7 @@
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "catalog:",
+    "@cloudflare/vitest-pool-workers": "0.22.0",
     "@crazy/core": "workspace:*",
     "@tanstack/router-cli": "^1.132.0",
     "@types/node": "catalog:",
@@ -39,6 +40,7 @@
     "@vitejs/plugin-react": "^6.1.1",
     "typescript": "catalog:",
     "vite": "catalog:",
+    "vite-plus": "catalog:",
     "wrangler": "catalog:"
   }
 }

@@ -1,0 +1,24 @@
+{
+  // Test only. The Attachment seam is the one place this Worker moves bytes,
+  // and it is a security seam, so it is exercised inside workerd against a
+  // real local D1 and a real local R2 — the same bindings the app has, under
+  // the same names. `main` re-exports the Coordinator so that the commands the
+  // upload route sends are decided and written by the real one (ADR 0002),
+  // rather than by anything this harness pretends to be.
+  "name": "crazy-web-test",
+  "main": "./coordinator.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": {
+    "bindings": [{ "name": "COORDINATOR", "class_name": "Coordinator" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Coordinator"] }],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "crazy",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+    },
+  ],
+  "r2_buckets": [{ "binding": "ATTACHMENTS", "bucket_name": "crazy-attachments" }],
+}

@@ -5,6 +5,7 @@ import { type D1, type ReadDb, createClient } from './client'
 
 export type { D1, ReadDb } from './client'
 export type { UserSettings as UserSettingsRow } from './generated/prisma/client'
+export * from './read/attachments'
 export * from './read/circles'
 export * from './read/integrations'
 export * from './read/invoices'

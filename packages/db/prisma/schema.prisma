@@ -331,6 +331,7 @@ model Todo {
   circles         CircleMatch[]
   overlapNote     OverlapNote?
   weekDayLines    WeekDayLine[]
+  attachments     Attachment[]
 
   // The Today read model: a user's `today` Todos in stack order.
   @@index([userId, state, stackPosition])
@@ -344,6 +345,28 @@ model Todo {
   // One Source, one open Todo.
   @@unique([userId, sourceConnectionId, sourceItemId], where: raw("state IN ('backlog', 'today')"))
   @@map("todo")
+}
+
+/// A file a user deliberately added to a Todo (CONTEXT.md, "Attachment"): a
+/// photo of a receipt, a screenshot. The bytes live in the R2 bucket, under a
+/// key derived from the owner, the Todo and this row's id — never one a caller
+/// supplied. This row is the only way to find them: the bucket is private,
+/// there is no public URL, and the route that serves a file looks the row up by
+/// its id *and* the user asking.
+model Attachment {
+  id          String   @id
+  userId      String
+  todoId      String
+  todo        Todo     @relation(fields: [todoId], references: [id], onDelete: Cascade)
+  /// Where the bytes are: `users/<userId>/todos/<todoId>/<id>` (`attachmentKey`).
+  key         String   @unique
+  contentType String // ATTACHMENT_LIMITS.contentTypes
+  size        Int // bytes, as counted off the body rather than off a header
+  createdAt   DateTime
+
+  // A Todo's Attachments, and the only way one is ever read: by its user.
+  @@index([userId, todoId])
+  @@map("attachment")
 }
 
 /// An hour of a day that a Todo has been placed on. A Todo that runs two hours

@@ -48,6 +48,10 @@ export async function seedPersona(db: Db, input: SeedInput): Promise<void> {
   await db.slot.deleteMany({ where: { userId } })
   await db.overlapNote.deleteMany({ where: { userId } })
   await db.circleMatch.deleteMany({ where: { userId } })
+  // Said outright rather than left to the Todo's cascade, as every other child
+  // here is. The bytes in R2 are not the seed's to delete: a reseeded
+  // development bucket keeps objects nothing points at (docs/BRIEF.md).
+  await db.attachment.deleteMany({ where: { userId } })
   await db.todo.deleteMany({ where: { userId } })
   await db.project.deleteMany({ where: { userId } })
   await db.client.deleteMany({ where: { userId } })

@@ -12,6 +12,12 @@
       { "name": "COORDINATOR", "class_name": "Coordinator", "script_name": "crazy-core" },
     ],
   },
+  // Attachments. This Worker is the one that moves the bytes, because it is the
+  // one that authenticates the request and has the body in its hands; the
+  // Coordinator decides and records the metadata and never touches a bucket
+  // (ADR 0002). The bucket is private: no public URL, no r2.dev domain, and
+  // every read goes through `GET /attachments/:id` behind the user's own row.
+  "r2_buckets": [{ "binding": "ATTACHMENTS", "bucket_name": "crazy-attachments" }],
   // Read only. The web app never writes to D1 (ADR 0002); migrations are
   // listed here so `pnpm db:migrate` lands in the state directory `vp dev` uses.
   "d1_databases": [
