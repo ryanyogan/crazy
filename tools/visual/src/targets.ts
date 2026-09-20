@@ -78,6 +78,7 @@ export const COPY: [from: string, to: string][] = [
   ],
   // A Client is a Client, capitalised, wherever the app says it (CONTEXT.md).
   ['>This week by client<', '>This week by Client<'],
+  ['>Invoice settings per client<', '>Invoice settings per Client<'],
   // Frame 3a's picker gives one Project a qualifier as part of its name. The
   // Project is called Admin; that it is not billable follows from its having
   // no Client, which is what the Internal group it sits under already says.
@@ -413,6 +414,29 @@ const BURN_LEGEND =
 const ESTIMATE_KINDS =
   'The rows of "estimate vs actual", and the foot of the three cards. The frame groups by four kinds of work — Research, Design, Meetings, Admin — that are nothing in the domain; the app gathers the Todos that carry both an estimate and a timer by their **energy**, which is Crazy\'s own word for a kind of work, and Cori has three of them. One row fewer makes the card a few pixels shorter than the frame\'s, and the row is as tall as its tallest card. A debt for the designer: the kinds want to be something a Todo actually has'
 
+/*
+ * Frame 2c draws what the Billing module adds to the Integrations screen, and
+ * draws it as if it were the whole screen: a "Billing & accounting" heading at
+ * the top of the main column, six Provider cards under it, and the per-Client
+ * invoice settings in the column beside them. In the app that heading is a
+ * section of the Integrations screen — the Providers every user has come
+ * first, and the billing ones follow — so the left column cannot stand where
+ * the frame stands it. The settings card can and does: it heads the aside, at
+ * the frame's own 360px, which is where this frame puts it.
+ */
+
+const SECTION_AS_SCREEN =
+  "The main column. Frame 2c draws the billing section as though it were the whole screen, with \"Billing & accounting\" as its heading at the top; in the app it is a section of the Integrations screen, under the Providers every user has, with the screen's own heading above them. The section's cards are the frame's own three-column grid at the frame's own width and are compared by eye, in the screenshots beside this run"
+
+const CADENCE_IS_A_CONTROL =
+  'The cadence beside the Client\'s name. The frame draws it as a neutral tag reading "Monthly"; it is a setting she changes, so in the app it is a select in that place, wearing the same treatment as the Side select on a Connection. Its three choices say when the invoice goes out and nothing else: the frame\'s third Client reads "Retainer · 1st", which says the arrangement too, and the terms line under the name already says that'
+
+const TERMS_TAIL_PROVIDER =
+  "The end of the terms line. The frame finishes each Client's terms with the accounting Provider they go out through (\"· QuickBooks\"); nothing is connected, and nothing sends an invoice, so the app's line ends at the terms. Everything before it — the arrangement, the rate, the rounding and the net days — is the frame's own and is compared"
+
+const SETTINGS_PER_CLIENT =
+  "Everything below the first Client's terms. Frame 2c draws auto-draft and send without review once under the list of Clients; they are settings of a Client, like the cadence and the terms above them — one Client can be trusted to go out unread where another never is — so the app draws a control for each, inside that Client's own group, and the card is taller than the frame's. The card's head and the first Client's name, cadence and terms stand where the frame puts them and are compared. The frame also ends each terms line with the accounting Provider that Client goes out through; none is connected, so the app's lines end at the terms"
+
 /**
  * Frame 3a draws the timer bar on its own, at the width of the screen beside
  * the rail, and draws its idle and running states as separate cards. Each is
@@ -695,6 +719,42 @@ export const TARGETS: Target[] = [
      * each entry a compact two-line row, and the editor in the bottom sheet
      * rather than inside a row. Listed as derived in docs/BRIEF.md and
      * screenshotted, never compared.
+     */
+    phone: null,
+  },
+  {
+    frame: '2c',
+    title: 'Integrations · billing and accounting',
+    route: '/integrations',
+    persona: 'cori',
+    now: CORIS_MORNING,
+    // Frame 2c draws no time header, so the timer is stopped for the shot (see
+    // the note above frame 2b).
+    timer: 'idle',
+    desktop: {
+      regions: {
+        rail: { x: 0, y: 0, width: 168, height: 620 },
+        // The invoice settings card, which frame 2c heads its column with and
+        // so does the app with the Billing module on. A blueprint, measured
+        // with its corner marks 6px beyond the box, down to the first Client's
+        // terms — below that the app's controls are the Client's own (see the
+        // masks). The billing Provider cards are compared by eye, not here:
+        // the frame draws them as if they were the whole screen (`SECTION_AS_SCREEN`).
+        'invoice settings': { x: 786, y: 16, width: 372, height: 102 },
+      },
+      masks: [
+        { x: 16, y: 232, width: 140, height: 96, why: RAIL_CIRCLES },
+        { x: 8, y: 552, width: 152, height: 64, why: FOOT_UNDRAWN },
+        { x: 176, y: 0, width: 610, height: 620, why: SECTION_AS_SCREEN },
+        { x: 786, y: 118, width: 372, height: 502, why: SETTINGS_PER_CLIENT },
+        { x: 1060, y: 73, width: 80, height: 17, why: CADENCE_IS_A_CONTROL },
+        { x: 1028, y: 98, width: 112, height: 15, why: TERMS_TAIL_PROVIDER },
+      ],
+    },
+    /*
+     * No phone frame: the Integrations screen's 390px layout is derived — one
+     * column, the billing cards under the rest and the settings card under
+     * them. Listed as derived in docs/BRIEF.md and screenshotted, never compared.
      */
     phone: null,
   },

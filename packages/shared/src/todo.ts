@@ -14,10 +14,25 @@ export const SIDES = ['work', 'personal'] as const
 export const side = z.enum(SIDES)
 export type Side = z.infer<typeof side>
 
-/** The Providers Clerk can broker with the Billing module off (ADR 0001). */
-export const PROVIDERS = ['google', 'slack', 'linear', 'notion', 'github'] as const
+/** The Providers a day's work runs through: drawn whether the Billing module is on or off. */
+export const WORK_PROVIDERS = ['google', 'slack', 'linear', 'notion', 'github'] as const
+
+/**
+ * The billing and accounting Providers, drawn only with the Billing module on
+ * (frame 2c). Read-only like every Provider: Crazy never changes a Source, so
+ * it never writes an invoice at one (ADR 0001). Only the ones Clerk can broker
+ * are here; the rest are drawn as not available yet (`UNAVAILABLE_PROVIDERS`).
+ */
+export const BILLING_PROVIDERS = ['xero'] as const
+
+/** Every Provider Clerk can broker, which is every Provider a Connection can be to (ADR 0001). */
+export const PROVIDERS = [...WORK_PROVIDERS, ...BILLING_PROVIDERS] as const
 export const provider = z.enum(PROVIDERS)
 export type Provider = z.infer<typeof provider>
+
+/** Whether a Provider belongs to the billing and accounting section of the Integrations screen. */
+export const isBillingProvider = (each: Provider): boolean =>
+  (BILLING_PROVIDERS as readonly Provider[]).includes(each)
 
 /**
  * What each Provider is called, and the chip that stands for it where a line
@@ -31,6 +46,7 @@ export const PROVIDER_LABELS = {
   linear: { chip: 'LN', name: 'Linear' },
   notion: { chip: 'NO', name: 'Notion' },
   github: { chip: 'GH', name: 'GitHub' },
+  xero: { chip: 'XE', name: 'Xero' },
 } as const satisfies Record<Provider, { chip: string; name: string }>
 
 export const CONNECTION_STATUSES = ['connected', 'reauth'] as const

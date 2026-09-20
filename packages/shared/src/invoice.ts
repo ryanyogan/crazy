@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { addDays } from './clock'
 import { formatTracked } from './timer'
-import type { ClientArrangement } from './todo'
+import type { ClientArrangement, Provider } from './todo'
 
 // Invoices (frame 2b's right half): what a Client is billed for a period, the
 // lines behind it and the arithmetic that built them. Every figure is an
@@ -18,6 +18,19 @@ import type { ClientArrangement } from './todo'
 export const INVOICE_STATUSES = ['draft', 'review', 'sent', 'paid'] as const
 export type InvoiceStatus = (typeof INVOICE_STATUSES)[number]
 export const invoiceStatus = z.enum(INVOICE_STATUSES)
+
+/**
+ * The invoices still in her hands. They follow their Client's terms until they
+ * go out; one that has been sent or paid keeps what it was sent under, which is
+ * why every invoice copies its terms in the first place.
+ */
+export const UNSENT_INVOICE_STATUSES = [
+  'draft',
+  'review',
+] as const satisfies readonly InvoiceStatus[]
+
+export const isUnsent = (status: InvoiceStatus): boolean =>
+  (UNSENT_INVOICE_STATUSES as readonly InvoiceStatus[]).includes(status)
 
 /** What each status is called on the screen, in her own words. */
 export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
@@ -412,6 +425,12 @@ export interface InvoicesRead {
   hold: MonthEndHold
   /** The currency the period's figures are added up in. */
   currency: string
+  /**
+   * The billing and accounting Providers the user has a Connection to, so that
+   * "sync to" on an opened invoice says what the Integrations screen says
+   * (`invoiceSyncTargets`) rather than the two screens keeping their own lists.
+   */
+  billingConnections: Provider[]
 }
 
 /**

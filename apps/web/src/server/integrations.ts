@@ -146,6 +146,8 @@ export async function integrationsFor(userId: string, now: Date, timeZone: strin
     connections: overlayClerk(read.connections, clerk?.accounts ?? null),
     settings: read.settings,
     billing: read.billing,
+    /** How each Client is billed (frame 2c); empty with the Billing module off. */
+    clients: read.clients,
     realtime,
     now: now.toISOString(),
     timeZone,

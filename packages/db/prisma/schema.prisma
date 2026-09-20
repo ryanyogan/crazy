@@ -133,6 +133,12 @@ model Client {
   /// Past a retainer's hours an hour is charged at this instead of the retainer
   /// rate; null where the arrangement has no overage of its own.
   overageRateCents Int?
+  /// Whether Crazy is to put this Client's next invoice together when the
+  /// cadence comes due, and whether such an invoice may go out without being
+  /// read first. Sending without review is off unless the user turns it on,
+  /// per Client; nothing sends an invoice yet either way (ticket 23).
+  autoDraft         Boolean    @default(false)
+  sendWithoutReview Boolean    @default(false)
   createdAt        DateTime
   projects         Project[]
   timeEntries      TimeEntry[]

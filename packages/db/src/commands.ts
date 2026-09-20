@@ -1,14 +1,18 @@
 import {
   OPEN_TODO_STATES,
   SETTINGS_DEFAULTS,
+  UNSENT_INVOICE_STATUSES,
   type Command,
   type CommandState,
   type ConnectionFacts,
+  type InvoiceFacts,
   type Op,
   type SignalFacts,
   type TodoFacts,
   type ProjectFacts,
   type TimeEntryFacts,
+  clientNamed,
+  invoiceStatus,
   needsConnections,
   needsEveryOpenTodo,
   needsTheDay,
@@ -256,6 +260,31 @@ export async function loadCommandState(
     work?.clientId,
     ...suggested.map((entry) => entry.suggestedClientId),
   ].filter((each) => each !== null && each !== undefined)
+  // A command about how a Client is billed is decided against that Client's own
+  // row and the invoices they still have in hand: moving their payment terms
+  // moves the day an unsent invoice falls due (`client.setInvoicing`).
+  const aboutClient = clientNamed(command)
+  if (aboutClient !== null) wantedClients.push(aboutClient)
+  const invoices: InvoiceFacts[] =
+    aboutClient === null
+      ? []
+      : (
+          await db.invoice.findMany({
+            where: {
+              userId,
+              clientId: aboutClient,
+              status: { in: [...UNSENT_INVOICE_STATUSES] },
+            },
+            select: {
+              id: true,
+              clientId: true,
+              status: true,
+              issuedDay: true,
+              paymentTermsDays: true,
+            },
+          })
+        ).map((row) => ({ ...row, status: invoiceStatus.parse(row.status) }))
+
   const [projects, clients] = await Promise.all([
     wanted.length > 0
       ? db.project.findMany({
@@ -266,7 +295,7 @@ export async function loadCommandState(
     wantedClients.length > 0
       ? db.client.findMany({
           where: { userId, id: { in: [...new Set(wantedClients)] } },
-          select: { id: true },
+          select: { id: true, paymentTermsDays: true },
         })
       : [],
   ])
@@ -282,6 +311,7 @@ export async function loadCommandState(
     timeEntries,
     projects,
     clients,
+    invoices,
     settings: {
       timeZone,
       sentBackDays: settings?.sentBackDays ?? SETTINGS_DEFAULTS.sentBackDays,
@@ -415,7 +445,18 @@ export async function persistOps(db: Db, userId: string, ops: readonly Op[]): Pr
         await db.project.create({
           data: { ...rest, userId, circleId: null, createdAt: new Date(createdAt) },
         })
+        break
       }
+      // How a Client is billed. `updateMany` with the user on it is what keeps
+      // one user's change from landing on another's Client.
+      case 'client.set':
+        await db.client.updateMany({ where: { id: op.id, userId }, data: op.set })
+        break
+      // A draft that follows its Client's new payment terms: the terms it will
+      // be sent under, and the day it now falls due (`client.setInvoicing`).
+      case 'invoice.set':
+        await db.invoice.updateMany({ where: { id: op.id, userId }, data: op.set })
+        break
     }
   }
 }

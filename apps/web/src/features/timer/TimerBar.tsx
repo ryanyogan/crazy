@@ -167,15 +167,6 @@ export function TimerBar({ place }: { place: TimerPlace }) {
             </div>
           )}
 
-          {/* What she is timing, where the strip has room for it: the Todo the
-              entry was started from, in a word and cut short rather than
-              wrapped. The full bar is frame 3a's and draws no such line. */}
-          {compact && running?.todoTitle && (
-            <p className="timer__todo" title={running.todoTitle}>
-              {running.todoTitle}
-            </p>
-          )}
-
           {receipt ? (
             // Billing software owes a receipt: what was just decided about her
             // money, in the place the figures were.
@@ -211,7 +202,15 @@ export function TimerBar({ place }: { place: TimerPlace }) {
 
           {/* Keyed by the note as it stands: a wording that arrives from another
               device replaces the field's draft, and nothing else does. */}
-          {running && <TimerNote key={`${running.id}:${running.note}`} entry={running} />}
+          {/* One strip has room for one line about the work. The note is it; until
+              there is one, the Todo the entry was started from stands in its place. */}
+          {running && (
+            <TimerNote
+              key={`${running.id}:${running.note}`}
+              entry={running}
+              standIn={compact ? running.todoTitle : null}
+            />
+          )}
 
           {/* The one bold thing. Only the compact header wears it: the full bar
               is frame 3a's and keeps still. */}
@@ -255,7 +254,7 @@ function MinuteRule({ startedAt, now }: { startedAt: string; now: Date }) {
  * leaves the field or presses enter, never on a keystroke: a command a second
  * is a command a second, and a half-typed note is not what they meant.
  */
-function TimerNote({ entry }: { entry: TimerEntry }) {
+function TimerNote({ entry, standIn }: { entry: TimerEntry; standIn: string | null }) {
   const command = useCommand()
   const [draft, setDraft] = useState(entry.note)
 
@@ -264,7 +263,7 @@ function TimerNote({ entry }: { entry: TimerEntry }) {
       className="input timer__note"
       value={draft}
       maxLength={500}
-      placeholder="Add a note for this entry…"
+      placeholder={standIn ?? 'Add a note for this entry…'}
       aria-label="Note for this Time entry"
       onChange={(event) => setDraft(event.target.value)}
       onBlur={() => {

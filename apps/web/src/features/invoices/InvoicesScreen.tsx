@@ -141,7 +141,7 @@ export function InvoicesScreen() {
           the list instead of sitting beside it (derived, docs/BRIEF.md). */}
       {read.open !== null && (
         <aside className="inv__aside">
-          <InvoiceDraft invoice={read.open} actions />
+          <InvoiceDraft invoice={read.open} actions connected={read.billingConnections} />
         </aside>
       )}
     </div>

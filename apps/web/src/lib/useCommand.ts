@@ -116,6 +116,7 @@ function commandState(queryClient: QueryClient, command: Command): CommandState 
   const integrations = queryClient.getQueryData(integrationsQuery.queryKey)
   const shell = queryClient.getQueryData(shellQuery.queryKey)
   const timer = queryClient.getQueryData(timerQuery.queryKey)
+  const timerHeld = timerFacts(timer ?? {}, periodsHeld(queryClient))
   const named = signalsNamed(command)
   // A command that names no Signal is decided against the day if it has been
   // read, and otherwise against whatever the Projects screen read.
@@ -139,7 +140,17 @@ function commandState(queryClient: QueryClient, command: Command): CommandState 
     // The one rule that says a time out loud is the overlap: it names the
     // hours it clashed with, on the user's own wall clock.
     ...(shell ? { timeZone: shell.timeZone } : {}),
-    ...timerFacts(timer ?? {}, periodsHeld(queryClient)),
+    ...timerHeld,
+    // The Clients this browser holds: the picker's, for a timer command, and
+    // the Integrations screen's, whose rows carry how each is billed. A Client
+    // in neither is not guessed at; the Coordinator decides against D1.
+    clients: [
+      ...(timerHeld.clients ?? []),
+      ...(integrations?.clients ?? []).map((client) => ({
+        id: client.id,
+        paymentTermsDays: client.paymentTermsDays,
+      })),
+    ],
   }
 }
 

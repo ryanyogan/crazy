@@ -1,7 +1,14 @@
 import { describe, expect, test } from 'vite-plus/test'
 import { type CommandState, apply, command, decide } from './command'
 import { shellDestinations } from './destinations'
-import { overlayClerk, providerFromClerk, scopesLabel } from './integrations'
+import {
+  type ClientInvoicing,
+  invoiceSyncTargets,
+  invoicingTerms,
+  overlayClerk,
+  providerFromClerk,
+  scopesLabel,
+} from './integrations'
 
 const NOW = new Date('2025-09-17T14:00:00Z')
 const state = (connections: CommandState['connections'] = []): CommandState => ({
@@ -111,6 +118,143 @@ describe('what Clerk reports', () => {
     expect(providerFromClerk('oauth_google')).toBe('google')
     expect(providerFromClerk('facebook')).toBeNull()
     expect(scopesLabel('')).toBeNull()
+  })
+})
+
+describe('how a Client is billed', () => {
+  const MERIDIAN: ClientInvoicing = {
+    id: 'client_meridian',
+    name: 'Meridian Health',
+    arrangement: 'project_fee',
+    rateCents: 210_00,
+    roundingMinutes: 15,
+    budgetHours: 40,
+    overageRateCents: null,
+    currency: 'USD',
+    cadence: 'monthly',
+    paymentTermsDays: 30,
+    autoDraft: true,
+    sendWithoutReview: false,
+  }
+  /** Her September invoice, still hers: the one the terms follow. */
+  const DRAFT = {
+    id: 'invoice_meridian_sep',
+    clientId: MERIDIAN.id,
+    status: 'review',
+    issuedDay: '2025-09-19',
+    paymentTermsDays: 30,
+  } as const
+  const hers = (over: Partial<CommandState> = {}): CommandState => ({
+    ...state(),
+    billing: true,
+    clients: [{ id: MERIDIAN.id, paymentTermsDays: MERIDIAN.paymentTermsDays }],
+    ...over,
+  })
+
+  const setting = (set: Record<string, unknown>, over?: Partial<CommandState>) =>
+    decide(hers(over), { type: 'client.setInvoicing', clientId: MERIDIAN.id, set } as never, NOW)
+
+  test('each setting lands on the Client, and the screen shows it at once', () => {
+    for (const set of [
+      { cadence: 'biweekly' },
+      { paymentTermsDays: 15 },
+      { autoDraft: false },
+      { sendWithoutReview: true },
+    ] as const) {
+      const decision = setting(set)
+      if (!decision.ok) throw new Error(decision.reason)
+      const after = apply({ clients: [MERIDIAN] }, decision.ops)
+      expect(after.clients?.[0]).toMatchObject(set)
+    }
+  })
+
+  test('a new Client sends nothing unread: it is off until she turns it on', () => {
+    // The column defaults to false (migration 0014) and the command is the only
+    // way past it, which is why turning it on is a change a user has to make.
+    expect(MERIDIAN.sendWithoutReview).toBe(false)
+    const decision = setting({ sendWithoutReview: true })
+    expect(decision.ok && decision.ops[0]).toMatchObject({
+      type: 'client.set',
+      set: { sendWithoutReview: true },
+    })
+  })
+
+  test("somebody else's Client is not hers to bill", () => {
+    const decision = decide(
+      hers({ clients: [] }),
+      { type: 'client.setInvoicing', clientId: MERIDIAN.id, set: { autoDraft: true } },
+      NOW,
+    )
+    expect(decision).toEqual({ ok: false, reason: 'That Client is not one of yours.' })
+  })
+
+  test('with the Billing module off there are no Clients to bill', () => {
+    const decision = decide(
+      { ...hers(), billing: false },
+      { type: 'client.setInvoicing', clientId: MERIDIAN.id, set: { cadence: 'monthly' } },
+      NOW,
+    )
+    expect(decision).toEqual({
+      ok: false,
+      reason: 'Clients belong to the Billing module, which is off.',
+    })
+  })
+
+  test('an unknown cadence, impossible terms, or nothing at all is not a change', () => {
+    for (const set of [
+      { cadence: 'fortnightly' },
+      { paymentTermsDays: -1 },
+      { paymentTermsDays: 400 },
+      { paymentTermsDays: 30.5 },
+      {},
+    ]) {
+      const parsed = command.safeParse({
+        type: 'client.setInvoicing',
+        clientId: MERIDIAN.id,
+        set,
+      })
+      expect(parsed.success).toBe(false)
+    }
+  })
+
+  test('terms she has not sent yet follow the Client; a sent invoice keeps its own', () => {
+    const sent = { ...DRAFT, id: 'invoice_meridian_aug', status: 'sent' as const }
+    const decision = setting({ paymentTermsDays: 45 }, { invoices: [DRAFT, sent] })
+    if (!decision.ok) throw new Error(decision.reason)
+    expect(decision.ops).toEqual([
+      { type: 'client.set', id: MERIDIAN.id, set: { paymentTermsDays: 45 } },
+      // Issued 19 Sep, net 45: 3 Nov, counted in days and never off a clock.
+      {
+        type: 'invoice.set',
+        id: DRAFT.id,
+        set: { paymentTermsDays: 45, dueDay: '2025-11-03' },
+      },
+    ])
+  })
+
+  test('a change that is not the terms leaves every invoice alone', () => {
+    const decision = setting({ autoDraft: false }, { invoices: [DRAFT] })
+    expect(decision.ok && decision.ops).toHaveLength(1)
+  })
+
+  test("a Client's terms read as frame 2c writes them", () => {
+    expect(invoicingTerms(MERIDIAN)).toBe('Project fee · $210/h · 15-min rounding · net 30')
+    expect(
+      invoicingTerms({
+        ...MERIDIAN,
+        arrangement: 'retainer',
+        rateCents: 180_00,
+        budgetHours: 20,
+        overageRateCents: 200_00,
+      }),
+    ).toBe('20h/mo · $3,600 · overage $200/h · net 30')
+  })
+
+  test('both screens say the same of a billing Provider', () => {
+    const [xero, quickbooks] = invoiceSyncTargets([])
+    expect(xero).toMatchObject({ name: 'Xero', status: 'not connected' })
+    expect(quickbooks).toMatchObject({ name: 'QuickBooks', status: 'not available yet' })
+    expect(invoiceSyncTargets(['xero'])[0]).toMatchObject({ status: 'connected', why: null })
   })
 })
 

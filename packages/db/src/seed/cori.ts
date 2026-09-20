@@ -34,6 +34,9 @@ interface ClientSeed {
   budgetHours: number | null
   /** Past a retainer's hours, what an hour is charged at instead. */
   overageRateCents: number | null
+  /** Frame 2c's two switches: auto-draft on, send without review off (ticket 23). */
+  autoDraft: boolean
+  sendWithoutReview: boolean
   /** Where her September invoice has got to (frame 2b's three tags). */
   invoiceStatus: InvoiceStatus
   /** What she and the Client call it; Meridian's is frame 2b's INV-0042. */
@@ -53,6 +56,8 @@ const CLIENTS: ClientSeed[] = [
     cadence: 'monthly',
     budgetHours: 40,
     overageRateCents: null,
+    autoDraft: true,
+    sendWithoutReview: false,
     // Frame 2b: "Ready to review", and the draft the second card opens.
     invoiceStatus: 'review',
     invoiceNumber: 'INV-0042',
@@ -68,6 +73,8 @@ const CLIENTS: ClientSeed[] = [
     cadence: 'biweekly',
     budgetHours: null,
     overageRateCents: null,
+    autoDraft: true,
+    sendWithoutReview: false,
     invoiceStatus: 'draft',
     invoiceNumber: 'INV-0043',
   },
@@ -83,6 +90,8 @@ const CLIENTS: ClientSeed[] = [
     cadence: 'first_of_month',
     budgetHours: 20,
     overageRateCents: 200_00,
+    autoDraft: true,
+    sendWithoutReview: false,
     invoiceStatus: 'draft',
     invoiceNumber: 'INV-0044',
   },

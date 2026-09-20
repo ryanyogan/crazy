@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { addDays, clockTime, startOfDay } from './clock'
-import { LIFECYCLE_LIMITS } from './integrations'
+import { type ClientInvoicing, INVOICING_LIMITS, LIFECYCLE_LIMITS } from './integrations'
+import { type InvoiceStatus, dueDay, isUnsent } from './invoice'
 import { timeZone } from './settings'
 import { type DayEvent, LAST_HOUR, hoursIfSlottedAt, meetingHolds } from './timeline'
 import { type Signal, formatHour } from './today'
@@ -25,6 +26,7 @@ import {
   isSnoozed,
   sameSource,
   source,
+  clientCadence,
   connectionStatus,
   projectStatus,
   provider,
@@ -66,6 +68,29 @@ export const lifecycleChange = z
   .partial()
   .refine((set) => Object.keys(set).length > 0, 'Nothing to change')
 export type LifecycleChange = z.infer<typeof lifecycleChange>
+
+/**
+ * What a user may change about how one Client is billed: at least one of them,
+ * each within its set or its limits. The rate, the rounding and the arrangement
+ * are not here — they are the terms of the work itself, which no screen offers
+ * to change yet; these four are what frame 2c puts a control on.
+ */
+export const invoicingChange = z
+  .object({
+    cadence: clientCadence,
+    paymentTermsDays: z
+      .number()
+      .int()
+      .min(INVOICING_LIMITS.paymentTermsDays.min)
+      .max(INVOICING_LIMITS.paymentTermsDays.max),
+    /** Whether Crazy puts the next invoice together when the cadence comes due. */
+    autoDraft: z.boolean(),
+    /** Whether such an invoice may go out unread. Off unless she turns it on. */
+    sendWithoutReview: z.boolean(),
+  })
+  .partial()
+  .refine((set) => Object.keys(set).length > 0, 'Nothing to change')
+export type InvoicingChange = z.infer<typeof invoicingChange>
 
 export const command = z.discriminatedUnion('type', [
   z.object({ type: z.literal('todo.complete'), todoId: id }),
@@ -184,6 +209,10 @@ export const command = z.discriminatedUnion('type', [
     name: z.string().trim().min(1).max(200),
     clientId: id.nullable().optional(),
   }),
+  // How one Client is billed (frame 2c): when their invoice goes out, how long
+  // they have to pay, whether Crazy drafts it for her, and whether it may ever
+  // go out without her reading it. The Billing module's, like the timer.
+  z.object({ type: z.literal('client.setInvoicing'), clientId: id, set: invoicingChange }),
   // The Coordinator's own, at the user's local midnight (`SERVER_ONLY`): each
   // `today` Todo is carried over or sent back, and the backlog ages.
   z.object({ type: z.literal('rollover') }),
@@ -318,6 +347,16 @@ export const op = z.discriminatedUnion('type', [
   // than no record at all, so a mistaken entry goes rather than being marked.
   z.object({ type: z.literal('timeEntry.delete'), id }),
   z.object({ type: z.literal('project.insert'), project: newProject }),
+  // How a Client is billed, changed on the Client itself.
+  z.object({ type: z.literal('client.set'), id, set: invoicingChange }),
+  // A draft whose Client's payment terms have moved: it falls due on a new day.
+  // Only an invoice that has not gone out is re-termed; a sent or paid one
+  // keeps the terms it was sent under, which is the whole point of the copy.
+  z.object({
+    type: z.literal('invoice.set'),
+    id,
+    set: z.object({ paymentTermsDays: z.number().int().min(0), dueDay: day }),
+  }),
 ])
 export type Op = z.infer<typeof op>
 
@@ -390,8 +429,36 @@ export interface CommandState {
   timeEntries?: readonly TimeEntryFacts[]
   /** The Project a timer command names, if it is the user's (`workNamed`). */
   projects?: readonly ProjectFacts[]
-  /** The Client a timer command names, if it is the user's (`workNamed`). */
-  clients?: readonly { id: string }[]
+  /**
+   * The Client a command names, if it is the user's: a timer's work
+   * (`workNamed`), or the Client whose invoice settings are being changed
+   * (`clientNamed`). A Client that is not here is gone or somebody else's.
+   */
+  clients?: readonly ClientFacts[]
+  /**
+   * The invoices a command is decided against: the ones a named Client has
+   * that have not gone out. Loaded only for `client.setInvoicing`, because
+   * moving a Client's payment terms moves the day their draft falls due.
+   */
+  invoices?: readonly InvoiceFacts[]
+}
+
+/** What `decide` needs to know of a Client. */
+export interface ClientFacts {
+  id: string
+  /** How long they have to pay today; absent where the cache holding them does not say. */
+  paymentTermsDays?: number
+}
+
+/** What `decide` needs to know of one of the user's invoices. */
+export interface InvoiceFacts {
+  id: string
+  clientId: string
+  /** Where it has got to: only one still in hand follows a change of terms. */
+  status: InvoiceStatus
+  /** The local day it was issued on, which its due day is counted from. */
+  issuedDay: string
+  paymentTermsDays: number
 }
 
 export type Decision = { ok: true; ops: Op[] } | { ok: false; reason: string }
@@ -539,6 +606,16 @@ export function workNamed(
   }
 }
 
+/**
+ * The Client a command is about rather than merely names as work: its own row,
+ * and the invoices it still has in hand, are what such a command is decided
+ * against. Only the user's own are ever loaded, so a Client that is not there
+ * is not theirs to bill.
+ */
+export function clientNamed(input: Command): string | null {
+  return input.type === 'client.setInvoicing' ? input.clientId : null
+}
+
 /** A snoozed Todo has left the day: nothing that plans or takes on the day applies to it. */
 const OUT_OF_THE_DAY = 'A snoozed Todo is out of the day until its snooze ends.'
 
@@ -657,6 +734,9 @@ const isOpen = (todo: TodoFacts) => (OPEN_TODO_STATES as readonly TodoState[]).i
 
 /** The timer is the Billing module's, and there is no timer without it. */
 const BILLING_OFF = 'The timer belongs to the Billing module, which is off.'
+
+/** The same rule, said of the other half of the module: Clients and their invoices. */
+const CLIENTS_OFF = 'Clients belong to the Billing module, which is off.'
 
 /** A timer command decided against nothing knows nothing; it must not guess. */
 const NO_ENTRIES = 'The timer needs the Time entries of the user it is for.'
@@ -1349,6 +1429,33 @@ export function decide(state: CommandState, input: Command, now: Date): Decision
         ],
       }
     }
+
+    // How one Client is billed (frame 2c). A Client exists only with the
+    // Billing module on, so the settings do too; and only the user's own
+    // Clients are ever loaded, so one that is not there is not theirs.
+    case 'client.setInvoicing': {
+      if (!state.billing) return refuse(CLIENTS_OFF)
+      const client = state.clients?.find((each) => each.id === input.clientId)
+      if (!client) return refuse('That Client is not one of yours.')
+
+      const ops: Op[] = [{ type: 'client.set', id: client.id, set: input.set }]
+      // Terms are what an invoice is due under, and a draft is still hers to
+      // change: one she has not sent follows the Client's terms, and moves the
+      // day it falls due with them. A sent or paid invoice keeps its own.
+      const terms = input.set.paymentTermsDays
+      if (terms !== undefined) {
+        for (const invoice of state.invoices ?? []) {
+          if (invoice.clientId !== client.id || !isUnsent(invoice.status)) continue
+          if (invoice.paymentTermsDays === terms) continue
+          ops.push({
+            type: 'invoice.set',
+            id: invoice.id,
+            set: { paymentTermsDays: terms, dueDay: dueDay(invoice.issuedDay, terms) },
+          })
+        }
+      }
+      return { ok: true, ops }
+    }
   }
 }
 
@@ -1390,6 +1497,11 @@ export interface Applicable {
   picker?: TimerPicker | null
   /** One period of the timesheet, where a state holds one: the Time screen's. */
   time?: TimeRead | null
+  /**
+   * The Clients and how each is billed, where a state holds them: the
+   * Integrations screen's, with the Billing module on.
+   */
+  clients?: readonly ClientInvoicing[]
   /** The zone its days are read in; a state that holds a period says which. */
   timeZone?: string
 }
@@ -1410,6 +1522,7 @@ export function apply<S extends Applicable>(state: S, ops: readonly Op[]): S {
   let timer = state.timer
   let picker = state.picker
   let time = state.time
+  let clients = state.clients
   for (const each of ops) {
     switch (each.type) {
       case 'todo.set':
@@ -1490,6 +1603,18 @@ export function apply<S extends Applicable>(state: S, ops: readonly Op[]): S {
       // that follows can be worded and chosen without reading the day again.
       case 'project.insert':
         if (picker) picker = addProject(picker, each.project)
+        break
+      // How a Client is billed, on the one screen that holds them.
+      case 'client.set':
+        clients = clients?.map((client) =>
+          client.id === each.id ? { ...client, ...each.set } : client,
+        )
+        break
+      // A re-termed draft: no cached state holds invoices — the Invoices screen
+      // reads its own query and is never patched — so there is nothing to lay
+      // this over. It is written to D1 and read back with the screen.
+      case 'invoice.set':
+        break
     }
   }
   if (
@@ -1500,7 +1625,8 @@ export function apply<S extends Applicable>(state: S, ops: readonly Op[]): S {
     connections === state.connections &&
     timer === state.timer &&
     picker === state.picker &&
-    time === state.time
+    time === state.time &&
+    clients === state.clients
   ) {
     return state
   }
@@ -1515,6 +1641,7 @@ export function apply<S extends Applicable>(state: S, ops: readonly Op[]): S {
     ...(timer === state.timer ? {} : { timer }),
     ...(picker === state.picker ? {} : { picker }),
     ...(time === state.time ? {} : { time }),
+    ...(clients === state.clients ? {} : { clients }),
   } as S
 }
 
@@ -1589,6 +1716,10 @@ function rowTouched(each: Op): string {
       return `timeEntry:${each.id}`
     case 'project.insert':
       return `project:${each.project.id}`
+    case 'client.set':
+      return `client:${each.id}`
+    case 'invoice.set':
+      return `invoice:${each.id}`
   }
 }
 

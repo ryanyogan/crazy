@@ -2,7 +2,9 @@ import { Blueprint, NotWired } from '@crazy/ui'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { integrationsQuery } from '#/lib/queries'
 import { BillingCard } from './BillingCard'
+import { BillingProviders } from './BillingProviders'
 import { ManageAccountButton } from './ClerkActions'
+import { InvoiceSettingsCard } from './InvoiceSettingsCard'
 import { ProviderCards } from './ProviderCards'
 import { RealtimeCard } from './RealtimeCard'
 
@@ -16,7 +18,7 @@ export function IntegrationsScreen() {
   const { account } = data
 
   return (
-    <div className="screen integrations">
+    <div className="screen integrations" data-billing={data.billing ? 'on' : 'off'}>
       <section className="integrations__providers" aria-labelledby="integrations-title">
         <h1 id="integrations-title" className="screen__title integrations__title">
           Integrations
@@ -27,9 +29,18 @@ export function IntegrationsScreen() {
           now={new Date(data.now)}
           timeZone={data.timeZone}
         />
+        {/* Frame 2c: the billing and accounting Providers, under the ones every
+            user has, and only with the Billing module on. */}
+        {data.billing && (
+          <BillingProviders connections={data.connections} canConnect={data.canConnect} />
+        )}
       </section>
 
       <aside className="integrations__aside">
+        {/* Frame 2c heads the column with it: with the Billing module on, how
+            her Clients are billed is what she came to this screen for. */}
+        {data.billing && <InvoiceSettingsCard clients={data.clients} />}
+
         <Blueprint as="section" className="card account" aria-labelledby="account-title">
           <h2 id="account-title" className="card-kicker">
             Account

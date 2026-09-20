@@ -5,6 +5,7 @@ import {
   type InvoicesRead,
   type MonthEndHold,
   type MonthEndHoldInput,
+  BILLING_PROVIDERS,
   addDays,
   amountCents,
   billedMinutes,
@@ -13,6 +14,7 @@ import {
   invoiceToOpen,
   needsClient,
   periodOf,
+  provider,
   secondsIn,
   startOfDay,
   wallClock,
@@ -47,7 +49,7 @@ export async function readInvoices(
   const periodStart = startOfDay(from, timeZone)
   const periodEnd = startOfDay(addDays(to, 1), timeZone)
 
-  const [invoiceRows, entries, clients] = await Promise.all([
+  const [invoiceRows, entries, clients, billingRows] = await Promise.all([
     db.invoice.findMany({
       where: { userId, fromDay: from },
       include: {
@@ -79,6 +81,14 @@ export async function readInvoices(
     db.client.findMany({
       where: { userId },
       select: { id: true, name: true, rateCents: true, roundingMinutes: true },
+    }),
+    // Where an invoice could be sent once anything sends one: the billing and
+    // accounting Providers this user has a Connection to. The Integrations
+    // screen draws the same Providers off the same rows, so the two screens
+    // cannot come to disagree about what is connected.
+    db.connection.findMany({
+      where: { userId, provider: { in: [...BILLING_PROVIDERS] } },
+      select: { provider: true },
     }),
   ])
 
@@ -145,6 +155,7 @@ export async function readInvoices(
     // Everything she bills is in one currency until a Client is in another;
     // the period takes the first invoice's, and the default has to be something.
     currency: invoices[0]?.currency ?? 'USD',
+    billingConnections: [...new Set(billingRows.map((row) => provider.parse(row.provider)))],
   }
 }
 

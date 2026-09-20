@@ -1,13 +1,13 @@
 import {
   type ConnectionView,
-  PROVIDERS,
   PROVIDER_CARDS,
   type Provider,
   SIDES,
   type Side,
-  UNAVAILABLE_PROVIDERS,
+  WORK_PROVIDERS,
   ago,
   clockTime,
+  unavailableIn,
 } from '@crazy/shared'
 import { Blueprint, NotWired, Tag } from '@crazy/ui'
 import { useCommand } from '#/lib/useCommand'
@@ -22,11 +22,15 @@ interface CardsProps {
   timeZone: string
 }
 
-/** Every Provider Crazy knows of: connected first as D1 orders them, then the rest. */
+/**
+ * The Providers a day's work runs through: connected first as D1 orders them,
+ * then the rest. The billing and accounting ones are a section of their own
+ * with the Billing module on (`BillingProviders`, frame 2c).
+ */
 export function ProviderCards({ connections, canConnect, now, timeZone }: CardsProps) {
   return (
     <ul className="providers">
-      {PROVIDERS.map((provider) => (
+      {WORK_PROVIDERS.map((provider) => (
         <ProviderCard
           key={provider}
           provider={provider}
@@ -36,7 +40,7 @@ export function ProviderCards({ connections, canConnect, now, timeZone }: CardsP
           timeZone={timeZone}
         />
       ))}
-      {UNAVAILABLE_PROVIDERS.map((card) => (
+      {unavailableIn('work').map((card) => (
         <Blueprint as="li" key={card.key} className="card provider provider--open">
           <div className="provider__head">
             <Tag className="provider__chip" aria-hidden="true">

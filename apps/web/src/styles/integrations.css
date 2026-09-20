@@ -23,6 +23,16 @@
   padding: 12px 14px;
 }
 
+/* Each card's kicker is a heading here, because it names the card to assistive
+   technology; the frames draw a plain div, so Industry's heading treatment is
+   put back to the body's, as the Invoices screen does it. */
+.integrations .card-kicker {
+  margin: 0;
+  font-family: var(--font-body);
+  font-weight: 400;
+  line-height: inherit;
+}
+
 /* ── Providers ────────────────────────────────────────────────────────────── */
 
 .providers {
@@ -259,10 +269,126 @@
   right: 2px;
 }
 
+/* ── Billing and accounting (frame 2c) ────────────────────────────────────── */
+
+/* Its own class names rather than the Providers' own, so that nothing here can
+   reach a card on another screen: CSS is global (docs/BRIEF.md). */
+.intg-bill {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+}
+
+.intg-bill__title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 20px;
+  letter-spacing: 0.02em;
+}
+
+.intg-bill__note {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: var(--color-neutral-700);
+}
+
+/* ── Invoice settings, per Client (frame 2c) ──────────────────────────────── */
+
+.intg-inv {
+  gap: 10px;
+}
+
+/* One Client, with a hairline above it, as the frame draws the list. It is a
+   fieldset so that every control in it is announced as that Client's; the
+   browser's own fieldset box is taken off and the hairline put back. */
+.intg-inv__client {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding: 8px 0 2px;
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--color-text) 8%, transparent);
+  font-size: 12px;
+  min-width: 0;
+}
+
+.intg-inv__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.intg-inv__name {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 15px;
+}
+
+/* The cadence reads as the tag the frame draws there, and is a control. */
+.intg-inv__cadence select {
+  padding: 0 2px;
+  border: 0;
+  border-bottom: 1px solid var(--color-divider);
+  border-radius: 0;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  color: var(--color-neutral-700);
+  cursor: pointer;
+}
+
+.intg-inv__terms {
+  margin: 0;
+  color: var(--color-neutral-700);
+}
+
+.intg-inv__row {
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+/* The second yes, in place: nothing is dismissed to reach it and nothing is
+   turned on until it is pressed. */
+.intg-inv__confirm {
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 8px;
+  border: 1px solid var(--color-accent);
+}
+
+.intg-inv__asking {
+  margin: 0;
+  font-size: 13px;
+}
+
+.intg-inv__answers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.intg-inv__yes {
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+.intg-inv__note-what {
+  color: var(--color-text);
+}
+
 @media (min-width: 900px) {
   .integrations {
     grid-template-columns: minmax(0, 1fr) 340px;
     gap: 28px;
+  }
+
+  /* Frame 2c gives the column 20px more than frame 1g does, for the Client
+     settings that sit in it with the Billing module on. */
+  .integrations[data-billing='on'] {
+    grid-template-columns: minmax(0, 1fr) 360px;
   }
 
   .integrations .integrations__title {

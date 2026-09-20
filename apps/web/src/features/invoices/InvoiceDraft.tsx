@@ -1,8 +1,10 @@
 import {
   type InvoiceFull,
+  type Provider,
   billedHours,
   dayLabel,
   explainInvoice,
+  invoiceSyncTargets,
   money,
   moneyShort,
   termsLabel,
@@ -15,17 +17,9 @@ const SEND_WHY =
 const PDF_WHY =
   'Crazy cannot render an invoice as a PDF yet. Nothing has been drawn for a Client to read.'
 
+/** Said of a target that is connected: there is still nothing that pushes anything to it. */
 const SYNC_WHY =
-  'Crazy has no accounting Connection to push this invoice to. Billing and accounting Providers come with their own ticket.'
-
-/** Where an invoice is meant to end up once Crazy can send one. */
-const TARGETS = [
-  { name: 'QuickBooks', why: SYNC_WHY },
-  {
-    name: 'Harvest',
-    why: 'Harvest cannot be connected at all yet: it needs an OAuth path Crazy does not have (ADR 0001).',
-  },
-]
+  'Crazy has nothing that pushes an invoice out. A Connection is read-only, and nothing has been sent anywhere.'
 
 /**
  * One invoice opened: its lines, the hours and amount of each, the total with
@@ -41,12 +35,16 @@ const TARGETS = [
 export function InvoiceDraft({
   invoice,
   actions = false,
+  connected = [],
 }: {
   invoice: InvoiceFull
   /** Whether the card carries Send and the accounting targets (the Invoices screen). */
   actions?: boolean
+  /** The billing Providers she has a Connection to; the Integrations screen's own rows. */
+  connected?: readonly Provider[]
 }) {
   const unsent = invoice.status === 'draft' || invoice.status === 'review'
+  const targets = invoiceSyncTargets(connected)
   const said = explainInvoice(invoice)
   return (
     <Blueprint as="section" className="card inv__draft" aria-labelledby="inv-draft">
@@ -111,11 +109,13 @@ export function InvoiceDraft({
       {actions && (
         <div className="inv__sync">
           <h3 className="inv__how-title">Sync to</h3>
+          {/* The same Providers the Integrations screen draws, with the same
+              word for where each has got to (`invoiceSyncTargets`). */}
           <div className="inv__targets">
-            {TARGETS.map((target) => (
-              <NotWired key={target.name} why={target.why}>
+            {targets.map((target) => (
+              <NotWired key={target.name} why={target.why ?? SYNC_WHY}>
                 <button type="button" className="tag tag-neutral inv__target">
-                  {target.name} · not connected
+                  {target.name} · {target.status}
                 </button>
               </NotWired>
             ))}
