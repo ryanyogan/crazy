@@ -68,6 +68,7 @@ export const COPY: [from: string, to: string][] = [
   ['Reply to Priya on rate limits', 'Reply to Priya on edge rate limits'],
   // The repo writes British English, here and in the ticket that asked for it.
   ['Backlog aging', 'Backlog ageing'],
+  ['Utilization', 'Utilisation'],
   // The glossary's word is Todo, and the card is the Priority stack: an
   // ordering of Todos and not a list of its own. Frame 2a's heading says what
   // the control on each row is for, which is worth keeping.
@@ -373,6 +374,45 @@ const DAY_CARD_FIGURES: Mask[] = [0, 1, 2, 3, 4].flatMap((index) => {
   ]
 })
 
+/*
+ * Frame 4a is the Metrics screen's Time tab. Its layout is the app's to the
+ * pixel; what is masked inside it is what the frame quotes from no timesheet
+ * of Cori's, because the app counts her own rows and true arithmetic wins.
+ */
+
+const MONEY_DRAWN_NOT_WIRED =
+  'The Money option in the tab control. The frame draws it as an ordinary choice; nothing is behind it, so the app draws it plainly unavailable, keeps it in the tab order and says why to assistive technology. It goes when there is a Money tab'
+
+const TIME_FIGURES =
+  'The six figures and the four lines under them that the frame writes from no timesheet of hers (131h tracked, 78% billable, $196 an hour, 2.3h untagged, a 1h 24m average session). The app counts Cori\'s own Time entries at the pinned moment. "Of 30h/wk target" and "per tracked hour, all work" are the same in both and are compared, as is every kicker. A debt for the designer: 4a and 2b cannot both be right about one month'
+
+const LEGEND_NAMES =
+  'The legend. The frame shortens each Client to one word ("Meridian", "Quill") and calls the fourth band "non-billable"; the app says each Client\'s name as every other screen says it, and calls the band what it is — work that goes on nobody\'s bill. The swatches and their order are compared'
+
+const WEEK_BARS =
+  "The bars, the hours under each week and the line beneath them. The frame's eight columns are hand-drawn percentages over totals that do not follow from them (W38 draws 56% of the plot for 17h where W32 draws 80% for 28h), and its three newest weeks are September's, which tickets 19–21 pinned — Cori's W36, W37 and W38 are 19h, 36h and the 14h she has done so far this week. The app draws each week against the fullest of the eight. The card, the week labels and the plot's baseline are compared. A debt for the designer"
+
+const HEAT_CELLS =
+  'The cells of "when you work", and the three figures under it. The frame\'s grid and its 08:52 / 17:31 / 4.1 are drawn from no timesheet; the app counts the hours Cori actually tracked in each weekday and hour of the last thirty days. The axis labels, the card and the line under it — which is Crazy\'s own, and seeded — are compared'
+
+const UNBILLED_LINES =
+  'The line under each Client\'s amount. The frame writes them from three different things ("28h · invoice ready · oldest 17d", "22.5h · drafts Friday", "retainer · bills 1 Oct"); the app says the hours behind the money and where the invoice has got to, in that Client\'s own terms. **The names, the amounts and the bars are compared and they are the frame\'s own** — $5,880, $4,275, $3,600 at 100%, 73% and 61%'
+
+const TIME_TO_PAID =
+  'The card\'s own line. "$13,755 unbilled" is the app\'s figure too, and comes from the Invoices screen\'s read model; "avg time-to-invoice 9 days · avg time-to-paid 22 days" cannot be said at all, because nothing has ever been sent or paid (ticket 21), and a figure with nothing behind it would be faked. The app says what it can count: the total, and how old the oldest unbilled entry is'
+
+const BURN_LINES =
+  "Each Client's name, what they have used and the line under it. The frame shortens the names, calls Bramble's \"20h Sep retainer\" where the app says what the arrangement is, and quotes hours and a pace from no timesheet. The app counts her month: Bramble's 17.8h of 20h and Meridian's 70% of a 40h budget are the frame's own figures and their bars are compared. Quill's bar is masked because the frame draws an hourly Client at 45% of a cap it does not have"
+
+const BURN_PACE =
+  'The black tick. The frame puts it at 62% and 57% of two bars in the same month, which cannot both be where the calendar is; the app puts it where the month actually stands at the pinned moment, which is the same place on every bar'
+
+const BURN_LEGEND =
+  'The line under the burn. The frame says "at this point in the period"; the period here is a month, and the app says so'
+
+const ESTIMATE_KINDS =
+  'The rows of "estimate vs actual", and the foot of the three cards. The frame groups by four kinds of work — Research, Design, Meetings, Admin — that are nothing in the domain; the app gathers the Todos that carry both an estimate and a timer by their **energy**, which is Crazy\'s own word for a kind of work, and Cori has three of them. One row fewer makes the card a few pixels shorter than the frame\'s, and the row is as tall as its tallest card. A debt for the designer: the kinds want to be something a Todo actually has'
+
 /**
  * Frame 3a draws the timer bar on its own, at the width of the screen beside
  * the rail, and draws its idle and running states as separate cards. Each is
@@ -523,7 +563,7 @@ export const TARGETS: Target[] = [
         { x: 596, y: 101, width: 416, height: 309, why: CARD_NOT_SCREEN },
         { x: 176, y: 392, width: 420, height: 18, why: CARD_NOT_SCREEN },
         { x: 18, y: 54, width: 158, height: 38, why: NOTE_BEHIND_THE_PICKER },
-        { x: 466, y: 100, width: 130, height: 240, why: PICKER_FIGURES },
+        { x: 466, y: 100, width: 130, height: 246, why: PICKER_FIGURES },
         { x: 138, y: 24, width: 26, height: 26, why: SEEDED_FIGURES },
         { x: 176, y: 10, width: 420, height: 42, why: OPEN_CARD_ROW },
         { x: 830, y: 10, width: 182, height: 32, why: OPEN_CARD_ROW },
@@ -655,6 +695,72 @@ export const TARGETS: Target[] = [
      * each entry a compact two-line row, and the editor in the bottom sheet
      * rather than inside a row. Listed as derived in docs/BRIEF.md and
      * screenshotted, never compared.
+     */
+    phone: null,
+  },
+  {
+    frame: '4a',
+    title: 'Metrics · the Time tab',
+    route: '/metrics?tab=time',
+    persona: 'cori',
+    now: CORIS_MORNING,
+    // Frame 4a draws no time header, so the timer is stopped for the shot (see
+    // the note above frame 2b).
+    timer: 'idle',
+    desktop: {
+      regions: {
+        rail: { x: 0, y: 0, width: 168, height: 900 },
+        head: { x: 196, y: 22, width: 956, height: 43 },
+        // The six figures and the five cards are blueprints: measured with
+        // their corner marks, 6px beyond the box.
+        'headline figures': { x: 190, y: 77, width: 968, height: 125 },
+        'hours per week': { x: 190, y: 209, width: 562, height: 321 },
+        'when you work': { x: 756, y: 209, width: 402, height: 321 },
+        unbilled: { x: 190, y: 537, width: 317, height: 285 },
+        burn: { x: 515, y: 537, width: 317, height: 285 },
+        estimates: { x: 841, y: 537, width: 317, height: 285 },
+      },
+      masks: [
+        { x: 16, y: 232, width: 140, height: 92, why: RAIL_CIRCLES },
+        { x: 8, y: 828, width: 152, height: 64, why: FOOT_UNDRAWN },
+        { x: 884, y: 30, width: 62, height: 34, why: MONEY_DRAWN_NOT_WIRED },
+        // The six figures.
+        { x: 196, y: 116, width: 956, height: 32, why: TIME_FIGURES },
+        { x: 203, y: 150, width: 135, height: 36, why: TIME_FIGURES },
+        { x: 364, y: 150, width: 135, height: 20, why: TIME_FIGURES },
+        { x: 848, y: 150, width: 135, height: 20, why: TIME_FIGURES },
+        { x: 1010, y: 150, width: 135, height: 36, why: TIME_FIGURES },
+        // Hours per week by Client.
+        { x: 440, y: 228, width: 290, height: 18, why: LEGEND_NAMES },
+        { x: 206, y: 248, width: 524, height: 183, why: WEEK_BARS },
+        { x: 206, y: 460, width: 524, height: 16, why: WEEK_BARS },
+        { x: 206, y: 484, width: 524, height: 16, why: WEEK_BARS },
+        // When you work.
+        { x: 806, y: 276, width: 332, height: 134, why: HEAT_CELLS },
+        { x: 775, y: 466, width: 362, height: 24, why: HEAT_CELLS },
+        // Unbilled by Client: only the lines under each amount.
+        { x: 206, y: 624, width: 290, height: 16, why: UNBILLED_LINES },
+        { x: 206, y: 684, width: 290, height: 16, why: UNBILLED_LINES },
+        { x: 206, y: 744, width: 290, height: 16, why: UNBILLED_LINES },
+        { x: 206, y: 766, width: 290, height: 36, why: TIME_TO_PAID },
+        // Budget and retainer burn.
+        ...[0, 1, 2].flatMap((row) => [
+          { x: 531, y: 589 + row * 59, width: 290, height: 18, why: BURN_LINES },
+          { x: 531, y: 621 + row * 59, width: 290, height: 16, why: BURN_LINES },
+        ]),
+        { x: 680, y: 606, width: 40, height: 14, why: BURN_PACE },
+        { x: 680, y: 665, width: 40, height: 14, why: BURN_PACE },
+        { x: 531, y: 725, width: 290, height: 12, why: BURN_LINES },
+        { x: 531, y: 766, width: 290, height: 36, why: BURN_LEGEND },
+        // Estimate against actual.
+        { x: 857, y: 584, width: 292, height: 220, why: ESTIMATE_KINDS },
+        { x: 190, y: 800, width: 968, height: 24, why: ESTIMATE_KINDS },
+      ],
+    },
+    /*
+     * No phone frame: the Metrics screen's 390px layout is derived — the six
+     * figures in two columns and the five cards in one. Listed as derived in
+     * docs/BRIEF.md and screenshotted, never compared.
      */
     phone: null,
   },

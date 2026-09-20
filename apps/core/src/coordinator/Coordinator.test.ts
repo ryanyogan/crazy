@@ -553,9 +553,12 @@ it('lays the Cori persona over a user: Clients, Projects with and without one, h
       'SELECT count(*) AS n FROM time_entry WHERE userId = ? AND endedAt IS NULL',
     ),
   ).toEqual({ n: 1 })
+  // September's own hours: she has five earlier weeks behind them now, which
+  // frame 4a's eight-week chart reaches back over (ticket 22).
   const meridian = await one<{ hours: number }>(
     `SELECT round(sum((julianday(coalesce(e.endedAt, '2025-09-17T15:42:00.000Z')) - julianday(e.startedAt)) * 24), 1) AS hours
-     FROM time_entry e JOIN client c ON c.id = e.clientId WHERE e.userId = ? AND c.code = 'MER'`,
+     FROM time_entry e JOIN client c ON c.id = e.clientId
+     WHERE e.userId = ? AND c.code = 'MER' AND e.startedAt >= '2025-09-01T05:00:00.000Z'`,
   )
   expect(meridian.hours).toBeCloseTo(28, 0)
 

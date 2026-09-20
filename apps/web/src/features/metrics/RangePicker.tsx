@@ -1,7 +1,7 @@
-import type { MetricRange, MetricsView } from '@crazy/shared'
+import { METRIC_RANGES, METRIC_RANGE_LABELS, type MetricRange } from '@crazy/shared'
 
 interface RangePickerProps {
-  ranges: MetricsView['ranges']
+  range: MetricRange
   onPick: (range: MetricRange) => void
 }
 
@@ -12,19 +12,19 @@ interface RangePickerProps {
  * what changes the screen: the checked option is read back off the URL, so the
  * two can never disagree.
  */
-export function RangePicker({ ranges, onPick }: RangePickerProps) {
+export function RangePicker({ range, onPick }: RangePickerProps) {
   return (
     <span className="seg metrics__range" role="radiogroup" aria-label="How far back to look">
-      {ranges.map(({ range, label, selected }) => (
-        <label key={range} className="seg-opt">
+      {METRIC_RANGES.map((each) => (
+        <label key={each} className="seg-opt">
           <input
             type="radio"
             name="range"
-            value={range}
-            checked={selected}
-            onChange={() => onPick(range)}
+            value={each}
+            checked={each === range}
+            onChange={() => onPick(each)}
           />
-          {label}
+          {METRIC_RANGE_LABELS[each]}
         </label>
       ))}
     </span>

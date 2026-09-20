@@ -11,6 +11,7 @@ import {
   clientArrangement,
   invoiceStatus,
   invoiceToOpen,
+  needsClient,
   periodOf,
   secondsIn,
   startOfDay,
@@ -68,6 +69,7 @@ export async function readInvoices(
       select: {
         id: true,
         clientId: true,
+        projectId: true,
         billable: true,
         startedAt: true,
         endedAt: true,
@@ -117,6 +119,7 @@ export async function readInvoices(
   const hold = monthEndHold(
     entries.map((entry) => ({
       clientId: entry.clientId,
+      projectId: entry.projectId,
       billable: entry.billable,
       suggestedClientId: entry.suggestedClientId,
       seconds: secondsIn(asSpan(entry), periodStart, periodEnd, now),
@@ -182,6 +185,8 @@ function monthEndHold(
 
   for (const entry of entries) {
     if (entry.seconds <= 0) continue
+    // The user's own work is nobody's to bill and is not asked about.
+    if (entry.clientId === null && !needsClient(entry)) continue
     if (entry.clientId === null) {
       noClientCount += 1
       noClientSeconds += entry.seconds

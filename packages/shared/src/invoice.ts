@@ -389,6 +389,7 @@ export interface MonthEndHold {
 /** One of the period's Time entries, as the hold is counted over them. */
 export interface MonthEndHoldInput {
   clientId: string | null
+  projectId: string | null
   billable: boolean
   suggestedClientId: string | null
   /** The seconds of it that fell inside the period, counted no further than now. */

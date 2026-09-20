@@ -1,70 +1,52 @@
-import { type MetricRange, viewMetrics } from '@crazy/shared'
-import { StatTile } from '@crazy/ui'
+import { type MetricRange, type MetricTab } from '@crazy/shared'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'
-import { metricsQuery } from '#/lib/queries'
-import { BacklogAgeing, CompletionDays, FocusByHour, TodoSources } from './Charts'
+import { shellQuery } from '#/lib/queries'
 import { RangePicker } from './RangePicker'
+import { TabPicker } from './TabPicker'
+import { TimeTab } from './TimeTab'
+import { TodosTab } from './TodosTab'
 
 const route = getRouteApi('/_app/metrics')
 
 /**
- * The Metrics screen, frame 1f: how the user actually works, over a week,
- * thirty days or a quarter. One DOM serves both widths; on a phone the six
- * figures fall into two columns and the three charts into one (derived,
- * docs/BRIEF.md).
+ * The Metrics screen. Frame 1f is the Todos tab, which every user has; frame 4a
+ * adds the Time tab beside it for a user who bills for their time, and a Money
+ * tab that is drawn and not wired. With the Billing module off there is one
+ * side to this screen and no tab control at all.
  *
- * The range is the URL's. Picking one navigates, the route's loader reads that
- * range and the screen reads it back — so the screen never holds a range of its
- * own that the address bar could disagree with, and the browser's back button
- * works on it like any other link.
+ * Both the tab and the range are the URL's. Picking either navigates, the
+ * route's loader reads what that asks for and the screen reads it back — so
+ * the screen never holds a state of its own that the address bar could
+ * disagree with, and the browser's back button works on it like any other link.
  */
 export function MetricsScreen() {
-  const { range } = route.useSearch()
+  const { tab, range } = route.useSearch()
   const navigate = route.useNavigate()
-  const { data: metrics } = useSuspenseQuery(metricsQuery(range))
-  const view = viewMetrics(metrics)
-  const notes = metrics.modelled?.notes ?? {}
+  const { data: shell } = useSuspenseQuery(shellQuery)
+  // The Time tab is part of the Billing module; a link to it with the module
+  // off opens the screen every user has rather than failing.
+  const open: MetricTab = shell.billing ? tab : 'todos'
 
-  const pick = (range: MetricRange) => {
-    void navigate({ search: { range } })
+  const pickTab = (tab: MetricTab) => {
+    if (tab === 'money') return
+    void navigate({ search: { tab, range } })
+  }
+  const pickRange = (range: MetricRange) => {
+    void navigate({ search: { tab: open, range } })
   }
 
   return (
-    <div className="screen metrics">
+    <div className={open === 'time' ? 'screen metrics metrics--time' : 'screen metrics'}>
       <header className="metrics__head">
         <h1 className="screen__title">Metrics</h1>
-        <RangePicker ranges={view.ranges} onPick={pick} />
+        <div className="metrics__controls">
+          {shell.billing ? <TabPicker open={open} onPick={pickTab} /> : null}
+          <RangePicker range={range} onPick={pickRange} />
+        </div>
       </header>
 
-      <section className="metrics__figures" aria-labelledby="figures-title">
-        <h2 id="figures-title" className="sr-only">
-          The headline figures
-        </h2>
-        {metrics.modelled === null ? (
-          <p className="metrics__unmodelled">Crazy has not modelled this range today.</p>
-        ) : (
-          <ul className="metrics__tiles">
-            {metrics.modelled.headlines.map((figure) => (
-              <StatTile
-                as="li"
-                key={figure.figure}
-                label={figure.label}
-                value={figure.value}
-                note={figure.note}
-              />
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <div className="metrics__charts">
-        <FocusByHour view={view} note={notes.focus_by_hour} />
-        <BacklogAgeing view={view} note={notes.backlog_ageing} />
-        <TodoSources view={view} note={notes.todo_sources} />
-      </div>
-
-      <CompletionDays view={view} note={notes.completion_days} />
+      {open === 'time' ? <TimeTab range={range} /> : <TodosTab range={range} />}
     </div>
   )
 }

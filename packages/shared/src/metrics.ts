@@ -18,6 +18,33 @@ import { formatHourCount } from './week'
 //    the same standing as the Brief. A figure the screen can count is never
 //    stored, and a day Crazy has not modelled shows no modelled figure.
 
+/**
+ * Which side of the screen is being read. Todos is the screen frame 1f draws
+ * and every user has; Time and Money belong to the Billing module and are
+ * drawn only with it on. Money is drawn and not wired, so it never reaches the
+ * URL: `metricTabInUrl` is what a link may carry.
+ */
+export const METRIC_TABS = ['todos', 'time', 'money'] as const
+export const metricTab = z.enum(METRIC_TABS)
+export type MetricTab = z.infer<typeof metricTab>
+
+/** The tab a link with none means, and the only tab with the Billing module off. */
+export const DEFAULT_METRIC_TAB = 'todos' satisfies MetricTab
+
+/** What the tab control calls each tab, in the order frame 4a lays them out. */
+export const METRIC_TAB_LABELS: Record<MetricTab, string> = {
+  todos: 'Todos',
+  time: 'Time',
+  money: 'Money',
+}
+
+/** The tabs a user can actually reach, and so the only ones a URL may name. */
+export const metricTabInUrl = z.enum(['todos', 'time'])
+
+/** Why the Money tab does nothing, said to assistive technology. */
+export const MONEY_NOT_WIRED =
+  'The Money tab is not built yet: Crazy has nothing to say about money beyond what the Time tab and the Invoices screen already show.'
+
 /** How far back the screen looks. The URL carries one of these. */
 export const METRIC_RANGES = ['week', '30d', 'quarter'] as const
 export const metricRange = z.enum(METRIC_RANGES)

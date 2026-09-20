@@ -3,6 +3,7 @@ import {
   readCircles,
   readInvoices,
   readMetrics,
+  readMetricsTime,
   readProjects,
   readTime,
   readTimerAndPicker,
@@ -202,6 +203,23 @@ export const getMetrics = createServerFn()
     const { timeZone } = await settingsFor(userId)
     const now = requestNow(timeZone)
     return readMetrics(createReadDb(env.DB), userId, now, timeZone, data.range)
+  })
+
+/**
+ * The Metrics screen's Time tab, for one range (frame 4a). Part of the Billing
+ * module: with it off there is no such tab, so there is nothing to read. The
+ * range comes off the URL and is validated here as well as there.
+ */
+export const getMetricsTime = createServerFn()
+  .validator(z.object({ range: metricRange }))
+  .handler(async ({ data }) => {
+    const userId = await viewerId()
+    if (!userId) throw redirect({ to: '/sign-in' })
+
+    const { timeZone, billing } = await settingsFor(userId)
+    if (!billing) throw notFound()
+    const now = requestNow(timeZone)
+    return readMetricsTime(createReadDb(env.DB), userId, now, timeZone, data.range)
   })
 
 /**

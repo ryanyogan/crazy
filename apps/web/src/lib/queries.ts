@@ -12,6 +12,7 @@ import {
   getIntegrations,
   getInvoices,
   getMetrics,
+  getMetricsTime,
   getProjects,
   getShell,
   getTime,
@@ -78,6 +79,17 @@ export const metricsQuery = (range: MetricRange) =>
   queryOptions({
     queryKey: ['metrics', range],
     queryFn: () => getMetrics({ data: { range } }),
+  })
+
+/**
+ * The Metrics screen's Time tab, one query per range. It is its own read model
+ * rather than part of the Todos tab's: a user with the Billing module off never
+ * asks for it, and moving between the two tabs is a cache hit the second time.
+ */
+export const metricsTimeQuery = (range: MetricRange) =>
+  queryOptions({
+    queryKey: ['metrics-time', range],
+    queryFn: () => getMetricsTime({ data: { range } }),
   })
 
 /** Lays operations over every cached read model that holds the rows they name. */

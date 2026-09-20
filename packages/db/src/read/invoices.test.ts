@@ -126,11 +126,21 @@ it('has a seeded draft whose lines are what the arithmetic makes of the seeded e
   expect(invoice.lines.reduce((sum, line) => sum + line.amountCents, 0)).toBe(invoice.totalCents)
 })
 
-it('reads nothing for a period with no invoices, and nobody else invoices at all', async () => {
+it('reads an earlier month as billed and paid, and nothing at all before she began', async () => {
+  // Her five weeks before September were invoiced and settled (ticket 22), so
+  // nothing older than this month is waiting to go out.
   const august = await read('2025-08-15')
-  expect(august.invoices).toEqual([])
+  expect(august.invoices.map((invoice) => invoice.status)).toEqual(['paid', 'paid', 'paid'])
   expect(august.totals.draftedCents).toBe(0)
-  expect(august.hold.noClientCount).toBe(0)
+  expect(august.totals.outstandingCents).toBe(0)
+  expect(august.totals.paidCents).toBeGreaterThan(0)
+  expect(august.hold.unbilledSeconds).toBe(0)
+
+  // A month before she tracked anything holds nothing at all.
+  const june = await read('2025-06-15')
+  expect(june.invoices).toEqual([])
+  expect(june.totals.draftedCents).toBe(0)
+  expect(june.hold.noClientCount).toBe(0)
 
   // An id is read by userId as well, so one from somewhere else finds nothing.
   const period = await read()

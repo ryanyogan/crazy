@@ -559,3 +559,13 @@ export function removeEntry(timer: TodayTimer, id: string): TodayTimer {
     today: timer.today.filter((entry) => entry.id !== id),
   }
 }
+
+/**
+ * Whether a Time entry's hours are stray: for no Client and part of no Project.
+ * Work on one of the user's own Projects (their admin, their bookkeeping) was
+ * put there on purpose and is nobody's to bill; it is never asked about. Every
+ * screen that counts what "needs a Client" asks this, so they cannot disagree.
+ */
+export function needsClient(entry: { clientId: string | null; projectId: string | null }): boolean {
+  return entry.clientId === null && entry.projectId === null
+}

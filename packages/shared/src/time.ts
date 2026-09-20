@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { addDays, clockTime, isoWeek, startOfDay, startOfWeek, wallClock } from './clock'
-import { INTERNAL, formatLogged } from './timer'
+import { INTERNAL, formatLogged, needsClient } from './timer'
 
 // The Time screen (frame 2b, the left half): a contractor's timesheet, read a
 // Day, a Week or a Month at a time. The rows come from D1 through `readTime`;
@@ -263,7 +263,7 @@ function cardNote(
   running: boolean,
 ): string {
   if (today) return running ? 'today · running' : 'today'
-  const untagged = rows.filter((row) => row.clientId === null).length
+  const untagged = rows.filter(needsClient).length
   if (untagged > 0) return `${untagged} ${untagged === 1 ? 'needs' : 'need'} a Client`
   if (shares.length > 1) return `${shares.length} Clients`
   return shares[0]?.clientName ?? ''
@@ -350,7 +350,7 @@ export function viewTime(read: TimeRead, now: Date, timeZone: string): TimeScree
     if (row.billable) billableSeconds += held
   }
   const needClient = read.rows
-    .filter((row) => row.clientId === null)
+    .filter(needsClient)
     .sort((a, b) => a.startedAt.localeCompare(b.startedAt))
 
   return {
@@ -430,7 +430,7 @@ export function whenLabel(row: TimeRow, view: TimeView, timeZone: string): strin
 /** The small word beside a note: what is running, and what still needs a Client. */
 export function rowFlag(row: TimeRow): string {
   if (row.endedAt === null) return 'running'
-  if (row.clientId !== null) return ''
+  if (!needsClient(row)) return ''
   return row.suggestedClientName === null
     ? 'no Client'
     : `Client? likely ${row.suggestedClientName}`

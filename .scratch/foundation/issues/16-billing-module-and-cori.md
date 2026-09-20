@@ -53,9 +53,14 @@ found while off, the rail gains and loses Time and Invoices on the switch, `/tim
     **Ticket 21 unmasked frame 2b's right-hand column** — the Invoices half — and added an
     `invoices` region for it, still 0.00%: the card's head and the first two invoices' Client,
     status, detail and amount are compared against the frame, and what the frame says from
-    somewhere other than Cori's rows is masked with its reason. **What is still open here: 2c
-    and 4a, which are the tickets that draw those screens, and the phone tab bar with the
-    Billing module on, which no compared frame reaches.**
+    somewhere other than Cori's rows is masked with its reason. **Ticket 22 added frame 4a at
+    1180px** (0.00% whole frame and 0.00% in every region), so the Billing-on rail is now compared
+    against a third frame: 4a lists seven destinations and omits Circles exactly as 2a does, and the
+    same mask with the same reason covers the three below the fifth. Its rail foot is masked because
+    4a draws none, as frame 1f's does not. Frame 4a's phone card is not drawn at all, so the Metrics
+    screen's 390px layout is derived and listed in `docs/BRIEF.md`. **What is still open here: 2c,
+    which is the ticket that draws that screen, and the phone tab bar with the Billing module on,
+    which no compared frame reaches.**
 - [x] *At most one Time entry per user has no end, enforced at the command seam* — done in ticket
   17: `decide` refuses `timer.start` while an entry with no end exists, with a reason, and the
   partial unique index `time_entry_userId_running_key` stays as the backstop under it.
